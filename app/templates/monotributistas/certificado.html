@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block title %}Certificado ARCA — {{ mono.razon_social }}{% endblock %}
+
+{% block extra_styles %}
+<style>
+  .cert-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); max-width: 580px; }
+  .cert-steps { display: flex; flex-direction: column; gap: 20px; padding: 28px; }
+  .step { display: flex; gap: 16px; }
+  .step-num {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--navy); color: white;
+    font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 13px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 2px;
+  }
+  .step-body { flex: 1; }
+  .step-title { font-weight: 700; font-size: 14px; color: var(--navy); margin-bottom: 6px; }
+  .step-desc { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+  .upload-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
+  .file-drop {
+    border: 2px dashed var(--border); border-radius: 10px;
+    padding: 24px 16px; text-align: center;
+    cursor: pointer; transition: all .2s;
+  }
+  .file-drop:hover, .file-drop.has-file { border-color: var(--coral); background: #fff8f6; }
+  .file-drop-icon { font-size: 28px; margin-bottom: 8px; }
+  .file-drop-label { font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
+  .file-drop-sub { font-size: 11px; color: var(--muted); }
+  .file-drop-name { font-size: 12px; color: var(--coral); font-weight: 700; margin-top: 6px; word-break: break-all; }
+  input[type=file] { display: none; }
+
+  .info-box {
+    background: #EFF6FF; border: 1px solid #BFDBFE;
+    border-radius: 8px; padding: 12px 16px;
+    font-size: 13px; color: #1E40AF; margin-top: 16px;
+    line-height: 1.6;
+  }
+
+  .error-box {
+    background: #FEF2F2; border: 1px solid #FECACA;
+    border-radius: 8px; padding: 12px 16px;
+    font-size: 13px; color: #991B1B; margin-top: 16px;
+    display: none;
+  }
+  .error-box.visible { display: block; }
+
+  .form-actions { padding: 0 28px 28px; display: flex; gap: 12px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Certificado ARCA</div>
+    <div class="page-subtitle">
+      <a href="/monotributistas/{{ mono.id }}" style="color:var(--coral); font-weight:700; text-decoration:none;">
+        ← {{ mono.razon_social }}
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="cert-card">
+  <div class="cert-steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <div class="step-title">Generá el certificado en ARCA</div>
+        <div class="step-desc">
+          Entrá a <strong>arca.gob.ar → Servicios → Administrador de Relaciones</strong>
+          con la clave fiscal del monotributista. Creá un nuevo certificado para el servicio
+          <strong>wsfe</strong> y descargá el archivo <code>.crt</code> y la clave privada <code>.key</code>.
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <div class="step-title">Subí los dos archivos acá</div>
+        <div class="step-desc">
+          Los archivos se encriptan con Fernet antes de guardarse. Nadie más puede acceder a ellos.
+        </div>
+
+        <div class="upload-pair">
+          <div class="file-drop" id="drop-cert" onclick="document.getElementById('input-cert').click()">
+            <div class="file-drop-icon">📄</div>
+            <div class="file-drop-label">Certificado</div>
+            <div class="file-drop-sub">.crt o .pem</div>
+            <div class="file-drop-name" id="name-cert"></div>
+          </div>
+          <input type="file" id="input-cert" accept=".crt,.pem,.cer">
+
+          <div class="file-drop" id="drop-key" onclick="document.getElementById('input-key').click()">
+            <div class="file-drop-icon">🔑</div>
+            <div class="file-drop-label">Clave privada</div>
+            <div class="file-drop-sub">.key o .pem</div>
+            <div class="file-drop-name" id="name-key"></div>
+          </div>
+          <input type="file" id="input-key" accept=".key,.pem">
+        </div>
+
+        <div class="info-box">
+          💡 El estudio contable generalmente tiene acceso a la clave fiscal del monotributista
+          y puede hacer este proceso directamente.
+        </div>
+
+        <div class="error-box" id="error-box"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <a href="/monotributistas/{{ mono.id }}" class="btn btn-ghost">Cancelar</a>
+    <button class="btn btn-primary" id="btn-guardar" onclick="guardarCertificado()" disabled>
+      <div class="spinner"></div>
+      <span class="btn-label">Guardar certificado →</span>
+    </button>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let certFile = null, keyFile = null;
+
+function setFile(tipo, file) {
+  if (tipo === 'cert') {
+    certFile = file;
+    document.getElementById('name-cert').textContent = file.name;
+    document.getElementById('drop-cert').classList.add('has-file');
+  } else {
+    keyFile = file;
+    document.getElementById('name-key').textContent = file.name;
+    document.getElementById('drop-key').classList.add('has-file');
+  }
+  document.getElementById('btn-guardar').disabled = !(certFile && keyFile);
+}
+
+document.getElementById('input-cert').addEventListener('change', e => { if(e.target.files[0]) setFile('cert', e.target.files[0]); });
+document.getElementById('input-key').addEventListener('change',  e => { if(e.target.files[0]) setFile('key',  e.target.files[0]); });
+
+async function guardarCertificado() {
+  const btn = document.getElementById('btn-guardar');
+  const errEl = document.getElementById('error-box');
+  btn.disabled = true;
+  errEl.classList.remove('visible');
+
+  const fd = new FormData();
+  fd.append('cert_file', certFile);
+  fd.append('key_file', keyFile);
+
+  try {
+    const token = localStorage.getItem('mmf_token');
+    const res = await fetch('/monotributistas/{{ mono.id }}/certificado', {
+      method: 'POST',
+      headers: token ? { 'Authorization': 'Bearer ' + token } : {},
+      body: fd,
+    });
+
+    if (res.redirected) { window.location.href = res.url; return; }
+    if (res.ok) { window.location.href = '/monotributistas/{{ mono.id }}'; return; }
+
+    const data = await res.json().catch(() => ({}));
+    errEl.textContent = data.detail || 'Error al guardar el certificado.';
+    errEl.classList.add('visible');
+  } catch(e) {
+    errEl.textContent = 'Error de conexión: ' + e.message;
+    errEl.classList.add('visible');
+  } finally {
+    btn.disabled = false;
+  }
+}
+</script>
+{% endblock %}

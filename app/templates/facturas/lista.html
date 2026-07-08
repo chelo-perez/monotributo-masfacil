@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}Facturas emitidas — Monotributo Más Fácil{% endblock %}
+
+{% block extra_styles %}
+<style>
+  .filters {
+    background: white; border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 16px 20px; margin-bottom: 20px;
+    display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+  }
+  .filters label { font-size: 13px; font-weight: 700; color: var(--navy); }
+  select, input[type=text] {
+    padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px;
+    font-family: 'Nunito Sans', sans-serif; font-size: 13px;
+    outline: none; transition: border-color .15s;
+  }
+  select:focus, input:focus { border-color: var(--navy); }
+
+  .table-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; }
+  thead tr { border-bottom: 2px solid var(--border); }
+  th {
+    padding: 11px 16px; text-align: left;
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--muted);
+  }
+  th.right { text-align: right; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: #fafafa; }
+  td { padding: 13px 16px; font-size: 13px; vertical-align: middle; }
+  td.right { text-align: right; font-variant-numeric: tabular-nums; }
+  td.importe { font-weight: 700; color: var(--navy); }
+
+  .estado-aprobada { color: #166534; font-weight: 700; }
+  .estado-rechazada { color: #991B1B; font-weight: 700; }
+  .estado-pendiente { color: var(--muted); }
+
+  .mono-tag {
+    display: inline-block; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 2px 8px; font-size: 11px; color: var(--navy); font-weight: 700;
+  }
+  .cae-code { font-family: monospace; font-size: 11px; color: var(--muted); }
+
+  .empty-state { text-align: center; padding: 60px; color: var(--muted); }
+  .pagination { display: flex; justify-content: center; gap: 8px; margin-top: 20px; }
+  .page-btn {
+    padding: 7px 14px; border-radius: 8px; border: 1.5px solid var(--border);
+    background: white; font-size: 13px; font-weight: 700; color: var(--muted);
+    cursor: pointer; text-decoration: none; transition: all .15s;
+  }
+  .page-btn:hover { border-color: var(--navy); color: var(--navy); }
+  .page-btn.active { background: var(--navy); color: white; border-color: var(--navy); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Facturas emitidas</div>
+    <div class="page-subtitle">Todos los comprobantes electrónicos</div>
+  </div>
+</div>
+
+<!-- Filtros -->
+<div class="filters">
+  <label>Monotributista</label>
+  <select onchange="filtrar()" id="f-mono">
+    <option value="">Todos</option>
+    {% for m in monotributistas %}
+    <option value="{{ m.id }}" {% if mono_id == m.id %}selected{% endif %}>{{ m.razon_social }}</option>
+    {% endfor %}
+  </select>
+
+  <label style="margin-left:8px;">Estado</label>
+  <select onchange="filtrar()" id="f-estado">
+    <option value="">Todos</option>
+    <option value="aprobada" {% if estado_filtro == 'aprobada' %}selected{% endif %}>Aprobadas</option>
+    <option value="rechazada" {% if estado_filtro == 'rechazada' %}selected{% endif %}>Rechazadas</option>
+  </select>
+</div>
+
+<div class="table-card">
+  {% if facturas %}
+  <table>
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Monotributista</th>
+        <th>Cliente</th>
+        <th>Concepto</th>
+        <th class="right">Importe</th>
+        <th>Estado</th>
+        <th>CAE</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in facturas %}
+      <tr>
+        <td style="white-space:nowrap; color:var(--muted);">
+          {{ f.cbte_fecha.strftime('%d/%m/%Y') if f.cbte_fecha else '—' }}
+        </td>
+        <td>
+          <span class="mono-tag">
+            {{ f.monotributista.razon_social if f.monotributista else '—' }}
+          </span>
+        </td>
+        <td>{{ f.cliente.nombre if f.cliente else 'Consumidor Final' }}</td>
+        <td style="color:var(--muted); max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+          {{ f.concepto or '—' }}
+        </td>
+        <td class="right importe">$ {{ f.imp_total | format_money }}</td>
+        <td>
+          {% if f.afip_result.value == 'aprobada' %}
+          <span class="estado-aprobada">✓ Aprobada</span>
+          {% elif f.afip_result.value == 'rechazada' %}
+          <span class="estado-rechazada">✗ Rechazada</span>
+          {% else %}
+          <span class="estado-pendiente">Pendiente</span>
+          {% endif %}
+        </td>
+        <td class="cae-code">{{ f.cae or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">
+    No hay facturas para los filtros seleccionados.
+  </div>
+  {% endif %}
+</div>
+
+{% if page > 1 or facturas | length == 50 %}
+<div class="pagination">
+  {% if page > 1 %}
+  <a href="?page={{ page - 1 }}{% if mono_id %}&mono_id={{ mono_id }}{% endif %}" class="page-btn">← Anterior</a>
+  {% endif %}
+  <span class="page-btn active">{{ page }}</span>
+  {% if facturas | length == 50 %}
+  <a href="?page={{ page + 1 }}{% if mono_id %}&mono_id={{ mono_id }}{% endif %}" class="page-btn">Siguiente →</a>
+  {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function filtrar() {
+  const mono = document.getElementById('f-mono').value;
+  const estado = document.getElementById('f-estado').value;
+  let url = '/facturas?page=1';
+  if (mono) url += '&mono_id=' + mono;
+  if (estado) url += '&estado=' + estado;
+  window.location.href = url;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Límite alcanzado — Monotributo Más Fácil{% endblock %}
+
+{% block content %}
+<div style="max-width: 500px; margin: 60px auto; text-align: center;">
+  <div style="font-size: 56px; margin-bottom: 20px;">🔒</div>
+  <div style="font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 22px; color: var(--navy); margin-bottom: 12px;">
+    Límite del plan alcanzado
+  </div>
+  <div style="font-size: 15px; color: var(--muted); line-height: 1.6; margin-bottom: 28px;">
+    Tu plan <strong>{{ plan | title }}</strong> permite hasta <strong>{{ limite }} monotributistas</strong>.
+    Ya tenés <strong>{{ total }}</strong> configurados.
+    <br><br>
+    Para agregar más, pasá al plan siguiente.
+  </div>
+  <a href="/perfil" class="btn btn-primary" style="margin-right: 8px;">Ver planes →</a>
+  <a href="/monotributistas" class="btn btn-ghost">Volver</a>
+</div>
+{% endblock %}

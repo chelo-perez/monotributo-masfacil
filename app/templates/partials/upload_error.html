@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Error de importación — Monotributo Más Fácil{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title">Error al importar el Excel</div>
+</div>
+
+<div style="background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 32px; max-width: 600px;">
+  <div style="font-size: 36px; margin-bottom: 16px;">⚠️</div>
+
+  {% if error %}
+  <p style="font-size: 15px; color: #991B1B; margin-bottom: 20px;">{{ error }}</p>
+  {% endif %}
+
+  {% if errores %}
+  <ul style="list-style: none; padding: 0;">
+    {% for e in errores %}
+    <li style="padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; color: #991B1B;">
+      ✗ {{ e }}
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  <a href="/emitir" class="btn btn-primary" style="margin-top: 24px;">← Volver e intentar de nuevo</a>
+</div>
+{% endblock %}

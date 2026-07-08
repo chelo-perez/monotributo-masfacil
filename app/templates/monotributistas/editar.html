@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}Editar — {{ mono.razon_social }}{% endblock %}
+
+{% block extra_styles %}
+<style>
+  .form-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 32px; max-width: 600px; }
+  .form-section { margin-bottom: 28px; }
+  .form-section-title {
+    font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 14px;
+    color: var(--navy); text-transform: uppercase; letter-spacing: .05em;
+    margin-bottom: 18px; padding-bottom: 10px; border-bottom: 2px solid var(--border);
+  }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-group { margin-bottom: 16px; }
+  label { display: block; font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
+  label .opt { font-weight: 400; color: var(--muted); }
+  input[type=text], input[type=email], input[type=number], select {
+    width: 100%; padding: 10px 14px;
+    border: 1.5px solid var(--border); border-radius: 8px;
+    font-family: 'Nunito Sans', sans-serif; font-size: 14px;
+    outline: none; transition: border-color .15s; background: white;
+  }
+  input:focus, select:focus { border-color: var(--navy); }
+  .form-actions { display: flex; gap: 12px; margin-top: 8px; }
+
+  .danger-zone {
+    background: #FEF2F2; border: 1px solid #FECACA;
+    border-radius: var(--radius); padding: 20px 24px; max-width: 600px;
+    margin-top: 20px;
+  }
+  .danger-title {
+    font-family: 'Nunito', sans-serif; font-weight: 800;
+    font-size: 14px; color: #991B1B; margin-bottom: 8px;
+  }
+  .danger-desc { font-size: 13px; color: #7F1D1D; margin-bottom: 14px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Editar monotributista</div>
+    <div class="page-subtitle">
+      <a href="/monotributistas/{{ mono.id }}" style="color:var(--coral); font-weight:700; text-decoration:none;">
+        ← {{ mono.razon_social }}
+      </a>
+    </div>
+  </div>
+</div>
+
+<form class="form-card" action="/monotributistas/{{ mono.id }}/editar" method="post">
+  <div class="form-section">
+    <div class="form-section-title">Datos fiscales</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>CUIT</label>
+        <input type="text" name="cuit" value="{{ mono.cuit }}" required>
+      </div>
+      <div class="form-group">
+        <label>Razón social / Nombre</label>
+        <input type="text" name="razon_social" value="{{ mono.razon_social }}" required>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Domicilio fiscal <span class="opt">(opcional)</span></label>
+      <input type="text" name="domicilio" value="{{ mono.domicilio or '' }}">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Categoría actual</label>
+        <select name="categoria_actual">
+          <option value="">— No configurada —</option>
+          {% for cat in categorias %}
+          <option value="{{ cat }}" {% if mono.categoria_actual and mono.categoria_actual.value == cat %}selected{% endif %}>
+            Categoría {{ cat }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Actividad <span class="opt">(opcional)</span></label>
+        <input type="text" name="actividad" value="{{ mono.actividad or '' }}">
+      </div>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <div class="form-section-title">Configuración ARCA</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Punto de venta</label>
+        <input type="number" name="afip_punto_venta" value="{{ mono.afip_punto_venta or 1 }}" min="1" max="9999" required>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <div class="form-section-title">Contacto</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Email <span class="opt">(opcional)</span></label>
+        <input type="email" name="email" value="{{ mono.email or '' }}">
+      </div>
+      <div class="form-group">
+        <label>Teléfono <span class="opt">(opcional)</span></label>
+        <input type="text" name="telefono" value="{{ mono.telefono or '' }}">
+      </div>
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <a href="/monotributistas/{{ mono.id }}" class="btn btn-ghost">Cancelar</a>
+    <button type="submit" class="btn btn-primary">Guardar cambios</button>
+  </div>
+</form>
+
+<!-- Zona de peligro -->
+<div class="danger-zone">
+  <div class="danger-title">⚠️ Desactivar monotributista</div>
+  <div class="danger-desc">
+    Al desactivar, el monotributista deja de aparecer en la lista y no se pueden emitir
+    nuevas facturas. Las facturas ya emitidas se conservan.
+  </div>
+  <button class="btn btn-danger btn-sm"
+    onclick="if(confirm('¿Desactivar a {{ mono.razon_social }}? Podrás reactivarlo después.')) { desactivar(); }">
+    Desactivar monotributista
+  </button>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+async function desactivar() {
+  const token = localStorage.getItem('mmf_token');
+  const res = await fetch('/monotributistas/{{ mono.id }}/desactivar', {
+    method: 'POST',
+    headers: token ? { 'Authorization': 'Bearer ' + token } : {},
+  });
+  if (res.ok) window.location.href = '/monotributistas';
+  else alert('Error al desactivar.');
+}
+</script>
+{% endblock %}

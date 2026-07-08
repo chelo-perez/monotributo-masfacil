@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Monotributistas — Monotributo Más Fácil{% endblock %}
+
+{% block extra_styles %}
+<style>
+  .table-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; }
+  thead tr { border-bottom: 2px solid var(--border); }
+  th { padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: #fafafa; }
+  td { padding: 14px 16px; font-size: 14px; vertical-align: middle; }
+  .mono-name { font-weight: 700; color: var(--navy); display: block; }
+  .mono-cuit { font-size: 12px; color: var(--muted); }
+  .cert-ok { color: #22C55E; font-weight: 700; font-size: 13px; }
+  .cert-no { color: #F59E0B; font-weight: 700; font-size: 13px; }
+  .cat-badge {
+    display: inline-block; background: var(--navy); color: white;
+    border-radius: 6px; padding: 2px 8px;
+    font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 13px;
+  }
+  .empty-state { text-align: center; padding: 60px; color: var(--muted); }
+  .empty-state .emoji { font-size: 48px; margin-bottom: 12px; }
+  .empty-state h3 { font-family: 'Nunito', sans-serif; font-weight: 800; color: var(--navy); margin-bottom: 8px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Mis monotributistas</div>
+    <div class="page-subtitle">{{ monotributistas | length }} cliente(s) configurado(s)</div>
+  </div>
+  <a href="/monotributistas/nuevo" class="btn btn-primary">+ Agregar monotributista</a>
+</div>
+
+<div class="table-card">
+  {% if monotributistas %}
+  <table>
+    <thead>
+      <tr>
+        <th>Nombre / CUIT</th>
+        <th>Categoría</th>
+        <th>Punto de venta</th>
+        <th>Certificado</th>
+        <th>Email</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in monotributistas %}
+      <tr>
+        <td>
+          <span class="mono-name">{{ m.razon_social }}</span>
+          <span class="mono-cuit">{{ m.cuit }}</span>
+        </td>
+        <td>
+          {% if m.categoria_actual %}
+          <span class="cat-badge">{{ m.categoria_actual.value }}</span>
+          {% else %}
+          <span style="color:var(--muted); font-size:13px;">No configurada</span>
+          {% endif %}
+        </td>
+        <td>PV {{ m.afip_punto_venta or '—' }}</td>
+        <td>
+          {% if m.cert_encrypted %}
+          <span class="cert-ok">✓ Cargado</span>
+          {% else %}
+          <span class="cert-no">⚠ Pendiente</span>
+          {% endif %}
+        </td>
+        <td style="color:var(--muted); font-size:13px;">{{ m.email or '—' }}</td>
+        <td><a href="/monotributistas/{{ m.id }}" class="btn btn-ghost btn-sm">Ver</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">
+    <div class="emoji">👥</div>
+    <h3>Todavía no tenés monotributistas</h3>
+    <p>Agregá el primero para empezar a emitir facturas.</p>
+    <a href="/monotributistas/nuevo" class="btn btn-primary" style="margin-top:16px;">+ Agregar monotributista</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+{% block title %}Emitir facturas — Monotributo Más Fácil{% endblock %}
+
+{% block extra_styles %}
+<style>
+  .upload-zone {
+    background: white;
+    border: 2.5px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 60px 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .2s;
+    margin-bottom: 28px;
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--coral);
+    background: #fff8f6;
+  }
+  .upload-icon { font-size: 48px; margin-bottom: 16px; }
+  .upload-title {
+    font-family: 'Nunito', sans-serif; font-weight: 800;
+    font-size: 20px; color: var(--navy); margin-bottom: 8px;
+  }
+  .upload-sub { font-size: 14px; color: var(--muted); line-height: 1.6; }
+  .upload-sub a { color: var(--coral); font-weight: 700; text-decoration: none; }
+  .upload-sub a:hover { text-decoration: underline; }
+  #excel-input { display: none; }
+
+  .progress-bar {
+    display: none;
+    background: var(--border); border-radius: 4px;
+    height: 4px; margin-top: 20px; overflow: hidden;
+  }
+  .progress-bar.visible { display: block; }
+  .progress-fill {
+    height: 100%; background: var(--coral);
+    border-radius: 4px;
+    animation: progress-anim 1.5s ease-in-out infinite;
+  }
+  @keyframes progress-anim {
+    0% { width: 0%; } 50% { width: 70%; } 100% { width: 95%; }
+  }
+
+  .info-cards {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+  }
+  .info-card {
+    background: white; border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 20px;
+  }
+  .info-card-icon { font-size: 24px; margin-bottom: 10px; }
+  .info-card-title { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 14px; color: var(--navy); margin-bottom: 6px; }
+  .info-card-text { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+  .columnas-requeridas {
+    background: white; border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 24px;
+    margin-bottom: 28px;
+  }
+  .col-title { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 15px; color: var(--navy); margin-bottom: 14px; }
+  .col-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .col-item {
+    background: var(--bg); border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+  .col-item code {
+    display: block; font-family: monospace; font-weight: 700;
+    color: var(--navy); font-size: 13px; margin-bottom: 2px;
+  }
+  .col-item small { color: var(--muted); }
+  .col-item.opcional { opacity: .7; }
+  .col-item.opcional code::after {
+    content: " (opcional)";
+    font-weight: 400; color: var(--muted); font-family: 'Nunito Sans', sans-serif; font-size: 11px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Emitir facturas</div>
+    <div class="page-subtitle">Subí el Excel y emitimos todas las facturas en simultáneo</div>
+  </div>
+  <a href="/static/plantilla_monotributo_masfacil.xlsx" class="btn btn-ghost" download>
+    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+    </svg>
+    Descargar plantilla
+  </a>
+</div>
+
+<!-- Upload zone -->
+<div id="upload-container">
+  <div class="upload-zone" id="upload-zone" onclick="document.getElementById('excel-input').click()">
+    <div class="upload-icon">📊</div>
+    <div class="upload-title">Arrastrá el Excel acá o hacé clic para seleccionar</div>
+    <div class="upload-sub">
+      Archivos .xlsx o .xls — máximo 5 MB<br>
+      ¿No tenés el formato? <a href="/static/plantilla_monotributo_masfacil.xlsx" download>Descargá la plantilla</a>
+    </div>
+    <div class="progress-bar" id="progress-bar">
+      <div class="progress-fill"></div>
+    </div>
+  </div>
+  <input type="file" id="excel-input" accept=".xlsx,.xls">
+</div>
+
+<!-- Acá se inyecta el preview via HTMX -->
+<div id="preview-container"></div>
+
+<!-- Columnas -->
+<div class="columnas-requeridas">
+  <div class="col-title">Columnas del Excel</div>
+  <div class="col-grid">
+    <div class="col-item">
+      <code>fecha</code>
+      <small>Fecha de la factura. Ej: 01/07/2026</small>
+    </div>
+    <div class="col-item">
+      <code>importe</code>
+      <small>Monto en pesos. Ej: 50000 o $50.000</small>
+    </div>
+    <div class="col-item">
+      <code>cliente</code>
+      <small>Nombre completo del receptor</small>
+    </div>
+    <div class="col-item">
+      <code>concepto</code>
+      <small>Descripción del servicio prestado</small>
+    </div>
+    <div class="col-item">
+      <code>monotributista</code>
+      <small>Nombre o CUIT del emisor</small>
+    </div>
+    <div class="col-item opcional">
+      <code>dni_cliente</code>
+      <small>DNI o CUIT del receptor</small>
+    </div>
+  </div>
+</div>
+
+<!-- Info cards -->
+<div class="info-cards">
+  <div class="info-card">
+    <div class="info-card-icon">⚡</div>
+    <div class="info-card-title">Emisión simultánea</div>
+    <div class="info-card-text">Todos los monotributistas se procesan en paralelo. 10 clientes = el tiempo de 1.</div>
+  </div>
+  <div class="info-card">
+    <div class="info-card-icon">🔍</div>
+    <div class="info-card-title">Preview antes de emitir</div>
+    <div class="info-card-text">Revisás todo antes de confirmar. Los errores se marcan fila por fila.</div>
+  </div>
+  <div class="info-card">
+    <div class="info-card-icon">📧</div>
+    <div class="info-card-title">Email automático</div>
+    <div class="info-card-text">Al terminar recibís un resumen. Podés reenviar facturas individuales.</div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const zone = document.getElementById('upload-zone');
+const input = document.getElementById('excel-input');
+const progress = document.getElementById('progress-bar');
+const preview = document.getElementById('preview-container');
+
+// Drag & drop
+zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('drag-over'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+zone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  zone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) uploadFile(file);
+});
+
+input.addEventListener('change', () => {
+  if (input.files[0]) uploadFile(input.files[0]);
+});
+
+async function uploadFile(file) {
+  if (!file.name.match(/\.(xlsx|xls)$/i)) {
+    alert('El archivo debe ser Excel (.xlsx o .xls)');
+    return;
+  }
+
+  progress.classList.add('visible');
+  zone.style.pointerEvents = 'none';
+
+  const formData = new FormData();
+  formData.append('archivo', file);
+
+  try {
+    const token = localStorage.getItem('mmf_token');
+    const res = await fetch('/emitir/upload', {
+      method: 'POST',
+      headers: token ? { 'Authorization': 'Bearer ' + token } : {},
+      body: formData,
+    });
+
+    const html = await res.text();
+    if (res.status === 401) { window.location.href = '/login'; return; }
+
+    // Reemplazar toda la página con el preview
+    document.open();
+    document.write(html);
+    document.close();
+
+  } catch (e) {
+    alert('Error al subir el archivo: ' + e.message);
+    progress.classList.remove('visible');
+    zone.style.pointerEvents = 'auto';
+  }
+}
+</script>
+{% endblock %}

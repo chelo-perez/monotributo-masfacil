@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}Resultado de emisión — Monotributo Más Fácil{% endblock %}
+
+{% block extra_styles %}
+<style>
+  .resultado-hero {
+    background: white; border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 40px;
+    text-align: center; margin-bottom: 24px;
+  }
+  .resultado-icon { font-size: 56px; margin-bottom: 16px; }
+  .resultado-title {
+    font-family: 'Nunito', sans-serif; font-weight: 800;
+    font-size: 26px; color: var(--navy); margin-bottom: 8px;
+  }
+  .resultado-sub { font-size: 15px; color: var(--muted); }
+  .resultado-stats {
+    display: flex; justify-content: center; gap: 48px; margin-top: 28px;
+  }
+  .stat-item { text-align: center; }
+  .stat-val {
+    font-family: 'Nunito', sans-serif; font-weight: 800;
+    font-size: 36px; line-height: 1;
+  }
+  .stat-val.green { color: #22C55E; }
+  .stat-val.red   { color: #EF4444; }
+  .stat-label { font-size: 13px; color: var(--muted); margin-top: 6px; }
+
+  .demo-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #FEF9C4; color: #854D0E;
+    border: 1px solid #F59E0B;
+    border-radius: 20px; padding: 4px 12px;
+    font-size: 12px; font-weight: 700; margin-top: 16px;
+  }
+
+  .mono-resultado-card {
+    background: white; border-radius: var(--radius);
+    box-shadow: var(--shadow); margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .mono-res-header {
+    padding: 16px 20px;
+    display: flex; align-items: center; gap: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .mono-avatar {
+    width: 38px; height: 38px; border-radius: 10px;
+    background: var(--navy); color: white;
+    font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .mono-res-info { flex: 1; }
+  .mono-res-name { font-weight: 700; color: var(--navy); }
+  .mono-res-cuit { font-size: 12px; color: var(--muted); }
+  .mono-res-badges { display: flex; gap: 8px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px; border-radius: 20px;
+    font-size: 12px; font-weight: 700;
+  }
+  .badge-green { background: #DCFCE7; color: #166534; }
+  .badge-red   { background: #FEE2E2; color: #991B1B; }
+  .badge-gray  { background: var(--bg); color: var(--muted); }
+
+  .error-general {
+    padding: 12px 20px;
+    background: #FEF2F2; font-size: 13px; color: #991B1B;
+  }
+
+  .actions { display: flex; gap: 12px; justify-content: center; margin-top: 32px; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-title">Resultado de emisión</div>
+    <div class="page-subtitle">Lote #{{ lote_id }}</div>
+  </div>
+</div>
+
+<!-- Hero -->
+<div class="resultado-hero">
+  {% if rechazadas == 0 %}
+    <div class="resultado-icon">✅</div>
+    <div class="resultado-title">¡Todas las facturas emitidas!</div>
+    <div class="resultado-sub">ARCA aprobó los {{ aprobadas }} comprobantes sin errores.</div>
+  {% elif aprobadas == 0 %}
+    <div class="resultado-icon">❌</div>
+    <div class="resultado-title">No se pudo emitir ninguna factura</div>
+    <div class="resultado-sub">Revisá los errores detallados abajo.</div>
+  {% else %}
+    <div class="resultado-icon">⚠️</div>
+    <div class="resultado-title">Emisión parcialmente exitosa</div>
+    <div class="resultado-sub">Algunos comprobantes fueron rechazados por ARCA.</div>
+  {% endif %}
+
+  <div class="resultado-stats">
+    <div class="stat-item">
+      <div class="stat-val green">{{ aprobadas }}</div>
+      <div class="stat-label">aprobadas</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-val {% if rechazadas > 0 %}red{% else %}green{% endif %}">{{ rechazadas }}</div>
+      <div class="stat-label">rechazadas</div>
+    </div>
+    {% if duracion %}
+    <div class="stat-item">
+      <div class="stat-val" style="color:var(--navy)">{{ "%.1f"|format(duracion) }}s</div>
+      <div class="stat-label">tiempo total</div>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if modo_demo %}
+  <div class="demo-badge">
+    ⚠️ Modo demo — las facturas no fueron enviadas a ARCA
+  </div>
+  {% endif %}
+</div>
+
+<!-- Detalle por monotributista -->
+{% if por_monotributista %}
+  {% for r in por_monotributista %}
+  <div class="mono-resultado-card">
+    <div class="mono-res-header">
+      <div class="mono-avatar">{{ r.razon_social[:2].upper() }}</div>
+      <div class="mono-res-info">
+        <div class="mono-res-name">{{ r.razon_social }}</div>
+        <div class="mono-res-cuit">{{ r.cuit }}</div>
+      </div>
+      <div class="mono-res-badges">
+        {% if r.aprobadas > 0 %}
+        <span class="badge badge-green">✓ {{ r.aprobadas }} aprobadas</span>
+        {% endif %}
+        {% if r.rechazadas > 0 %}
+        <span class="badge badge-red">✗ {{ r.rechazadas }} rechazadas</span>
+        {% endif %}
+      </div>
+    </div>
+    {% if r.error_general %}
+    <div class="error-general">⚠️ {{ r.error_general }}</div>
+    {% endif %}
+  </div>
+  {% endfor %}
+{% endif %}
+
+<!-- Acciones -->
+<div class="actions">
+  <a href="/emitir" class="btn btn-ghost">Emitir otro lote</a>
+  <a href="/facturas" class="btn btn-primary">Ver facturas emitidas →</a>
+</div>
+
+{% endblock %}

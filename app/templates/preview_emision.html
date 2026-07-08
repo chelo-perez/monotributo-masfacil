@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Preview de emisión — Monotributo Más Fácil</title>
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Nunito+Sans:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --navy: #2C3178; --coral: #F07B5A;
+      --bg: #F5F6FA; --white: #FFFFFF;
+      --text: #1A1D3B; --muted: #6B7280;
+      --border: #E5E7EB;
+      --green: #22C55E; --yellow: #F59E0B; --red: #EF4444;
+      --radius: 12px;
+      --shadow: 0 1px 3px rgba(0,0,0,.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Nunito Sans', sans-serif; background: var(--bg); color: var(--text); }
+
+    .topbar {
+      background: var(--white);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 32px;
+      display: flex; align-items: center; gap: 16px;
+    }
+    .topbar-back { color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 600; }
+    .topbar-back:hover { color: var(--navy); }
+    .topbar-title {
+      font-family: 'Nunito', sans-serif;
+      font-size: 18px; font-weight: 800;
+      color: var(--navy);
+    }
+    .topbar-badge {
+      margin-left: auto;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 12px; font-weight: 700;
+      color: var(--muted);
+    }
+
+    .content { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
+
+    /* Resumen global */
+    .resumen-global {
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+    .res-item-label {
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .06em;
+      color: var(--muted); margin-bottom: 6px;
+    }
+    .res-item-val {
+      font-family: 'Nunito', sans-serif;
+      font-size: 26px; font-weight: 800;
+      color: var(--navy);
+    }
+    .res-item-val.green { color: var(--green); }
+    .res-item-val.red   { color: var(--red); }
+
+    /* Advertencia de errores */
+    .warning-box {
+      background: #FFF9C4;
+      border: 1px solid #F59E0B;
+      border-radius: 8px;
+      padding: 14px 18px;
+      display: flex; gap: 10px; align-items: flex-start;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+    .warning-box strong { color: #854D0E; display: block; margin-bottom: 2px; }
+
+    /* Grupos por monotributista */
+    .mono-group {
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .mono-group-header {
+      padding: 16px 20px;
+      display: flex; align-items: center; gap: 14px;
+      cursor: pointer;
+      user-select: none;
+      border-bottom: 1px solid var(--border);
+    }
+    .mono-group-header:hover { background: #fafafa; }
+    .mono-avatar {
+      width: 38px; height: 38px;
+      border-radius: 10px;
+      background: var(--navy);
+      color: white;
+      font-family: 'Nunito', sans-serif;
+      font-weight: 800; font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .mono-info { flex: 1; }
+    .mono-info-name { font-weight: 700; font-size: 15px; color: var(--navy); }
+    .mono-info-cuit { font-size: 12px; color: var(--muted); }
+    .mono-stats { display: flex; gap: 16px; align-items: center; }
+    .mono-stat { text-align: right; }
+    .mono-stat-val { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 16px; color: var(--navy); }
+    .mono-stat-label { font-size: 11px; color: var(--muted); }
+    .mono-toggle { color: var(--muted); font-size: 20px; margin-left: 8px; transition: transform .2s; }
+    .mono-group.open .mono-toggle { transform: rotate(180deg); }
+
+    /* Tabla de filas */
+    .mono-filas { display: none; }
+    .mono-group.open .mono-filas { display: block; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      padding: 10px 16px;
+      text-align: left;
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .05em;
+      color: var(--muted);
+      background: var(--bg);
+    }
+    td { padding: 12px 16px; font-size: 13px; border-top: 1px solid var(--border); }
+    td.right { text-align: right; font-variant-numeric: tabular-nums; }
+    td.importe { font-weight: 700; color: var(--navy); }
+
+    .error-row { background: #FEF2F2; }
+    .error-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: #FEE2E2; color: #991B1B;
+      padding: 3px 8px; border-radius: 4px;
+      font-size: 11px; font-weight: 700;
+    }
+
+    /* Footer de acción */
+    .action-footer {
+      position: sticky; bottom: 0;
+      background: var(--white);
+      border-top: 1px solid var(--border);
+      padding: 20px 32px;
+      display: flex; justify-content: space-between; align-items: center;
+      box-shadow: 0 -4px 12px rgba(0,0,0,.06);
+    }
+    .footer-info { font-size: 14px; color: var(--muted); }
+    .footer-info strong { color: var(--navy); }
+    .footer-btns { display: flex; gap: 12px; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 11px 20px; border-radius: 8px;
+      font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 14px;
+      cursor: pointer; border: none; text-decoration: none; transition: all .15s;
+    }
+    .btn-primary { background: var(--coral); color: white; }
+    .btn-primary:hover { background: #e06b4a; }
+    .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+    .btn-ghost { background: transparent; border: 1.5px solid var(--border); color: var(--muted); }
+    .btn-ghost:hover { border-color: var(--navy); color: var(--navy); }
+
+    /* Spinner */
+    .spinner {
+      display: none;
+      width: 18px; height: 18px;
+      border: 2.5px solid rgba(255,255,255,.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .htmx-request .spinner { display: inline-block; }
+    .htmx-request .btn-label { display: none; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="/emitir" class="topbar-back">← Volver</a>
+  <div class="topbar-title">Preview de emisión</div>
+  <div class="topbar-badge">{{ nombre_archivo }}</div>
+</div>
+
+<div class="content">
+
+  <!-- Resumen global -->
+  <div class="resumen-global">
+    <div>
+      <div class="res-item-label">Facturas a emitir</div>
+      <div class="res-item-val green">{{ filas_validas }}</div>
+    </div>
+    <div>
+      <div class="res-item-label">Con errores (se omiten)</div>
+      <div class="res-item-val {% if filas_con_error > 0 %}red{% endif %}">{{ filas_con_error }}</div>
+    </div>
+    <div>
+      <div class="res-item-label">Monotributistas</div>
+      <div class="res-item-val">{{ grupos | length }}</div>
+    </div>
+  </div>
+
+  {% if filas_con_error > 0 %}
+  <div class="warning-box">
+    <span style="font-size:18px;">⚠️</span>
+    <div>
+      <strong>{{ filas_con_error }} fila(s) con errores no se van a emitir</strong>
+      Revisá los detalles en cada grupo y corregí el Excel si necesitás incluirlas.
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Grupos por monotributista -->
+  {% for grupo in grupos %}
+  <div class="mono-group" id="grupo-{{ loop.index }}">
+    <div class="mono-group-header" onclick="toggleGrupo('grupo-{{ loop.index }}')">
+      <div class="mono-avatar">{{ grupo.razon_social[:2].upper() }}</div>
+      <div class="mono-info">
+        <div class="mono-info-name">{{ grupo.razon_social }}</div>
+        <div class="mono-info-cuit">{{ grupo.cuit }}</div>
+      </div>
+      <div class="mono-stats">
+        <div class="mono-stat">
+          <div class="mono-stat-val">{{ grupo.filas_validas }}</div>
+          <div class="mono-stat-label">facturas</div>
+        </div>
+        <div class="mono-stat">
+          <div class="mono-stat-val">$ {{ grupo.total_importe | format_money }}</div>
+          <div class="mono-stat-label">total</div>
+        </div>
+      </div>
+      <div class="mono-toggle">⌄</div>
+    </div>
+
+    <div class="mono-filas">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Fecha</th>
+            <th>Cliente</th>
+            <th>Concepto</th>
+            <th class="right">Importe</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for fila in grupo.filas %}
+          <tr class="{% if not fila.valida %}error-row{% endif %}">
+            <td style="color:var(--muted); font-size:12px;">{{ fila.fila_numero }}</td>
+            <td>{{ fila.fecha_resuelta or fila.fecha_raw }}</td>
+            <td>{{ fila.cliente_raw }}</td>
+            <td style="color:var(--muted);">{{ fila.concepto_raw }}</td>
+            <td class="right importe">
+              {% if fila.importe_resuelto %}
+                $ {{ fila.importe_resuelto | format_money }}
+              {% else %}
+                <span style="color:var(--muted);">—</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if fila.valida %}
+              <span style="color:var(--green); font-weight:700; font-size:13px;">✓ OK</span>
+              {% else %}
+              <span class="error-badge">✗ {{ fila.error }}</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endfor %}
+
+</div>
+
+<!-- Footer de acción -->
+<div class="action-footer">
+  <div class="footer-info">
+    Se van a emitir <strong>{{ filas_validas }} facturas</strong>
+    para <strong>{{ grupos | length }} monotributistas</strong> simultáneamente.
+  </div>
+  <div class="footer-btns">
+    <a href="/emitir" class="btn btn-ghost">Cancelar</a>
+    <button
+      class="btn btn-primary"
+      hx-post="/lotes/{{ lote_id }}/emitir"
+      hx-target="body"
+      hx-swap="outerHTML"
+      {% if filas_validas == 0 %}disabled{% endif %}
+    >
+      <div class="spinner"></div>
+      <span class="btn-label">
+        Emitir {{ filas_validas }} facturas →
+      </span>
+    </button>
+  </div>
+</div>
+
+<script>
+function toggleGrupo(id) {
+  document.getElementById(id).classList.toggle('open');
+}
+// Abrir el primero por defecto
+document.addEventListener('DOMContentLoaded', () => {
+  const primero = document.querySelector('.mono-group');
+  if (primero) primero.classList.add('open');
+});
+</script>
+
+</body>
+</html>

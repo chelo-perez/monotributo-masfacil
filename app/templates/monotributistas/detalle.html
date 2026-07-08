@@ -1,0 +1,366 @@
+{% extends "base.html" %}
+{% block title %}{{ mono.razon_social }} — Monotributo Más Fácil{% endblock %}
+
+{% block extra_styles %}
+<style>
+  .detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 20px;
+    align-items: start;
+  }
+
+  /* Card genérica */
+  .card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); }
+  .card-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .card-title {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800; font-size: 15px; color: var(--navy);
+  }
+  .card-body { padding: 24px; }
+
+  /* Hero del monotributista */
+  .mono-hero {
+    background: var(--navy); border-radius: var(--radius);
+    padding: 28px; color: white; margin-bottom: 20px;
+    display: flex; align-items: center; gap: 20px;
+  }
+  .mono-hero-avatar {
+    width: 56px; height: 56px; border-radius: 14px;
+    background: rgba(255,255,255,.15);
+    font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 20px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .mono-hero-name {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800; font-size: 20px; margin-bottom: 4px;
+  }
+  .mono-hero-cuit { font-size: 13px; color: rgba(255,255,255,.6); }
+  .mono-hero-actions { margin-left: auto; display: flex; gap: 8px; }
+  .btn-white {
+    background: rgba(255,255,255,.15); color: white;
+    border: 1px solid rgba(255,255,255,.25);
+    padding: 8px 14px; border-radius: 8px;
+    font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 13px;
+    cursor: pointer; text-decoration: none; transition: background .15s;
+  }
+  .btn-white:hover { background: rgba(255,255,255,.25); }
+
+  /* Semáforo / barra de progreso */
+  .semaforo-card { margin-bottom: 20px; }
+  .semaforo-label {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 10px;
+  }
+  .semaforo-cat {
+    font-family: 'Nunito', sans-serif; font-weight: 800;
+    font-size: 22px; color: var(--navy);
+  }
+  .semaforo-pct {
+    font-size: 13px; color: var(--muted);
+  }
+  .progress-track {
+    background: var(--border); border-radius: 6px; height: 10px;
+    overflow: hidden; margin-bottom: 8px;
+  }
+  .progress-fill {
+    height: 100%; border-radius: 6px; transition: width .4s ease;
+  }
+  .progress-fill.verde   { background: #22C55E; }
+  .progress-fill.amarillo { background: #F59E0B; }
+  .progress-fill.rojo    { background: #EF4444; }
+  .semaforo-montos {
+    display: flex; justify-content: space-between;
+    font-size: 12px; color: var(--muted);
+  }
+  .semaforo-montos strong { color: var(--navy); }
+
+  .alerta-box {
+    background: #FEF2F2; border: 1px solid #FECACA;
+    border-radius: 8px; padding: 12px 16px;
+    font-size: 13px; color: #991B1B;
+    margin-top: 12px; display: flex; gap: 8px;
+  }
+
+  /* Datos fiscales */
+  .datos-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .dato-item {}
+  .dato-label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .05em; color: var(--muted); margin-bottom: 4px;
+  }
+  .dato-valor { font-size: 14px; color: var(--navy); font-weight: 600; }
+  .dato-valor.muted { color: var(--muted); font-weight: 400; }
+
+  /* Certificado */
+  .cert-estado {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 0;
+  }
+  .cert-dot {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  }
+  .cert-dot.ok     { background: #22C55E; }
+  .cert-dot.falta  { background: #F59E0B; }
+  .cert-info { flex: 1; }
+  .cert-titulo { font-weight: 700; font-size: 14px; color: var(--navy); }
+  .cert-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* Tabla facturas */
+  .table-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    padding: 10px 16px; text-align: left;
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .05em; color: var(--muted);
+    background: var(--bg); border-bottom: 1px solid var(--border);
+  }
+  td { padding: 12px 16px; font-size: 13px; border-bottom: 1px solid var(--border); }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: #fafafa; }
+  td.right { text-align: right; font-variant-numeric: tabular-nums; }
+
+  .estado-aprobada { color: #166534; font-weight: 700; }
+  .estado-rechazada { color: #991B1B; font-weight: 700; }
+  .estado-pendiente { color: var(--muted); font-weight: 600; }
+
+  .empty-facts {
+    text-align: center; padding: 40px;
+    color: var(--muted); font-size: 14px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Breadcrumb + acciones -->
+<div class="page-header">
+  <div>
+    <div class="page-title">{{ mono.razon_social }}</div>
+    <div class="page-subtitle">
+      <a href="/monotributistas" style="color:var(--coral); font-weight:700; text-decoration:none;">
+        ← Mis monotributistas
+      </a>
+    </div>
+  </div>
+  <a href="/emitir" class="btn btn-primary">
+    <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+      <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+    </svg>
+    Emitir facturas
+  </a>
+</div>
+
+<div class="detail-grid">
+
+  <!-- Columna izquierda -->
+  <div>
+
+    <!-- Semáforo monotributo -->
+    <div class="card semaforo-card">
+      <div class="card-header">
+        <div class="card-title">Control de monotributo</div>
+        <span style="font-size:12px; color:var(--muted);">Últimos 365 días corridos</span>
+      </div>
+      <div class="card-body">
+        <div class="semaforo-label">
+          <div>
+            <div style="font-size:12px; color:var(--muted); margin-bottom:2px;">Categoría actual</div>
+            <div class="semaforo-cat">Categoría {{ categoria }}</div>
+          </div>
+          <div class="semaforo-pct" style="font-size:18px; font-weight:800;
+            color:{% if pct_tope >= 90 %}#EF4444{% elif pct_tope >= 75 %}#F59E0B{% else %}#22C55E{% endif %}">
+            {{ pct_tope }}%
+          </div>
+        </div>
+
+        <div class="progress-track">
+          <div class="progress-fill {% if pct_tope >= 90 %}rojo{% elif pct_tope >= 75 %}amarillo{% else %}verde{% endif %}"
+               style="width: {{ pct_tope }}%"></div>
+        </div>
+
+        <div class="semaforo-montos">
+          <span>Acumulado: <strong>$ {{ acumulado | format_money }}</strong></span>
+          <span>Tope Cat. {{ categoria }}: <strong>$ {{ tope | format_money }}</strong></span>
+        </div>
+
+        {% if pct_tope >= 90 %}
+        <div class="alerta-box">
+          ⚠️ <strong>Cerca del tope de exclusión.</strong>
+          Revisar emisión con el cliente antes de continuar.
+        </div>
+        {% elif pct_tope >= 75 %}
+        <div style="background:#FEF9C4; border:1px solid #F59E0B; border-radius:8px;
+             padding:12px 16px; font-size:13px; color:#854D0E; margin-top:12px;">
+          📊 Acercándose al tope. Considerar recategorización próxima.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Facturas emitidas -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Últimas facturas</div>
+        <a href="/facturas?mono_id={{ mono.id }}" style="font-size:13px; color:var(--coral); font-weight:700; text-decoration:none;">
+          Ver todas →
+        </a>
+      </div>
+      <div class="table-scroll">
+        {% if facturas %}
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Cliente</th>
+              <th>Concepto</th>
+              <th class="right">Importe</th>
+              <th>Estado</th>
+              <th>CAE</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in facturas %}
+            <tr>
+              <td style="white-space:nowrap; color:var(--muted);">
+                {{ f.cbte_fecha.strftime('%d/%m/%Y') if f.cbte_fecha else '—' }}
+              </td>
+              <td>{{ f.cliente.nombre if f.cliente else 'Consumidor Final' }}</td>
+              <td style="color:var(--muted); max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                {{ f.concepto or '—' }}
+              </td>
+              <td class="right" style="font-weight:700;">
+                $ {{ f.imp_total | format_money }}
+              </td>
+              <td>
+                {% if f.afip_result.value == 'aprobada' %}
+                <span class="estado-aprobada">✓ Aprobada</span>
+                {% elif f.afip_result.value == 'rechazada' %}
+                <span class="estado-rechazada">✗ Rechazada</span>
+                {% else %}
+                <span class="estado-pendiente">Pendiente</span>
+                {% endif %}
+              </td>
+              <td style="font-family:monospace; font-size:12px; color:var(--muted);">
+                {{ f.cae or '—' }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="empty-facts">
+          Todavía no hay facturas emitidas para este monotributista.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Columna derecha -->
+  <div>
+
+    <!-- Datos fiscales -->
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-header">
+        <div class="card-title">Datos fiscales</div>
+        <a href="/monotributistas/{{ mono.id }}/editar" style="font-size:12px; color:var(--muted); text-decoration:none; font-weight:700;">
+          Editar
+        </a>
+      </div>
+      <div class="card-body">
+        <div class="datos-grid">
+          <div class="dato-item">
+            <div class="dato-label">CUIT</div>
+            <div class="dato-valor">{{ mono.cuit }}</div>
+          </div>
+          <div class="dato-item">
+            <div class="dato-label">Punto de venta</div>
+            <div class="dato-valor">{{ mono.afip_punto_venta or '—' }}</div>
+          </div>
+          <div class="dato-item" style="grid-column: span 2;">
+            <div class="dato-label">Razón social</div>
+            <div class="dato-valor">{{ mono.razon_social }}</div>
+          </div>
+          {% if mono.domicilio %}
+          <div class="dato-item" style="grid-column: span 2;">
+            <div class="dato-label">Domicilio</div>
+            <div class="dato-valor">{{ mono.domicilio }}</div>
+          </div>
+          {% endif %}
+          {% if mono.actividad %}
+          <div class="dato-item" style="grid-column: span 2;">
+            <div class="dato-label">Actividad</div>
+            <div class="dato-valor">{{ mono.actividad }}</div>
+          </div>
+          {% endif %}
+          {% if mono.email %}
+          <div class="dato-item" style="grid-column: span 2;">
+            <div class="dato-label">Email</div>
+            <div class="dato-valor">{{ mono.email }}</div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Certificado ARCA -->
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-header">
+        <div class="card-title">Certificado ARCA</div>
+      </div>
+      <div class="card-body" style="padding: 16px 24px;">
+        {% if mono.cert_encrypted %}
+        <div class="cert-estado">
+          <div class="cert-dot ok"></div>
+          <div class="cert-info">
+            <div class="cert-titulo">Certificado cargado</div>
+            <div class="cert-sub">Las facturas se pueden emitir</div>
+          </div>
+        </div>
+        <a href="/monotributistas/{{ mono.id }}/certificado" class="btn btn-ghost btn-sm" style="margin-top:8px;">
+          Reemplazar certificado
+        </a>
+        {% else %}
+        <div class="cert-estado">
+          <div class="cert-dot falta"></div>
+          <div class="cert-info">
+            <div class="cert-titulo">Sin certificado</div>
+            <div class="cert-sub">Necesario para emitir facturas</div>
+          </div>
+        </div>
+        <a href="/monotributistas/{{ mono.id }}/certificado" class="btn btn-primary btn-sm" style="margin-top:8px;">
+          Cargar certificado →
+        </a>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Acciones rápidas -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Acciones</div>
+      </div>
+      <div class="card-body" style="display:flex; flex-direction:column; gap:8px; padding:16px 24px;">
+        <a href="/emitir" class="btn btn-primary" style="justify-content:center;">
+          Emitir facturas (Excel)
+        </a>
+        <a href="/facturas?mono_id={{ mono.id }}" class="btn btn-ghost" style="justify-content:center;">
+          Ver todas las facturas
+        </a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Nuevo monotributista — Monotributo Más Fácil{% endblock %}
+
+{% block extra_styles %}
+<style>
+  .form-card {
+    background: white; border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 32px;
+    max-width: 600px;
+  }
+  .form-section { margin-bottom: 28px; }
+  .form-section-title {
+    font-family: 'Nunito', sans-serif; font-weight: 800;
+    font-size: 14px; color: var(--navy);
+    text-transform: uppercase; letter-spacing: .05em;
+    margin-bottom: 18px; padding-bottom: 10px;
+    border-bottom: 2px solid var(--border);
+  }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-group { margin-bottom: 16px; }
+  label { display: block; font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
+  label .opt { font-weight: 400; color: var(--muted); }
+  input[type=text], input[type=email], input[type=number], select {
+    width: 100%; padding: 10px 14px;
+    border: 1.5px solid var(--border); border-radius: 8px;
+    font-family: 'Nunito Sans', sans-serif; font-size: 14px;
+    outline: none; transition: border-color .15s;
+    background: white;
+  }
+  input:focus, select:focus { border-color: var(--navy); }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .form-actions { display: flex; gap: 12px; margin-top: 28px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Nuevo monotributista</div>
+    <div class="page-subtitle">Completá los datos fiscales del cliente</div>
+  </div>
+  <a href="/monotributistas" class="btn btn-ghost">← Volver</a>
+</div>
+
+<form class="form-card" action="/monotributistas/nuevo" method="post">
+  <div class="form-section">
+    <div class="form-section-title">Datos fiscales</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="cuit">CUIT</label>
+        <input type="text" id="cuit" name="cuit" placeholder="20-12345678-9" required
+               pattern="\d{2}-?\d{8}-?\d{1}" title="CUIT con o sin guiones">
+      </div>
+      <div class="form-group">
+        <label for="razon_social">Razón social / Nombre</label>
+        <input type="text" id="razon_social" name="razon_social"
+               placeholder="García, Silvana" required>
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="domicilio">Domicilio fiscal <span class="opt">(opcional)</span></label>
+      <input type="text" id="domicilio" name="domicilio"
+             placeholder="Av. Corrientes 1234, CABA">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="categoria_actual">Categoría actual</label>
+        <select id="categoria_actual" name="categoria_actual">
+          <option value="">— No configurada —</option>
+          {% for cat in categorias %}
+          <option value="{{ cat }}">Categoría {{ cat }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="actividad">Actividad <span class="opt">(opcional)</span></label>
+        <input type="text" id="actividad" name="actividad"
+               placeholder="Servicios profesionales">
+      </div>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <div class="form-section-title">Configuración ARCA</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="afip_punto_venta">Punto de venta ARCA</label>
+        <input type="number" id="afip_punto_venta" name="afip_punto_venta"
+               value="1" min="1" max="9999" required>
+        <div class="hint">El número de punto de venta habilitado en ARCA</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <div class="hint" style="font-size:13px; color:var(--navy);">
+        📌 El certificado digital ARCA se carga desde el perfil del monotributista, una vez creado.
+      </div>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <div class="form-section-title">Contacto <span style="font-weight:400;text-transform:none;font-size:12px;color:var(--muted);">— para notificarle las facturas emitidas</span></div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="email">Email <span class="opt">(opcional)</span></label>
+        <input type="email" id="email" name="email"
+               placeholder="garcia.silvana@gmail.com">
+      </div>
+      <div class="form-group">
+        <label for="telefono">Teléfono <span class="opt">(opcional)</span></label>
+        <input type="text" id="telefono" name="telefono"
+               placeholder="11-1234-5678">
+      </div>
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <a href="/monotributistas" class="btn btn-ghost">Cancelar</a>
+    <button type="submit" class="btn btn-primary">Guardar monotributista →</button>
+  </div>
+</form>
+{% endblock %}
