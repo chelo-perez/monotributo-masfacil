@@ -1,17 +1,14 @@
 """
 Autenticación JWT para Monotributo Más Fácil.
-Mismo patrón que Facturo Más Fácil:
-  - Token en localStorage, enviado como Authorization: Bearer ...
-  - Para endpoints de página (nueva pestaña) también acepta cookie o query param
 """
 
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Optional
 
-from fastapi import Cookie, Depends, HTTPException, Query, Request, status
+import bcrypt
+from fastapi import Cookie, Depends, HTTPException, Query, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,13 +20,14 @@ from app.auth.models import User, Tenant
 # Passwords
 # ---------------------------------------------------------------------------
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(password.encode()[:72], bcrypt.gensalt()).decode()
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    try:
+        return bcrypt.checkpw(plain.encode()[:72], hashed.encode())
+    except Exception:
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -104,7 +102,6 @@ async def get_current_user(
     credentials: Annotated[Optional[HTTPAuthorizationCredentials], Depends(bearer_scheme)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> CurrentUser:
-    """Para endpoints HTMX (token en header Authorization: Bearer ...)."""
     if not credentials:
         raise HTTPException(status_code=401, detail="No autenticado")
     return await _load_user(credentials.credentials, db)
@@ -116,10 +113,6 @@ async def get_current_user_page(
     token: Optional[str] = Query(default=None),
     session_token: Optional[str] = Cookie(default=None, alias="mmf_session"),
 ) -> CurrentUser:
-    """
-    Para endpoints de página completa (abiertos en nueva pestaña).
-    Acepta: query param ?token=... o cookie mmf_session.
-    """
     t = token or session_token
     if not t:
         raise HTTPException(status_code=401, detail="No autenticado")
