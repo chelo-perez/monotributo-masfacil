@@ -4,89 +4,167 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Monotributo Más Fácil{% endblock %}</title>
-  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Nunito+Sans:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Nunito+Sans:opsz,wght@6..12,400;6..12,500;6..12,600;6..12,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+  <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
   <style>
     :root {
-      --navy:   #2C3178;
-      --coral:  #F07B5A;
-      --bg:     #F5F6FA;
-      --white:  #FFFFFF;
-      --text:   #1A1D3B;
-      --muted:  #6B7280;
-      --border: #E5E7EB;
-      --green:  #22C55E;
-      --yellow: #F59E0B;
-      --red:    #EF4444;
-      --radius: 12px;
-      --shadow: 0 1px 3px rgba(0,0,0,.08);
+      --navy:             #2C3178;
+      --coral:            #F07B5A;
+      --bg:               #F5F6FA;
+      --white:            #FFFFFF;
+      --text:             #1A1D3B;
+      --muted:            #6B7280;
+      --border:           #E5E7EB;
+      --green:            #22C55E;
+      --yellow:           #F59E0B;
+      --red:              #EF4444;
+      --radius:           12px;
+      --shadow:           0 1px 3px rgba(0,0,0,.08);
+      --sidebar-bg:       #2C3178;
+      --sidebar-hover:    rgba(255,255,255,.09);
+      --sidebar-active:   rgba(255,255,255,.15);
+      --sidebar-text:     rgba(255,255,255,.75);
+      --sidebar-text-dim: rgba(255,255,255,.42);
+      --sidebar-border:   rgba(255,255,255,.08);
+      --sidebar-accent:   #F07B5A;
+      --sidebar-width:    220px;
     }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Nunito Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    body { font-family: 'Nunito Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; }
 
-    /* Sidebar */
+    /* ── Sidebar ── */
     .sidebar {
-      position: fixed; top: 0; left: 0; bottom: 0; width: 240px;
-      background: var(--navy); display: flex; flex-direction: column;
-      padding: 0 0 24px; z-index: 100;
+      width: var(--sidebar-width);
+      min-height: 100vh;
+      background: var(--sidebar-bg);
+      display: flex; flex-direction: column;
+      position: fixed; top: 0; left: 0; bottom: 0;
+      z-index: 100;
+      overflow-y: auto;
     }
-    .sidebar-logo { padding: 24px 20px 20px; border-bottom: 1px solid rgba(255,255,255,.1); }
-    .sidebar-logo .product-name {
-      font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 15px;
-      color: white; line-height: 1.2;
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 4px; }
+
+    .sidebar-logo {
+      display: flex; align-items: center; gap: 9px;
+      padding: 16px 16px 14px;
+      border-bottom: 1px solid var(--sidebar-border);
+      flex-shrink: 0;
     }
-    .sidebar-logo .product-name span { color: var(--coral); }
-    .sidebar-logo .estudio-name { font-size: 12px; color: rgba(255,255,255,.5); margin-top: 4px; }
-    .sidebar-nav { flex: 1; padding: 16px 12px; }
-    .nav-label {
-      font-size: 10px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: .08em; color: rgba(255,255,255,.35); padding: 12px 8px 6px;
+    .sidebar-logo-mark {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: var(--coral);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Nunito', sans-serif; font-weight: 900;
+      font-size: 16px; color: white; flex-shrink: 0;
     }
-    .nav-item {
-      display: flex; align-items: center; gap: 10px;
-      padding: 9px 10px; border-radius: 8px;
-      color: rgba(255,255,255,.7); text-decoration: none;
-      font-size: 14px; font-weight: 600;
-      transition: all .15s; margin-bottom: 2px;
-    }
-    .nav-item:hover { background: rgba(255,255,255,.08); color: white; }
-    .nav-item.active { background: rgba(240,123,90,.18); color: var(--coral); }
-    .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
-    .sidebar-footer {
-      padding: 0 12px;
-      border-top: 1px solid rgba(255,255,255,.1);
-      padding-top: 16px;
+    .sidebar-logo-name { font-size: .87rem; font-weight: 700; color: #fff; letter-spacing: -.01em; line-height: 1.2; }
+    .sidebar-logo-sub  { font-size: .7rem; color: var(--sidebar-text-dim); margin-top: 1px; }
+
+    .sidebar-nav { flex: 1; padding: 10px 10px 0; }
+
+    .nav-section {
+      font-size: .65rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .08em;
+      color: var(--sidebar-text-dim);
+      padding: 14px 8px 5px;
     }
 
-    /* Main */
-    .main { margin-left: 240px; padding: 32px; min-height: 100vh; }
+    .nav-link {
+      display: flex; align-items: center; gap: 9px;
+      padding: 8px 10px; border-radius: 8px;
+      color: var(--sidebar-text);
+      text-decoration: none;
+      font-size: .82rem; font-weight: 600;
+      transition: background .15s, color .15s;
+      margin-bottom: 1px;
+      position: relative;
+    }
+    .nav-link:hover { background: var(--sidebar-hover); color: #fff; }
+    .nav-link.active {
+      background: var(--sidebar-active);
+      color: #fff;
+    }
+    .nav-link.active::before {
+      content: '';
+      position: absolute; left: 0; top: 20%; bottom: 20%;
+      width: 3px; border-radius: 0 3px 3px 0;
+      background: var(--coral);
+    }
+    .nav-icon {
+      display: flex; align-items: center; justify-content: center;
+      width: 20px; flex-shrink: 0;
+      opacity: .7; transition: opacity .15s, transform .15s;
+    }
+    .nav-link:hover .nav-icon,
+    .nav-link.active .nav-icon { opacity: 1; }
+    .nav-link:hover .nav-icon { transform: scale(1.18); }
+    .nav-link.active .nav-icon { transform: scale(1.1); }
+
+    /* Sidebar bottom */
+    .sidebar-bottom {
+      border-top: 1px solid var(--sidebar-border);
+      padding: 10px;
+      flex-shrink: 0;
+    }
+    .sidebar-user {
+      display: flex; align-items: center; gap: 9px;
+      padding: 8px 10px; border-radius: 8px;
+      text-decoration: none; transition: background .15s;
+      cursor: pointer;
+    }
+    .sidebar-user:hover { background: var(--sidebar-hover); }
+    .sidebar-avatar {
+      width: 28px; height: 28px; border-radius: 7px;
+      background: rgba(255,255,255,.2);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 12px; color: white; flex-shrink: 0;
+    }
+    .sidebar-user-name { font-size: .78rem; font-weight: 600; color: rgba(255,255,255,.85); }
+    .sidebar-user-role { font-size: .68rem; color: var(--sidebar-text-dim); }
+
+    .sidebar-logout {
+      display: flex; align-items: center; gap: 9px;
+      padding: 7px 10px; border-radius: 8px;
+      color: var(--sidebar-text-dim); text-decoration: none;
+      font-size: .78rem; font-weight: 600;
+      transition: background .15s, color .15s;
+      margin-top: 2px;
+    }
+    .sidebar-logout:hover { background: rgba(255,255,255,.06); color: rgba(255,255,255,.6); }
+
+    /* ── Main ── */
+    .main { margin-left: var(--sidebar-width); padding: 32px; min-height: 100vh; flex: 1; }
+
+    /* ── Componentes ── */
     .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; }
-    .page-title { font-family: 'Nunito', sans-serif; font-size: 24px; font-weight: 800; color: var(--navy); }
-    .page-subtitle { font-size: 14px; color: var(--muted); margin-top: 2px; }
+    .page-title { font-family: 'Nunito', sans-serif; font-size: 22px; font-weight: 800; color: var(--navy); }
+    .page-subtitle { font-size: 13px; color: var(--muted); margin-top: 3px; }
 
-    /* Botones */
     .btn {
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: 10px 18px; border-radius: 8px;
-      font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 14px;
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 9px 16px; border-radius: 8px;
+      font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 13px;
       cursor: pointer; border: none; text-decoration: none; transition: all .15s;
     }
+    .btn i { font-size: 15px; }
     .btn-primary { background: var(--coral); color: white; }
     .btn-primary:hover { background: #e06b4a; transform: translateY(-1px); }
     .btn-primary:disabled { background: #ccc; cursor: not-allowed; transform: none; }
     .btn-ghost { background: transparent; border: 1.5px solid var(--border); color: var(--muted); }
     .btn-ghost:hover { border-color: var(--navy); color: var(--navy); }
-    .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 6px; }
+    .btn-sm { padding: 5px 11px; font-size: 12px; border-radius: 6px; }
     .btn-danger { background: #FEE2E2; color: #991B1B; border: 1px solid #FECACA; }
     .btn-danger:hover { background: #FECACA; }
 
-    /* Cards */
     .card { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); }
 
     /* Spinner HTMX */
     .spinner {
-      display: none; width: 18px; height: 18px;
+      display: none; width: 16px; height: 16px;
       border: 2.5px solid rgba(255,255,255,.3); border-top-color: white;
       border-radius: 50%; animation: spin .7s linear infinite;
     }
@@ -94,62 +172,69 @@
     .htmx-request .spinner { display: inline-block; }
     .htmx-request .btn-label { display: none; }
 
-    /* Responsive */
+    /* ── Responsive ── */
     @media (max-width: 768px) {
       .sidebar { display: none; }
       .main { margin-left: 0; padding: 16px; }
     }
+
+    {% block extra_styles %}{% endblock %}
   </style>
-  {% block extra_styles %}{% endblock %}
 </head>
 <body>
 
 <aside class="sidebar">
   <div class="sidebar-logo">
-    <div class="product-name">Monotributo<br><span>Más Fácil</span></div>
-    <div class="estudio-name">{{ tenant_nombre }}</div>
+    <div class="sidebar-logo-mark">M</div>
+    <div>
+      <div class="sidebar-logo-name">Monotributo Más Fácil</div>
+      <div class="sidebar-logo-sub">{{ tenant_nombre }}</div>
+    </div>
   </div>
+
   <nav class="sidebar-nav">
-    <div class="nav-label">Principal</div>
-    <a href="/dashboard" class="nav-item {% if active_page == 'dashboard' %}active{% endif %}">
-      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
-      </svg>
+    <div class="nav-section">Principal</div>
+
+    <a href="/dashboard" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">
+      <span class="nav-icon"><i class="ti ti-layout-dashboard" style="font-size:16px"></i></span>
       Dashboard
     </a>
-    <a href="/emitir" class="nav-item {% if active_page == 'emitir' %}active{% endif %}">
-      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-      </svg>
+
+    <a href="/emitir" class="nav-link {% if active_page == 'emitir' %}active{% endif %}">
+      <span class="nav-icon"><i class="ti ti-upload" style="font-size:16px"></i></span>
       Emitir facturas
     </a>
-    <a href="/facturas" class="nav-item {% if active_page == 'facturas' %}active{% endif %}">
-      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-      </svg>
+
+    <a href="/facturas" class="nav-link {% if active_page == 'facturas' %}active{% endif %}">
+      <span class="nav-icon"><i class="ti ti-check" style="font-size:16px"></i></span>
       Facturas emitidas
     </a>
-    <div class="nav-label">Clientes</div>
-    <a href="/monotributistas" class="nav-item {% if active_page == 'monotributistas' %}active{% endif %}">
-      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-      </svg>
+
+    <div class="nav-section">Clientes</div>
+
+    <a href="/monotributistas" class="nav-link {% if active_page == 'monotributistas' %}active{% endif %}">
+      <span class="nav-icon"><i class="ti ti-users" style="font-size:16px"></i></span>
       Mis monotributistas
     </a>
-    <div class="nav-label">Cuenta</div>
-    <a href="/perfil" class="nav-item {% if active_page == 'perfil' %}active{% endif %}">
-      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-        <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-      </svg>
+
+    <div class="nav-section">Cuenta</div>
+
+    <a href="/perfil" class="nav-link {% if active_page == 'perfil' %}active{% endif %}">
+      <span class="nav-icon"><i class="ti ti-settings" style="font-size:16px"></i></span>
       Configuración
     </a>
   </nav>
-  <div class="sidebar-footer">
-    <a href="/auth/logout" class="nav-item" style="color: rgba(255,255,255,.4); font-size:13px;">
-      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-      </svg>
+
+  <div class="sidebar-bottom">
+    <div class="sidebar-user">
+      <div class="sidebar-avatar">{{ (current_user.nombre or current_user.email or '?')[0].upper() }}</div>
+      <div>
+        <div class="sidebar-user-name">{{ current_user.nombre or current_user.email }}</div>
+        <div class="sidebar-user-role">{{ current_user.plan | title }}</div>
+      </div>
+    </div>
+    <a href="/auth/logout" class="sidebar-logout">
+      <i class="ti ti-logout" style="font-size:15px"></i>
       Salir
     </a>
   </div>
