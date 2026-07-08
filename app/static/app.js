@@ -58,20 +58,8 @@ document.addEventListener('htmx:responseError', (e) => {
 });
 
 // ---------------------------------------------------------------------------
-// Redirect automático si no hay token (para páginas completas)
+// Redirect automático — deshabilitado (la sesión la maneja la cookie server-side)
 // ---------------------------------------------------------------------------
-
-document.addEventListener('DOMContentLoaded', () => {
-  const token = getToken();
-  const esLogin = window.location.pathname === '/login';
-  if (!token && !esLogin) {
-    window.location.href = '/login';
-    return;
-  }
-  if (token && esLogin) {
-    window.location.href = '/dashboard';
-  }
-});
 
 // ---------------------------------------------------------------------------
 // Utilidades globales
