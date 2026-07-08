@@ -1,5 +1,7 @@
 """
 Autenticación JWT para Monotributo Más Fácil.
+Usa SessionMiddleware de Starlette — igual que Facturo Más Fácil.
+El token se guarda en request.session["access_token"].
 """
 
 from datetime import datetime, timedelta, timezone
@@ -51,10 +53,7 @@ def create_refresh_token(user_id: int) -> str:
     )
 
 def decode_token(token: str) -> dict:
-    try:
-        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Token inválido o expirado")
+    return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
 
 # ---------------------------------------------------------------------------
 # CurrentUser
@@ -71,15 +70,12 @@ class CurrentUser:
         self.plan = tenant.plan
 
 # ---------------------------------------------------------------------------
-# Dependencies
+# Core: cargar usuario desde token
 # ---------------------------------------------------------------------------
 
-bearer_scheme = HTTPBearer(auto_error=False)
-
-async def _load_user(token: str, db: AsyncSession) -> Optional[CurrentUser]:
-    """Carga el usuario desde un token. Devuelve None si es inválido."""
+async def _load_user_from_token(token: str, db: AsyncSession) -> Optional[CurrentUser]:
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = decode_token(token)
         user_id = int(payload["sub"])
     except Exception:
         return None
@@ -99,6 +95,11 @@ async def _load_user(token: str, db: AsyncSession) -> Optional[CurrentUser]:
 
     return CurrentUser(user, tenant)
 
+# ---------------------------------------------------------------------------
+# Dependencies
+# ---------------------------------------------------------------------------
+
+bearer_scheme = HTTPBearer(auto_error=False)
 
 async def get_current_user(
     credentials: Annotated[Optional[HTTPAuthorizationCredentials], Depends(bearer_scheme)],
@@ -107,7 +108,7 @@ async def get_current_user(
     """Para endpoints HTMX — requiere Bearer token en header."""
     if not credentials:
         raise HTTPException(status_code=401, detail="No autenticado")
-    user = await _load_user(credentials.credentials, db)
+    user = await _load_user_from_token(credentials.credentials, db)
     if not user:
         raise HTTPException(status_code=401, detail="Token inválido")
     return user
@@ -116,51 +117,29 @@ async def get_current_user(
 async def get_current_user_page(
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
+    credentials: Annotated[Optional[HTTPAuthorizationCredentials], Depends(bearer_scheme)] = None,
 ) -> CurrentUser:
     """
-    Para páginas HTML completas.
-    Lee el token de: cookie 'mmf_session', query param ?token=, o header Authorization.
-    Si no encuentra token válido, redirige a /login.
+    Para páginas HTML completas. Igual que Facturo Más Fácil:
+    1. Si hay Bearer token (HTMX) → usarlo
+    2. Si hay token en request.session → usarlo
+    3. Si no hay nada → redirect a /login
     """
+    is_htmx = bool(credentials or request.headers.get("HX-Request"))
+
     token = None
+    if credentials:
+        token = credentials.credentials
+    else:
+        token = request.session.get("access_token")
 
-    # 1. Cookie
-    token = request.cookies.get("mmf_session")
+    if token:
+        user = await _load_user_from_token(token, db)
+        if user:
+            return user
 
-    # 2. Query param
-    if not token:
-        token = request.query_params.get("token")
+    if is_htmx:
+        raise HTTPException(status_code=401, detail="Token inválido o expirado")
 
-    # 3. Header Authorization
-    if not token:
-        auth = request.headers.get("Authorization", "")
-        if auth.startswith("Bearer "):
-            token = auth[7:]
-
-    if not token:
-        raise HTTPException(status_code=302, headers={"Location": "/login"})
-
-    user = await _load_user(token, db)
-    if not user:
-        raise HTTPException(status_code=302, headers={"Location": "/login"})
-
-    return user
-
-
-async def get_current_user_page_or_redirect(
-    request: Request,
-    db: Annotated[AsyncSession, Depends(get_db)],
-):
-    """Igual que get_current_user_page pero compatible con FastAPI — lanza 401."""
-    token = (
-        request.cookies.get("mmf_session")
-        or request.query_params.get("token")
-        or (request.headers.get("Authorization", "")[7:]
-            if request.headers.get("Authorization", "").startswith("Bearer ") else None)
-    )
-    if not token:
-        raise HTTPException(status_code=401, detail="No autenticado")
-    user = await _load_user(token, db)
-    if not user:
-        raise HTTPException(status_code=401, detail="Token inválido")
-    return user
+    # Navegación directa sin sesión → redirect
+    return RedirectResponse(url="/login", status_code=302)

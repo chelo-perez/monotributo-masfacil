@@ -1,14 +1,9 @@
 """
-Endpoints de autenticación para Monotributo Más Fácil.
-
-GET  /login              → página de login
-POST /auth/login-form    → login por form, setea cookie, redirige al dashboard
-POST /auth/login         → login JSON (para el JS/HTMX)
-POST /auth/refresh       → renueva access_token
-GET  /auth/logout        → limpia cookie y redirige a login
+Auth router para Monotributo Más Fácil.
+Usa SessionMiddleware — igual que Facturo Más Fácil.
 """
 
-from typing import Annotated, Optional
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -34,24 +29,17 @@ class RefreshRequest(BaseModel):
     refresh_token: str
 
 
-# ---------------------------------------------------------------------------
-# Página de login
-# ---------------------------------------------------------------------------
-
 @router.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
     return templates.TemplateResponse("auth/login.html", {"request": request})
 
-
-# ---------------------------------------------------------------------------
-# Login por form HTML — setea cookie y redirige server-side
-# ---------------------------------------------------------------------------
 
 @router.post("/auth/login-form")
 async def login_form(
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
+    """Login por form HTML. Guarda token en session y redirige al dashboard."""
     form = await request.form()
     email = str(form.get("email", "")).lower().strip()
     password = str(form.get("password", ""))
@@ -83,24 +71,19 @@ async def login_form(
 
     access_token = create_access_token(user.id, tenant.id)
 
-    redirect = RedirectResponse("/dashboard", status_code=303)
-    redirect.set_cookie(
-        "mmf_session", access_token,
-        httponly=True, secure=True, samesite="lax", max_age=60 * 60 * 8,
-    )
-    return redirect
+    # Guardar en sesión — igual que Facturo Más Fácil
+    request.session["access_token"] = access_token
 
+    return RedirectResponse("/dashboard", status_code=303)
 
-# ---------------------------------------------------------------------------
-# Login JSON (para fetch desde JS si se necesita)
-# ---------------------------------------------------------------------------
 
 @router.post("/auth/login")
 async def login_json(
     body: LoginRequest,
-    response: Response,
+    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
+    """Login JSON para llamadas fetch/HTMX."""
     result = await db.execute(
         select(User, Tenant)
         .join(Tenant, User.tenant_id == Tenant.id)
@@ -121,10 +104,8 @@ async def login_json(
     access_token = create_access_token(user.id, tenant.id)
     refresh_token = create_refresh_token(user.id)
 
-    response.set_cookie(
-        "mmf_session", access_token,
-        httponly=True, secure=False, samesite="lax", max_age=60 * 60 * 8,
-    )
+    request.session["access_token"] = access_token
+
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
@@ -132,18 +113,19 @@ async def login_json(
     }
 
 
-# ---------------------------------------------------------------------------
-# Refresh y logout
-# ---------------------------------------------------------------------------
-
 @router.post("/auth/refresh")
 async def refresh(
     body: RefreshRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    payload = decode_token(body.refresh_token)
+    try:
+        payload = decode_token(body.refresh_token)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Token inválido")
+
     if payload.get("type") != "refresh":
         raise HTTPException(status_code=401, detail="Token inválido")
+
     user_id = int(payload["sub"])
     result = await db.execute(
         select(User).where(User.id == user_id, User.activo == True)
@@ -151,10 +133,11 @@ async def refresh(
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=401, detail="Usuario no encontrado")
+
     return {"access_token": create_access_token(user.id, user.tenant_id), "token_type": "bearer"}
 
 
 @router.get("/auth/logout")
-async def logout(response: Response):
-    response.delete_cookie("mmf_session")
+async def logout(request: Request):
+    request.session.clear()
     return RedirectResponse("/login", status_code=302)
