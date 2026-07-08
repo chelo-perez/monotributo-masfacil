@@ -128,6 +128,21 @@ app.add_middleware(
 if os.path.exists("app/static"):
     app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
+# Exception handler: 401 en requests de browser → redirect a /login
+from fastapi import Request as FastAPIRequest
+from fastapi.responses import RedirectResponse as FastAPIRedirect
+
+@app.exception_handler(401)
+async def authn_handler(request: FastAPIRequest, exc):
+    # Si es una request HTMX o API (acepta JSON), devolver 401 normal
+    accept = request.headers.get("accept", "")
+    hx = request.headers.get("hx-request", "")
+    if "application/json" in accept or hx:
+        from fastapi.responses import JSONResponse
+        return JSONResponse({"detail": "No autenticado"}, status_code=401)
+    # Browser normal → redirect a login
+    return FastAPIRedirect("/login", status_code=302)
+
 # Routers
 app.include_router(auth_router)
 app.include_router(ui_router)

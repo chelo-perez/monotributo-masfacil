@@ -7,6 +7,7 @@ from typing import Annotated, Optional
 
 import bcrypt
 from fastapi import Cookie, Depends, HTTPException, Query, Request
+from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from sqlalchemy import select
@@ -28,7 +29,6 @@ def verify_password(plain: str, hashed: str) -> bool:
         return bcrypt.checkpw(plain.encode()[:72], hashed.encode())
     except Exception:
         return False
-
 
 # ---------------------------------------------------------------------------
 # JWT
@@ -56,9 +56,8 @@ def decode_token(token: str) -> dict:
     except JWTError:
         raise HTTPException(status_code=401, detail="Token inválido o expirado")
 
-
 # ---------------------------------------------------------------------------
-# Dataclass del usuario actual
+# CurrentUser
 # ---------------------------------------------------------------------------
 
 class CurrentUser:
@@ -71,16 +70,19 @@ class CurrentUser:
         self.tenant_nombre = tenant.nombre
         self.plan = tenant.plan
 
-
 # ---------------------------------------------------------------------------
 # Dependencies
 # ---------------------------------------------------------------------------
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
-async def _load_user(token: str, db: AsyncSession) -> CurrentUser:
-    payload = decode_token(token)
-    user_id = int(payload["sub"])
+async def _load_user(token: str, db: AsyncSession) -> Optional[CurrentUser]:
+    """Carga el usuario desde un token. Devuelve None si es inválido."""
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = int(payload["sub"])
+    except Exception:
+        return None
 
     result = await db.execute(
         select(User, Tenant)
@@ -89,11 +91,11 @@ async def _load_user(token: str, db: AsyncSession) -> CurrentUser:
     )
     row = result.one_or_none()
     if not row:
-        raise HTTPException(status_code=401, detail="Usuario no encontrado o inactivo")
+        return None
 
     user, tenant = row
     if not tenant.activo:
-        raise HTTPException(status_code=403, detail="Cuenta suspendida")
+        return None
 
     return CurrentUser(user, tenant)
 
@@ -102,18 +104,63 @@ async def get_current_user(
     credentials: Annotated[Optional[HTTPAuthorizationCredentials], Depends(bearer_scheme)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> CurrentUser:
+    """Para endpoints HTMX — requiere Bearer token en header."""
     if not credentials:
         raise HTTPException(status_code=401, detail="No autenticado")
-    return await _load_user(credentials.credentials, db)
+    user = await _load_user(credentials.credentials, db)
+    if not user:
+        raise HTTPException(status_code=401, detail="Token inválido")
+    return user
 
 
 async def get_current_user_page(
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
-    token: Optional[str] = Query(default=None),
-    session_token: Optional[str] = Cookie(default=None, alias="mmf_session"),
 ) -> CurrentUser:
-    t = token or session_token
-    if not t:
+    """
+    Para páginas HTML completas.
+    Lee el token de: cookie 'mmf_session', query param ?token=, o header Authorization.
+    Si no encuentra token válido, redirige a /login.
+    """
+    token = None
+
+    # 1. Cookie
+    token = request.cookies.get("mmf_session")
+
+    # 2. Query param
+    if not token:
+        token = request.query_params.get("token")
+
+    # 3. Header Authorization
+    if not token:
+        auth = request.headers.get("Authorization", "")
+        if auth.startswith("Bearer "):
+            token = auth[7:]
+
+    if not token:
+        raise HTTPException(status_code=302, headers={"Location": "/login"})
+
+    user = await _load_user(token, db)
+    if not user:
+        raise HTTPException(status_code=302, headers={"Location": "/login"})
+
+    return user
+
+
+async def get_current_user_page_or_redirect(
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Igual que get_current_user_page pero compatible con FastAPI — lanza 401."""
+    token = (
+        request.cookies.get("mmf_session")
+        or request.query_params.get("token")
+        or (request.headers.get("Authorization", "")[7:]
+            if request.headers.get("Authorization", "").startswith("Bearer ") else None)
+    )
+    if not token:
         raise HTTPException(status_code=401, detail="No autenticado")
-    return await _load_user(t, db)
+    user = await _load_user(token, db)
+    if not user:
+        raise HTTPException(status_code=401, detail="Token inválido")
+    return user

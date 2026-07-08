@@ -86,7 +86,7 @@ async def login_form(
     redirect = RedirectResponse("/dashboard", status_code=303)
     redirect.set_cookie(
         "mmf_session", access_token,
-        httponly=True, secure=False, samesite="lax", max_age=60 * 60 * 8,
+        httponly=True, secure=True, samesite="lax", max_age=60 * 60 * 8,
     )
     return redirect
 
