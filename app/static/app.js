@@ -1,71 +1,15 @@
 /**
  * Monotributo Más Fácil — app.js
- * Manejo de JWT: inyección en HTMX, refresh automático, logout.
+ * La sesión se maneja via cookie httponly (mmf_session).
+ * Este archivo solo agrega el token JWT en HTMX si existe en localStorage
+ * (para compatibilidad futura), y expone utilidades globales.
  */
 
-// ---------------------------------------------------------------------------
-// JWT helpers
-// ---------------------------------------------------------------------------
-
-function getToken() { return localStorage.getItem('mmf_token'); }
-function getRefresh() { return localStorage.getItem('mmf_refresh'); }
-
-function isTokenExpired(token) {
-  if (!token) return true;
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return payload.exp * 1000 < Date.now() + 60_000; // 1 min de margen
-  } catch { return true; }
-}
-
-async function refreshToken() {
-  const refresh = getRefresh();
-  if (!refresh) { window.location.href = '/login'; return null; }
-  try {
-    const res = await fetch('/auth/refresh', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token: refresh }),
-    });
-    if (!res.ok) { window.location.href = '/login'; return null; }
-    const data = await res.json();
-    localStorage.setItem('mmf_token', data.access_token);
-    return data.access_token;
-  } catch {
-    window.location.href = '/login';
-    return null;
-  }
-}
-
-async function getValidToken() {
-  let token = getToken();
-  if (isTokenExpired(token)) token = await refreshToken();
-  return token;
-}
-
-// ---------------------------------------------------------------------------
-// HTMX: inyectar token en cada request
-// ---------------------------------------------------------------------------
-
-document.addEventListener('htmx:configRequest', async (e) => {
-  const token = await getValidToken();
+document.addEventListener('htmx:configRequest', (e) => {
+  const token = localStorage.getItem('mmf_token');
   if (token) e.detail.headers['Authorization'] = 'Bearer ' + token;
 });
 
-// Redirigir a login si el servidor devuelve 401
-document.addEventListener('htmx:responseError', (e) => {
-  if (e.detail.xhr.status === 401) window.location.href = '/login';
-});
-
-// ---------------------------------------------------------------------------
-// Redirect automático — deshabilitado (la sesión la maneja la cookie server-side)
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// Utilidades globales
-// ---------------------------------------------------------------------------
-
-/** Formatea un número como $ 1.234.567,89 */
 function formatMoney(val) {
   if (val == null) return '—';
   return '$ ' + parseFloat(val).toLocaleString('es-AR', {
@@ -73,7 +17,6 @@ function formatMoney(val) {
   });
 }
 
-/** Flash message temporal */
 function flash(msg, tipo = 'success') {
   const el = document.createElement('div');
   el.style.cssText = `
