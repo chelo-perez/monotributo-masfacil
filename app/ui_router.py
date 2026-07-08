@@ -28,7 +28,7 @@ router = APIRouter()
 @router.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(
     request: Request,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     hoy = date.today()
@@ -152,7 +152,7 @@ async def dashboard(
 @router.get("/emitir", response_class=HTMLResponse)
 async def emitir_page(
     request: Request,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
 ):
     return templates.TemplateResponse("emitir.html", {
         "request": request,
@@ -164,7 +164,7 @@ async def emitir_page(
 @router.post("/emitir/upload", response_class=HTMLResponse)
 async def upload_excel(
     request: Request,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
     db: Annotated[AsyncSession, Depends(get_db)],
     archivo: UploadFile = File(...),
 ):
@@ -248,7 +248,7 @@ async def upload_excel(
 async def confirmar_emision(
     lote_id: int,
     request: Request,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Dispara la emisión del lote y devuelve la página de resultado."""
@@ -362,7 +362,7 @@ async def confirmar_emision(
 @router.get("/monotributistas", response_class=HTMLResponse)
 async def lista_monotributistas(
     request: Request,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     result = await db.execute(
@@ -383,7 +383,7 @@ async def lista_monotributistas(
 @router.get("/monotributistas/nuevo", response_class=HTMLResponse)
 async def nuevo_monotributista_page(
     request: Request,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     # Verificar límite del plan
@@ -418,7 +418,7 @@ async def nuevo_monotributista_page(
 @router.post("/monotributistas/nuevo")
 async def crear_monotributista(
     request: Request,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     form = await request.form()
@@ -451,7 +451,7 @@ async def crear_monotributista(
 async def detalle_monotributista(
     mono_id: int,
     request: Request,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     result = await db.execute(
@@ -515,7 +515,7 @@ async def detalle_monotributista(
 @router.get("/facturas", response_class=HTMLResponse)
 async def lista_facturas(
     request: Request,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
     db: Annotated[AsyncSession, Depends(get_db)],
     mono_id: int = None,
     estado: str = None,
@@ -567,7 +567,7 @@ async def lista_facturas(
 async def certificado_page(
     mono_id: int,
     request: Request,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     result = await db.execute(
@@ -592,7 +592,7 @@ async def certificado_page(
 async def guardar_certificado(
     mono_id: int,
     request: Request,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
     db: Annotated[AsyncSession, Depends(get_db)],
     cert_file: UploadFile = File(...),
     key_file: UploadFile = File(...),
@@ -639,7 +639,7 @@ async def guardar_certificado(
 async def editar_page(
     mono_id: int,
     request: Request,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     result = await db.execute(
@@ -665,7 +665,7 @@ async def editar_page(
 async def guardar_edicion(
     mono_id: int,
     request: Request,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     result = await db.execute(
@@ -705,7 +705,7 @@ async def guardar_edicion(
 @router.post("/monotributistas/{mono_id}/desactivar")
 async def desactivar_monotributista(
     mono_id: int,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     result = await db.execute(

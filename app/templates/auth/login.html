@@ -6,7 +6,7 @@
   <title>Iniciar sesión — Monotributo Más Fácil</title>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&family=Nunito+Sans:wght@400;600&display=swap" rel="stylesheet">
   <style>
-    :root { --navy: #2C3178; --coral: #F07B5A; --bg: #F5F6FA; --border: #E5E7EB; --red: #EF4444; }
+    :root { --navy: #2C3178; --coral: #F07B5A; --bg: #F5F6FA; --border: #E5E7EB; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Nunito Sans', sans-serif;
@@ -15,18 +15,11 @@
       display: flex; align-items: center; justify-content: center;
     }
     .login-box {
-      background: white;
-      border-radius: 16px;
+      background: white; border-radius: 16px;
       box-shadow: 0 4px 24px rgba(0,0,0,.08);
-      padding: 48px 40px;
-      width: 100%; max-width: 400px;
+      padding: 48px 40px; width: 100%; max-width: 400px;
     }
-    .logo {
-      font-family: 'Nunito', sans-serif;
-      font-weight: 800; font-size: 20px;
-      color: var(--navy); text-align: center;
-      margin-bottom: 8px;
-    }
+    .logo { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 20px; color: var(--navy); text-align: center; margin-bottom: 8px; }
     .logo span { color: var(--coral); }
     .tagline { text-align: center; font-size: 13px; color: #6B7280; margin-bottom: 36px; }
     label { display: block; font-size: 13px; font-weight: 600; color: var(--navy); margin-bottom: 6px; }
@@ -34,26 +27,21 @@
       width: 100%; padding: 11px 14px;
       border: 1.5px solid var(--border); border-radius: 8px;
       font-family: 'Nunito Sans', sans-serif; font-size: 14px;
-      outline: none; transition: border-color .15s;
-      margin-bottom: 18px;
+      outline: none; transition: border-color .15s; margin-bottom: 18px;
     }
     input:focus { border-color: var(--navy); }
     .btn-login {
-      width: 100%; padding: 13px;
-      background: var(--coral); color: white;
+      width: 100%; padding: 13px; background: var(--coral); color: white;
       border: none; border-radius: 8px; cursor: pointer;
       font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 15px;
       transition: background .15s;
     }
     .btn-login:hover { background: #e06b4a; }
-    .btn-login:disabled { background: #ccc; cursor: not-allowed; }
     .error-msg {
       background: #FEE2E2; color: #991B1B;
       border-radius: 8px; padding: 10px 14px;
       font-size: 13px; margin-bottom: 16px;
-      display: none;
     }
-    .error-msg.visible { display: block; }
     .footer-link { text-align: center; margin-top: 20px; font-size: 13px; color: #6B7280; }
     .footer-link a { color: var(--coral); font-weight: 700; text-decoration: none; }
   </style>
@@ -63,63 +51,23 @@
   <div class="logo">Monotributo <span>Más Fácil</span></div>
   <div class="tagline">Facturación masiva para estudios contables</div>
 
-  <div class="error-msg" id="error-msg"></div>
+  {% if error %}
+  <div class="error-msg">{{ error }}</div>
+  {% endif %}
 
-  <label for="email">Email</label>
-  <input type="email" id="email" placeholder="contador@estudio.com.ar" autocomplete="email">
+  <form method="post" action="/auth/login-form">
+    <label for="email">Email</label>
+    <input type="email" id="email" name="email" placeholder="contador@estudio.com.ar" autocomplete="email" required>
 
-  <label for="password">Contraseña</label>
-  <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+    <label for="password">Contraseña</label>
+    <input type="password" id="password" name="password" placeholder="••••••••" autocomplete="current-password" required>
 
-  <button class="btn-login" id="btn-login" onclick="doLogin()">Ingresar</button>
+    <button type="submit" class="btn-login">Ingresar</button>
+  </form>
 
   <div class="footer-link">
     ¿Problemas para ingresar? <a href="mailto:soporte@masfacil.com.ar">Contactá soporte</a>
   </div>
 </div>
-
-<script>
-async function doLogin() {
-  const email = document.getElementById('email').value.trim();
-  const password = document.getElementById('password').value;
-  const btn = document.getElementById('btn-login');
-  const errEl = document.getElementById('error-msg');
-
-  errEl.classList.remove('visible');
-  btn.disabled = true;
-  btn.textContent = 'Ingresando...';
-
-  try {
-    const res = await fetch('/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-    const data = await res.json();
-
-    if (!res.ok) {
-      errEl.textContent = data.detail || 'Error al ingresar';
-      errEl.classList.add('visible');
-      return;
-    }
-
-    localStorage.setItem('mmf_token', data.access_token);
-    localStorage.setItem('mmf_refresh', data.refresh_token);
-    window.location.href = '/dashboard';
-
-  } catch (e) {
-    errEl.textContent = 'Error de conexión. Intentá de nuevo.';
-    errEl.classList.add('visible');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Ingresar';
-  }
-}
-
-// Enter para login
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') doLogin();
-});
-</script>
 </body>
 </html>
