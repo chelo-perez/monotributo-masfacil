@@ -1,75 +1,52 @@
 {% extends "superadmin/base_admin.html" %}
+{% block nav_inicio %}active{% endblock %}
+{% block nav_bottom_inicio %}active{% endblock %}
 {% block title %}Panel Admin — Monotributo Más Fácil{% endblock %}
 
-{% block extra_styles %}
-.sa-stat { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 20px; }
-.sa-stat-num { font-family: 'Nunito', sans-serif; font-size: 26px; font-weight: 800; color: var(--navy); }
-.sa-stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-top: 4px; }
-.action-card { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: white; border: 1px solid var(--border); border-radius: var(--radius); text-decoration: none; color: var(--text); transition: all .15s; margin-bottom: 8px; }
-.action-card:hover { border-color: var(--navy); transform: translateX(2px); }
-.action-card.primary { background: var(--coral); color: white; border-color: var(--coral); }
-.action-card.primary:hover { background: #e06b4a; }
-.action-icon { width: 36px; height: 36px; border-radius: 8px; background: #f0f4ff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.action-card.primary .action-icon { background: rgba(255,255,255,.2); }
-.action-title { font-size: .88rem; font-weight: 700; }
-.action-sub { font-size: .72rem; color: var(--muted); margin-top: 2px; }
-.action-card.primary .action-sub { color: rgba(255,255,255,.75); }
-.sa-input { width: 100%; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px; font-family: 'Nunito Sans', sans-serif; font-size: 14px; outline: none; }
-.sa-input:focus { border-color: var(--navy); }
-.recent-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; text-decoration: none; color: var(--text); border-bottom: 1px solid var(--border); transition: background .1s; }
-.recent-item:last-child { border-bottom: none; }
-.recent-item:hover { background: #fafafa; }
-.estado-badge { font-size: .68rem; font-weight: 700; padding: 3px 8px; border-radius: 20px; }
-.estado-activo { background: #f0fdf4; color: #15803d; }
-.estado-inactivo { background: #f4f5fb; color: #6b6b8a; }
-{% endblock %}
-
 {% block content %}
-<div class="page-header">
-  <div>
-    <div class="page-title">Panel Admin</div>
-    <div class="page-subtitle">Gestión de Estudios Contables</div>
-  </div>
+
+<div style="margin-bottom:20px">
+  <div style="font-family:'Nunito',sans-serif;font-size:22px;font-weight:800;color:#2C3178">Panel Admin</div>
+  <div style="font-size:13px;color:#6B7280;margin-top:2px">Gestión de Estudios Contables</div>
 </div>
 
 <!-- KPIs -->
-<div style="display:grid; grid-template-columns: repeat(2,1fr); gap:12px; margin-bottom:20px;">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
   <div class="sa-stat">
     <div class="sa-stat-num">{{ kpis.total }}</div>
     <div class="sa-stat-label">Estudios</div>
   </div>
   <div class="sa-stat">
-    <div class="sa-stat-num" style="color:var(--green)">{{ kpis.activos }}</div>
+    <div class="sa-stat-num" style="color:#22C55E">{{ kpis.activos }}</div>
     <div class="sa-stat-label">Activos</div>
   </div>
-  <div class="sa-stat" style="border-left:3px solid var(--navy)">
-    <div class="sa-stat-num" style="color:var(--navy)">USD {{ kpis.mrr }}</div>
+  <div class="sa-stat" style="border-left:3px solid #2C3178">
+    <div class="sa-stat-num" style="color:#2C3178">USD {{ kpis.mrr }}</div>
     <div class="sa-stat-label">MRR estimado</div>
   </div>
-  <div class="sa-stat" style="border-left:3px solid var(--coral)">
-    <div class="sa-stat-num" style="color:var(--coral)">{{ kpis.nuevos_mes }}</div>
+  <div class="sa-stat" style="border-left:3px solid #F07B5A">
+    <div class="sa-stat-num" style="color:#F07B5A">{{ kpis.nuevos_mes }}</div>
     <div class="sa-stat-label">Nuevos este mes</div>
   </div>
 </div>
 
-<!-- Acciones -->
-<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:8px">Acciones</div>
+<!-- Acción principal -->
+<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#6B7280;margin-bottom:8px">Acciones</div>
 
-<a href="/admin/{{ secret }}/lista" class="action-card primary"
-   hx-get="/admin/{{ secret }}/lista" hx-target="#tenants-lista" hx-swap="outerHTML">
-  <div class="action-icon"><i class="ti ti-users" style="color:white;font-size:18px"></i></div>
-  <div>
-    <div class="action-title">Ver todos los estudios contables</div>
-    <div class="action-sub">{{ kpis.total }} estudios · gestión completa</div>
+<a href="/admin/{{ secret }}/lista" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:#F07B5A;border-radius:12px;text-decoration:none;color:#fff;margin-bottom:8px">
+  <div style="width:36px;height:36px;border-radius:8px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+    <i class="ti ti-users" style="font-size:18px;color:#fff"></i>
   </div>
-  <i class="ti ti-chevron-right" style="margin-left:auto;color:rgba(255,255,255,.5)"></i>
+  <div style="flex:1">
+    <div style="font-size:.88rem;font-weight:700">Ver todos los estudios contables</div>
+    <div style="font-size:.72rem;color:rgba(255,255,255,.75)">{{ kpis.total }} estudios · gestión completa</div>
+  </div>
+  <i class="ti ti-chevron-right" style="color:rgba(255,255,255,.5)"></i>
 </a>
 
 <!-- Crear nuevo estudio -->
-<div style="background:white;border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px">
-  <div style="font-size:.78rem;font-weight:700;color:var(--navy);margin-bottom:12px">
-    <i class="ti ti-user-plus"></i> Crear nuevo estudio contable
-  </div>
+<div class="sa-card" style="margin-bottom:16px">
+  <div class="sa-card-title"><i class="ti ti-user-plus"></i> Crear nuevo estudio contable</div>
   <form hx-post="/admin/{{ secret }}/crear-tenant"
         hx-target="#tenants-lista" hx-swap="innerHTML">
     <div style="display:flex;flex-direction:column;gap:8px">
@@ -81,7 +58,7 @@
         <option value="estudio">Estudio — USD 60 (hasta 30)</option>
         <option value="pro">Pro — USD 100 (ilimitados)</option>
       </select>
-      <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center">
+      <button type="submit" class="sa-btn sa-btn-primary" style="width:100%;justify-content:center">
         <i class="ti ti-plus"></i> Crear estudio
       </button>
     </div>
@@ -89,30 +66,33 @@
 </div>
 
 <!-- Lista de estudios -->
-<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:8px">Últimos estudios</div>
+<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#6B7280;margin-bottom:8px">Últimos estudios</div>
 
-<div id="tenants-lista" style="background:white;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden">
+<div id="tenants-lista" style="background:white;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.08);overflow:hidden">
   {% for r in rows[:8] %}
   {% set t = r.tenant %}
-  <a href="/admin/{{ secret }}/tenant/{{ t.id }}" class="recent-item">
-    <div style="width:36px;height:36px;border-radius:9px;background:#f0f4ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:800;font-size:.9rem;color:var(--navy)">
+  <a href="/admin/{{ secret }}/tenant/{{ t.id }}"
+     style="display:flex;align-items:center;gap:12px;padding:12px 16px;text-decoration:none;color:#1A1D3B;border-bottom:1px solid #E5E7EB">
+    <div style="width:36px;height:36px;border-radius:9px;background:#f0f4ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:800;font-size:.9rem;color:#2C3178">
       {{ t.nombre[0].upper() }}
     </div>
     <div style="flex:1;min-width:0">
-      <div style="font-size:.85rem;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.nombre }}</div>
-      <div style="font-size:.72rem;color:var(--muted)">{{ r.owner_email }} · {{ r.n_monos }} monotributistas · {{ r.n_facturas }} facturas</div>
+      <div style="font-size:.85rem;font-weight:700;color:#2C3178;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.nombre }}</div>
+      <div style="font-size:.72rem;color:#6B7280">{{ r.owner_email }} · {{ r.n_monos }} monotributistas</div>
     </div>
-    <span class="estado-badge estado-{{ r.estado }}">
+    <span style="font-size:.68rem;font-weight:700;padding:3px 8px;border-radius:20px;flex-shrink:0;
+      background:{% if r.estado == 'activo' %}#f0fdf4{% else %}#f4f5fb{% endif %};
+      color:{% if r.estado == 'activo' %}#15803d{% else %}#6b6b8a{% endif %}">
       {{ r.estado | title }}
     </span>
   </a>
   {% else %}
-  <div style="text-align:center;padding:32px;color:var(--muted);font-size:14px">
+  <div style="text-align:center;padding:32px;color:#6B7280;font-size:14px">
     Aún no hay estudios contables registrados.
   </div>
   {% endfor %}
   {% if rows|length > 8 %}
-  <a href="/admin/{{ secret }}/lista" style="display:block;text-align:center;padding:12px;font-size:.82rem;color:var(--coral);font-weight:700;text-decoration:none;border-top:1px solid var(--border)">
+  <a href="/admin/{{ secret }}/lista" style="display:block;text-align:center;padding:12px;font-size:.82rem;color:#F07B5A;font-weight:700;text-decoration:none;border-top:1px solid #E5E7EB">
     Ver los {{ rows|length }} estudios →
   </a>
   {% endif %}
