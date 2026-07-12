@@ -655,6 +655,63 @@ async def lista_facturas(
     })
 
 
+@router.post("/monotributistas/{mono_id}/generar-csr")
+async def generar_csr(
+    mono_id: int,
+    request: Request,
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Genera un par RSA + CSR listo para subir a ARCA."""
+    result = await db.execute(
+        select(Monotributista).where(
+            Monotributista.id == mono_id,
+            Monotributista.tenant_id == current_user.tenant_id,
+        )
+    )
+    mono = result.scalar_one_or_none()
+    if not mono:
+        raise HTTPException(status_code=404)
+    if not mono.cuit:
+        raise HTTPException(status_code=400, detail="El monotributista no tiene CUIT configurado")
+
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    from cryptography.hazmat.primitives import serialization, hashes
+    from cryptography import x509
+    from cryptography.x509.oid import NameOID
+
+    # Generar clave privada RSA 2048 (requerido por ARCA)
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+
+    key_pem = private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.TraditionalOpenSSL,
+        encryption_algorithm=serialization.NoEncryption(),
+    )
+
+    cuit_limpio = mono.cuit.replace("-", "")
+    csr = (
+        x509.CertificateSigningRequestBuilder()
+        .subject_name(x509.Name([
+            x509.NameAttribute(NameOID.COUNTRY_NAME, "AR"),
+            x509.NameAttribute(NameOID.COMMON_NAME, cuit_limpio),
+            x509.NameAttribute(NameOID.SERIAL_NUMBER, f"CUIT {cuit_limpio}"),
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, mono.razon_social),
+        ]))
+        .sign(private_key, hashes.SHA256())
+    )
+    csr_pem = csr.public_bytes(serialization.Encoding.PEM)
+
+    # Devolver ambos archivos para descarga
+    from fastapi.responses import JSONResponse
+    return JSONResponse({
+        "csr_pem": csr_pem.decode("utf-8"),
+        "key_pem": key_pem.decode("utf-8"),
+        "nombre_csr": f"csr_{cuit_limpio}.csr",
+        "nombre_key": f"clave_{cuit_limpio}.key",
+    })
+
+
 # ---------------------------------------------------------------------------
 # Certificado ARCA
 # ---------------------------------------------------------------------------
