@@ -103,16 +103,6 @@ async def dashboard(
         if pct >= 90:
             alertas += 1
 
-        # Verificar si tiene certificado
-        has_cert = m.cert_encrypted is not None or (
-            await db.execute(
-                select(func.count()).where(
-                    __import__("app.auth.models", fromlist=["Certificado"]).Certificado
-                    if False else True  # placeholder — ver nota abajo
-                )
-            )
-        )
-        # Simplificado: chequear campo directo en mono
         if not m.cert_encrypted:
             sin_certificado += 1
 

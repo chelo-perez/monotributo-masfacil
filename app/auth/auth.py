@@ -141,5 +141,5 @@ async def get_current_user_page(
     if is_htmx:
         raise HTTPException(status_code=401, detail="Token inválido o expirado")
 
-    # Navegación directa sin sesión → redirect
-    return RedirectResponse(url="/login", status_code=302)
+    # Navegación directa sin sesión → lanzar 401 (el exception handler lo convierte en redirect)
+    raise HTTPException(status_code=401, detail="No autenticado")

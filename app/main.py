@@ -118,3 +118,13 @@ if os.path.exists("app/static"):
 
 app.include_router(auth_router)
 app.include_router(ui_router)
+
+
+@app.exception_handler(401)
+async def authn_handler(request: Request, exc):
+    accept = request.headers.get("accept", "")
+    hx = request.headers.get("hx-request", "")
+    if "application/json" in accept or hx:
+        from fastapi.responses import JSONResponse
+        return JSONResponse({"detail": "No autenticado"}, status_code=401)
+    return RedirectResponse("/login", status_code=302)
