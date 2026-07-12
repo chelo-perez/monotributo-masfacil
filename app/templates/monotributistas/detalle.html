@@ -194,13 +194,13 @@
 
         {% if pct_tope >= 90 %}
         <div class="alerta-box">
-          ⚠️ <strong>Cerca del tope de exclusión.</strong>
+          <i class="ti ti-alert-triangle"></i> <strong>Cerca del tope de exclusión.</strong>
           Revisar emisión con el cliente antes de continuar.
         </div>
         {% elif pct_tope >= 75 %}
         <div style="background:#FEF9C4; border:1px solid #F59E0B; border-radius:8px;
              padding:12px 16px; font-size:13px; color:#854D0E; margin-top:12px;">
-          📊 Acercándose al tope. Considerar recategorización próxima.
+          <i class="ti ti-trending-up"></i> Acercándose al tope. Considerar recategorización próxima.
         </div>
         {% endif %}
       </div>

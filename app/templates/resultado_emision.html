@@ -84,15 +84,15 @@
 <!-- Hero -->
 <div class="resultado-hero">
   {% if rechazadas == 0 %}
-    <div class="resultado-icon">✅</div>
+    <div class="resultado-icon"><i class="ti ti-circle-check" style="font-size:56px;color:#22C55E"></i></div>
     <div class="resultado-title">¡Todas las facturas emitidas!</div>
     <div class="resultado-sub">ARCA aprobó los {{ aprobadas }} comprobantes sin errores.</div>
   {% elif aprobadas == 0 %}
-    <div class="resultado-icon">❌</div>
+    <div class="resultado-icon"><i class="ti ti-circle-x" style="font-size:56px;color:#EF4444"></i></div>
     <div class="resultado-title">No se pudo emitir ninguna factura</div>
     <div class="resultado-sub">Revisá los errores detallados abajo.</div>
   {% else %}
-    <div class="resultado-icon">⚠️</div>
+    <div class="resultado-icon"><i class="ti ti-alert-triangle" style="font-size:56px;color:#F59E0B"></i></div>
     <div class="resultado-title">Emisión parcialmente exitosa</div>
     <div class="resultado-sub">Algunos comprobantes fueron rechazados por ARCA.</div>
   {% endif %}
@@ -116,7 +116,7 @@
 
   {% if modo_demo %}
   <div class="demo-badge">
-    ⚠️ Modo demo — las facturas no fueron enviadas a ARCA
+    <i class="ti ti-alert-triangle"></i> Modo demo — las facturas no fueron enviadas a ARCA
   </div>
   {% endif %}
 </div>
@@ -141,7 +141,7 @@
       </div>
     </div>
     {% if r.error_general %}
-    <div class="error-general">⚠️ {{ r.error_general }}</div>
+    <div class="error-general"><i class="ti ti-alert-triangle"></i> {{ r.error_general }}</div>
     {% endif %}
   </div>
   {% endfor %}

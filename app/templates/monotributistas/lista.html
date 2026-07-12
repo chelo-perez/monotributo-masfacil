@@ -21,7 +21,7 @@
     font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 13px;
   }
   .empty-state { text-align: center; padding: 60px; color: var(--muted); }
-  .empty-state .emoji { font-size: 48px; margin-bottom: 12px; }
+  .empty-state .empty-icon { font-size: 48px; color: #CBD5E1; margin-bottom: 12px; }
   .empty-state h3 { font-family: 'Nunito', sans-serif; font-weight: 800; color: var(--navy); margin-bottom: 8px; }
 </style>
 {% endblock %}
@@ -78,7 +78,7 @@
   </table>
   {% else %}
   <div class="empty-state">
-    <div class="emoji">👥</div>
+    <div class="empty-icon"><i class="ti ti-users" style="font-size:52px;color:#CBD5E1"></i></div>
     <h3>Todavía no tenés monotributistas</h3>
     <p>Agregá el primero para empezar a emitir facturas.</p>
     <a href="/monotributistas/nuevo" class="btn btn-primary" style="margin-top:16px;">+ Agregar monotributista</a>
