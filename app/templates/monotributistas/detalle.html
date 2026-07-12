@@ -225,5 +225,22 @@
     </div>
   </div>
 
+  <!-- Historial de facturas ARCA -->
+  <div class="det-card">
+    <div class="det-card-header">
+      <div class="det-card-title"><i class="ti ti-history"></i> Historial ARCA</div>
+      <a href="/monotributistas/{{ mono.id }}/historial"
+         style="font-size:12px;color:var(--coral);font-weight:700;text-decoration:none">
+        Importar / Sincronizar →
+      </a>
+    </div>
+    <div class="det-card-body" style="font-size:13px;color:var(--muted)">
+      Importá el historial de facturas anteriores para que el semáforo de monotributo
+      tenga datos precisos desde el primer día.
+    </div>
+  </div>
+
 </div>
 {% endblock %}
+
+{# Link al historial — agregar antes del cierre de cards-stack #}

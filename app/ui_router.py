@@ -952,3 +952,140 @@ async def desactivar_monotributista(
 @router.get("/")
 async def root():
     return RedirectResponse("/dashboard", status_code=302)
+
+
+# ---------------------------------------------------------------------------
+# Historial de facturas ARCA — importar CSV y sincronizar
+# ---------------------------------------------------------------------------
+
+@router.get("/monotributistas/{mono_id}/historial", response_class=HTMLResponse)
+async def historial_page(
+    mono_id: int,
+    request: Request,
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    result = await db.execute(
+        select(Monotributista).where(
+            Monotributista.id == mono_id,
+            Monotributista.tenant_id == current_user.tenant_id,
+        )
+    )
+    mono = result.scalar_one_or_none()
+    if not mono:
+        raise HTTPException(status_code=404)
+
+    from app.afip.history_models import AfipInvoiceHistory
+    count_q = await db.execute(
+        select(func.count()).select_from(AfipInvoiceHistory)
+        .where(AfipInvoiceHistory.mono_id == mono_id)
+    )
+    total_historial = count_q.scalar() or 0
+
+    return templates.TemplateResponse("monotributistas/historial.html", {
+        "request": request,
+        "current_user": current_user,
+        "tenant_nombre": current_user.tenant_nombre,
+        "active_page": "monotributistas",
+        "mono": mono,
+        "total_historial": total_historial,
+    })
+
+
+@router.post("/monotributistas/{mono_id}/historial/importar-csv", response_class=HTMLResponse)
+async def importar_csv_historial(
+    mono_id: int,
+    request: Request,
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    archivo: UploadFile = File(...),
+):
+    result = await db.execute(
+        select(Monotributista).where(
+            Monotributista.id == mono_id,
+            Monotributista.tenant_id == current_user.tenant_id,
+        )
+    )
+    mono = result.scalar_one_or_none()
+    if not mono:
+        raise HTTPException(status_code=404)
+
+    contenido = await archivo.read()
+    from app.afip.csv_importer import import_mis_comprobantes
+
+    resultado = await import_mis_comprobantes(
+        file_bytes=contenido,
+        tenant_id=current_user.tenant_id,
+        mono_id=mono_id,
+        db=db,
+    )
+
+    if resultado.get("parsed", 0) == 0:
+        return HTMLResponse("""
+            <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;
+                        padding:12px 16px;font-size:13px;color:#991B1B">
+                ⚠️ No se encontraron comprobantes en el archivo.
+                Verificá que sea el CSV de <strong>Mis Comprobantes</strong> de ARCA (separado por punto y coma).
+            </div>""")
+
+    return HTMLResponse(f"""
+        <div style="background:#DCFCE7;border:1px solid #86EFAC;border-radius:8px;
+                    padding:12px 16px;font-size:13px;color:#166534">
+            ✓ <strong>{resultado['importados']}</strong> comprobantes importados correctamente.
+            {f"<br>{resultado['ya_existian']} ya existían (omitidos)." if resultado['ya_existian'] else ""}
+            {f"<br>⚠️ {resultado['errores']} errores." if resultado['errores'] else ""}
+            <br><a href="/monotributistas/{mono_id}/historial" style="color:#166534;font-weight:700">
+                Ver historial →
+            </a>
+        </div>""")
+
+
+@router.post("/monotributistas/{mono_id}/historial/sincronizar", response_class=HTMLResponse)
+async def sincronizar_arca(
+    mono_id: int,
+    request: Request,
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    result = await db.execute(
+        select(Monotributista).where(
+            Monotributista.id == mono_id,
+            Monotributista.tenant_id == current_user.tenant_id,
+        )
+    )
+    mono = result.scalar_one_or_none()
+    if not mono:
+        raise HTTPException(status_code=404)
+
+    if not mono.cert_encrypted:
+        return HTMLResponse("""
+            <div style="background:#FEF9C3;border:1px solid #F59E0B;border-radius:8px;
+                        padding:12px 16px;font-size:13px;color:#854D0E">
+                ⚠️ Este monotributista no tiene certificado ARCA configurado.
+                <a href="/monotributistas/""" + str(mono_id) + """/certificado"
+                   style="color:#854D0E;font-weight:700">Configurar certificado →</a>
+            </div>""")
+
+    from app.afip.sync_service import sync_mono_invoices
+    resultado = await sync_mono_invoices(
+        mono_id=mono_id,
+        tenant_id=current_user.tenant_id,
+        db=db,
+    )
+
+    if resultado.get("error"):
+        return HTMLResponse(f"""
+            <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;
+                        padding:12px 16px;font-size:13px;color:#991B1B">
+                ✗ {resultado['error']}
+            </div>""")
+
+    return HTMLResponse(f"""
+        <div style="background:#DCFCE7;border:1px solid #86EFAC;border-radius:8px;
+                    padding:12px 16px;font-size:13px;color:#166534">
+            ✓ Sincronización completa. <strong>{resultado['importados']}</strong> comprobantes nuevos traídos de ARCA.
+            {f"<br>{resultado['ya_existian']} ya existían." if resultado['ya_existian'] else ""}
+            <br><a href="/monotributistas/{mono_id}/historial" style="color:#166534;font-weight:700">
+                Ver historial →
+            </a>
+        </div>""")

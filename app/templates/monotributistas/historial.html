@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}Historial ARCA — {{ mono.razon_social }}{% endblock %}
+
+{% block extra_styles %}
+.hist-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; margin-bottom: 12px; }
+.hist-title { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 15px; color: var(--navy); margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+.hist-desc { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 14px; }
+.hist-desc strong { color: var(--text); }
+.hist-desc a { color: var(--coral); font-weight: 700; text-decoration: none; }
+
+.upload-zone { border: 2px dashed var(--border); border-radius: 10px; padding: 24px; text-align: center; cursor: pointer; transition: all .2s; }
+.upload-zone:hover, .upload-zone.has-file { border-color: var(--coral); background: #fff8f6; }
+.upload-zone i { font-size: 32px; color: #CBD5E1; display: block; margin-bottom: 8px; }
+.upload-zone .uz-title { font-weight: 700; font-size: 14px; color: var(--navy); margin-bottom: 4px; }
+.upload-zone .uz-sub { font-size: 12px; color: var(--muted); }
+.upload-zone .uz-name { font-size: 12px; color: var(--coral); font-weight: 700; margin-top: 6px; }
+input[type=file] { display: none; }
+
+.pasos-arca { margin: 12px 0; }
+.paso-arca { display: flex; gap: 10px; margin-bottom: 8px; font-size: 13px; color: var(--muted); }
+.paso-num { width: 20px; height: 20px; border-radius: 50%; background: var(--navy); color: white; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+
+.sync-result { margin-top: 12px; }
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Historial de facturas</div>
+    <div class="page-subtitle">
+      <a href="/monotributistas/{{ mono.id }}" style="color:var(--coral);font-weight:700;text-decoration:none">
+        ← {{ mono.razon_social }}
+      </a>
+    </div>
+  </div>
+</div>
+
+{% if total_historial > 0 %}
+<div style="background:#DCFCE7;border:1px solid #86EFAC;border-radius:var(--radius);padding:14px 16px;margin-bottom:16px;font-size:13px;color:#166534;display:flex;align-items:center;gap:10px">
+  <i class="ti ti-circle-check" style="font-size:18px;flex-shrink:0"></i>
+  <span><strong>{{ total_historial }} comprobantes</strong> cargados en el historial. El semáforo de monotributo ya usa estos datos.</span>
+</div>
+{% endif %}
+
+<!-- Importar CSV -->
+<div class="hist-card">
+  <div class="hist-title">
+    <i class="ti ti-file-spreadsheet"></i>
+    Importar historial desde CSV de ARCA
+    {% if total_historial == 0 %}<span style="background:#FEF9C3;color:#854D0E;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px">Recomendado hacer primero</span>{% endif %}
+  </div>
+  <div class="hist-desc">
+    Para que el semáforo de monotributo sea preciso desde el primer día,
+    importá el historial de facturas que ya emitiste en ARCA.
+    Es un trámite de una sola vez.
+
+    <div class="pasos-arca">
+      <div class="paso-arca">
+        <div class="paso-num">1</div>
+        <span>Entrá a <a href="https://arca.gob.ar" target="_blank">arca.gob.ar</a> con la clave fiscal del monotributista</span>
+      </div>
+      <div class="paso-arca">
+        <div class="paso-num">2</div>
+        <span>Ir a <strong>Comprobantes en línea → Mis Comprobantes</strong></span>
+      </div>
+      <div class="paso-arca">
+        <div class="paso-num">3</div>
+        <span>Seleccioná el período (hasta 1 año por descarga) y hacé clic en <strong>Descargar → CSV</strong></span>
+      </div>
+      <div class="paso-arca">
+        <div class="paso-num">4</div>
+        <span>Subí el archivo acá</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="upload-zone" id="csv-zone" onclick="document.getElementById('csv-input').click()">
+    <i class="ti ti-file-type-csv"></i>
+    <div class="uz-title">Seleccioná el CSV de Mis Comprobantes</div>
+    <div class="uz-sub">Archivo .csv o .zip de ARCA</div>
+    <div class="uz-name" id="csv-name"></div>
+  </div>
+  <input type="file" id="csv-input" accept=".csv,.zip,.txt">
+
+  <div id="csv-result" class="sync-result"></div>
+</div>
+
+<!-- Sincronizar con ARCA -->
+<div class="hist-card">
+  <div class="hist-title">
+    <i class="ti ti-refresh"></i>
+    Sincronizar directamente con ARCA
+  </div>
+  <div class="hist-desc">
+    Si el monotributista tiene el certificado configurado, podemos traer los últimos
+    365 días de comprobantes directamente desde ARCA sin necesidad de descargar ningún archivo.
+    {% if not mono.cert_encrypted %}
+    <br><br>
+    <span style="color:var(--yellow)"><i class="ti ti-alert-triangle"></i>
+    Este monotributista no tiene certificado configurado todavía.</span>
+    <a href="/monotributistas/{{ mono.id }}/certificado">Configurar →</a>
+    {% endif %}
+  </div>
+
+  <button class="btn {% if mono.cert_encrypted %}btn-primary{% else %}btn-ghost{% endif %}"
+          {% if not mono.cert_encrypted %}disabled{% endif %}
+          hx-post="/monotributistas/{{ mono.id }}/historial/sincronizar"
+          hx-target="#sync-result"
+          hx-swap="innerHTML"
+          hx-indicator="#sync-spinner">
+    <i class="ti ti-refresh" id="sync-spinner" style="display:none"></i>
+    <span class="btn-label"><i class="ti ti-cloud-download"></i> Sincronizar con ARCA</span>
+  </button>
+
+  <div id="sync-result" class="sync-result"></div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const csvInput = document.getElementById('csv-input');
+const csvZone  = document.getElementById('csv-zone');
+const csvName  = document.getElementById('csv-name');
+const csvResult = document.getElementById('csv-result');
+
+csvInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  csvName.textContent = file.name;
+  csvZone.classList.add('has-file');
+  csvResult.innerHTML = '<div style="color:var(--muted);font-size:13px;margin-top:10px">Importando...</div>';
+
+  const fd = new FormData();
+  fd.append('archivo', file);
+  try {
+    const res = await fetch('/monotributistas/{{ mono.id }}/historial/importar-csv', { method: 'POST', body: fd });
+    csvResult.innerHTML = await res.text();
+  } catch(e) {
+    csvResult.innerHTML = '<div style="color:#991B1B;font-size:13px;margin-top:10px">Error: ' + e.message + '</div>';
+  }
+});
+
+// Indicador del botón de sincronizar HTMX
+document.addEventListener('htmx:beforeRequest', (e) => {
+  const spinner = document.getElementById('sync-spinner');
+  if (spinner) spinner.style.display = 'inline-block';
+});
+document.addEventListener('htmx:afterRequest', (e) => {
+  const spinner = document.getElementById('sync-spinner');
+  if (spinner) spinner.style.display = 'none';
+});
+</script>
+{% endblock %}

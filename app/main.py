@@ -42,6 +42,23 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE facturas ADD COLUMN IF NOT EXISTS pdf_path VARCHAR(500)",
             "ALTER TABLE facturas ADD COLUMN IF NOT EXISTS afip_obs TEXT",
             "ALTER TABLE filas_excel ADD COLUMN IF NOT EXISTS email_cliente_raw VARCHAR(200)",
+            """CREATE TABLE IF NOT EXISTS afip_invoice_history (
+                id SERIAL PRIMARY KEY,
+                tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+                mono_id INTEGER NOT NULL REFERENCES monotributistas(id) ON DELETE CASCADE,
+                cbte_tipo INTEGER NOT NULL,
+                punto_venta INTEGER NOT NULL,
+                cbte_nro INTEGER NOT NULL,
+                cbte_fecha DATE NOT NULL,
+                concepto INTEGER DEFAULT 2,
+                fch_serv_desde DATE,
+                fch_serv_hasta DATE,
+                imp_total NUMERIC(14,2) NOT NULL,
+                cae VARCHAR(20),
+                source VARCHAR(20) DEFAULT 'wsfe',
+                synced_at TIMESTAMPTZ DEFAULT NOW(),
+                CONSTRAINT uq_afip_history_cbte UNIQUE (mono_id, cbte_tipo, cbte_nro, punto_venta)
+            )""",
         ]
         for sql in migraciones:
             try:
