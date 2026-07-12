@@ -31,6 +31,9 @@ async def dashboard(
     current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
+    # Admin → redirigir al panel de gestión
+    if current_user.rol == "admin" and current_user.tenant_nombre == "Más Fácil (Admin)":
+        return RedirectResponse("/admin/mmf-admin-2025", status_code=302)
     hoy = date.today()
     mes_nombre = [
         "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",

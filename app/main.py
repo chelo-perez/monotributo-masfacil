@@ -19,6 +19,7 @@ from app.auth.models import Base as AuthBase
 from app.facturas.models import Base as FacturasBase
 from app.auth.router import router as auth_router
 from app.ui_router import router as ui_router
+from app.superadmin.router import router as superadmin_router
 
 
 @asynccontextmanager
@@ -117,6 +118,7 @@ if os.path.exists("app/static"):
     app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 app.include_router(auth_router)
+app.include_router(superadmin_router)
 app.include_router(ui_router)
 
 

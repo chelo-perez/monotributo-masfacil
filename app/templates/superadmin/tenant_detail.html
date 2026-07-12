@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}{{ t.nombre }} — Admin{% endblock %}
+
+{% block extra_styles %}
+.detail-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; margin-bottom: 16px; }
+.detail-title { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 14px; color: var(--navy); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.dato { margin-bottom: 12px; }
+.dato-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 3px; }
+.dato-val { font-size: 14px; color: var(--navy); font-weight: 600; }
+.mono-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.mono-row:last-child { border-bottom: none; }
+.sa-input { width: 100%; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-family: 'Nunito Sans', sans-serif; font-size: 13px; outline: none; }
+.sa-input:focus { border-color: var(--navy); }
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">{{ t.nombre }}</div>
+    <div class="page-subtitle">
+      <a href="/admin/{{ secret }}" style="color:var(--coral);font-weight:700;text-decoration:none">← Panel Admin</a>
+    </div>
+  </div>
+</div>
+
+<!-- Datos del estudio -->
+<div class="detail-card">
+  <div class="detail-title"><i class="ti ti-building"></i> Datos del estudio</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="dato">
+      <div class="dato-label">Nombre</div>
+      <div class="dato-val">{{ t.nombre }}</div>
+    </div>
+    <div class="dato">
+      <div class="dato-label">Email admin</div>
+      <div class="dato-val">{{ t.email_admin }}</div>
+    </div>
+    <div class="dato">
+      <div class="dato-label">Plan</div>
+      <div class="dato-val">{{ t.plan | title }}</div>
+    </div>
+    <div class="dato">
+      <div class="dato-label">Estado</div>
+      <div class="dato-val" style="color:{% if t.activo %}var(--green){% else %}var(--red){% endif %}">
+        {% if t.activo %}Activo{% else %}Inactivo{% endif %}
+      </div>
+    </div>
+    <div class="dato">
+      <div class="dato-label">Monotributistas</div>
+      <div class="dato-val">{{ monos|length }}</div>
+    </div>
+    <div class="dato">
+      <div class="dato-label">Facturas emitidas</div>
+      <div class="dato-val">{{ n_facturas }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- Acciones -->
+<div class="detail-card">
+  <div class="detail-title"><i class="ti ti-settings"></i> Acciones</div>
+
+  <div style="display:flex;flex-direction:column;gap:10px">
+    <!-- Toggle activo -->
+    <form hx-post="/admin/{{ secret }}/tenant/{{ t.id }}/toggle-active"
+          hx-target="#tenant-estado" hx-swap="innerHTML">
+      <button type="submit" class="btn {% if t.activo %}btn-danger{% else %}btn-primary{% endif %}" style="width:100%;justify-content:center">
+        {% if t.activo %}<i class="ti ti-lock"></i> Desactivar cuenta
+        {% else %}<i class="ti ti-lock-open"></i> Activar cuenta{% endif %}
+      </button>
+    </form>
+    <div id="tenant-estado"></div>
+
+    <!-- Cambiar plan -->
+    <form hx-post="/admin/{{ secret }}/tenant/{{ t.id }}/set-plan"
+          hx-target="#plan-result" hx-swap="innerHTML"
+          style="display:flex;gap:8px">
+      <select name="plan" class="sa-input">
+        {% for p in planes %}
+        <option value="{{ p }}" {% if t.plan == p %}selected{% endif %}>Plan {{ p | title }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-ghost" style="white-space:nowrap">Cambiar</button>
+    </form>
+    <div id="plan-result" style="font-size:.82rem"></div>
+
+    <!-- Reset contraseña -->
+    <form hx-post="/admin/{{ secret }}/tenant/{{ t.id }}/reset-password"
+          hx-target="#pwd-result" hx-swap="innerHTML"
+          style="display:flex;gap:8px">
+      <input type="password" name="new_password" class="sa-input" required placeholder="Nueva contraseña" minlength="6">
+      <button type="submit" class="btn btn-ghost" style="white-space:nowrap">Cambiar</button>
+    </form>
+    <div id="pwd-result" style="font-size:.82rem"></div>
+  </div>
+</div>
+
+<!-- Monotributistas -->
+{% if monos %}
+<div class="detail-card">
+  <div class="detail-title"><i class="ti ti-users"></i> Monotributistas ({{ monos|length }})</div>
+  {% for m in monos %}
+  <div class="mono-row">
+    <div style="flex:1">
+      <div style="font-weight:700;color:var(--navy)">{{ m.razon_social }}</div>
+      <div style="font-size:12px;color:var(--muted)">{{ m.cuit }} · Cat. {{ m.categoria_actual.value if m.categoria_actual else '—' }}</div>
+    </div>
+    <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;
+      background:{% if m.cert_encrypted %}#DCFCE7{% else %}#FEF9C3{% endif %};
+      color:{% if m.cert_encrypted %}#166534{% else %}#854D0E{% endif %}">
+      {% if m.cert_encrypted %}✓ Cert{% else %}Sin cert{% endif %}
+    </span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Usuarios -->
+<div class="detail-card">
+  <div class="detail-title"><i class="ti ti-user"></i> Usuarios</div>
+  {% for u in users %}
+  <div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
+    <div style="font-weight:700;color:var(--navy)">{{ u.email }}</div>
+    <div style="color:var(--muted);font-size:12px">Rol: {{ u.rol }} · {% if u.activo %}Activo{% else %}Inactivo{% endif %}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
