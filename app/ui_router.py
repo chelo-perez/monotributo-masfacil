@@ -126,6 +126,7 @@ async def dashboard(
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
         "current_user": current_user,
+        "active_page": "dashboard",
         "tenant_nombre": current_user.tenant_nombre,
         "mes_actual": mes_actual,
         "total_monotributistas": len(monos),
@@ -150,6 +151,7 @@ async def emitir_page(
     return templates.TemplateResponse("emitir.html", {
         "request": request,
         "current_user": current_user,
+        "active_page": "emitir",
         "tenant_nombre": current_user.tenant_nombre,
     })
 
@@ -368,6 +370,7 @@ async def lista_monotributistas(
     return templates.TemplateResponse("monotributistas/lista.html", {
         "request": request,
         "current_user": current_user,
+        "active_page": "monotributistas",
         "tenant_nombre": current_user.tenant_nombre,
         "monotributistas": monos,
     })
@@ -493,6 +496,7 @@ async def nuevo_monotributista_page(
     return templates.TemplateResponse("monotributistas/nuevo.html", {
         "request": request,
         "current_user": current_user,
+        "active_page": "monotributistas",
         "tenant_nombre": current_user.tenant_nombre,
         "categorias": ["A","B","C","D","E","F","G","H","I","J","K"],
     })
@@ -582,6 +586,7 @@ async def detalle_monotributista(
     return templates.TemplateResponse("monotributistas/detalle.html", {
         "request": request,
         "current_user": current_user,
+        "active_page": "monotributistas",
         "tenant_nombre": current_user.tenant_nombre,
         "mono": mono,
         "facturas": facturas,
@@ -790,6 +795,7 @@ async def editar_page(
     return templates.TemplateResponse("monotributistas/editar.html", {
         "request": request,
         "current_user": current_user,
+        "active_page": "monotributistas",
         "tenant_nombre": current_user.tenant_nombre,
         "mono": mono,
         "categorias": ["A","B","C","D","E","F","G","H","I","J","K"],
