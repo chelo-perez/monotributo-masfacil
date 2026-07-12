@@ -20,6 +20,7 @@ from app.facturas.models import Base as FacturasBase
 from app.auth.router import router as auth_router
 from app.ui_router import router as ui_router
 from app.superadmin.router import router as superadmin_router
+from app.facturas.pdf_router import router as pdf_router
 
 
 @asynccontextmanager
@@ -32,6 +33,7 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         migraciones = [
             "ALTER TABLE monotributistas ADD COLUMN IF NOT EXISTS nombre_fantasia VARCHAR(200)",
+            "ALTER TABLE monotributistas ADD COLUMN IF NOT EXISTS logo_base64 TEXT",
             "ALTER TABLE monotributistas ADD COLUMN IF NOT EXISTS telefono VARCHAR(50)",
             "ALTER TABLE monotributistas ADD COLUMN IF NOT EXISTS actividad VARCHAR(200)",
             "ALTER TABLE monotributistas ADD COLUMN IF NOT EXISTS afip_environment VARCHAR(20) DEFAULT 'production'",
@@ -39,6 +41,7 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE facturas ADD COLUMN IF NOT EXISTS concepto VARCHAR(500)",
             "ALTER TABLE facturas ADD COLUMN IF NOT EXISTS pdf_path VARCHAR(500)",
             "ALTER TABLE facturas ADD COLUMN IF NOT EXISTS afip_obs TEXT",
+            "ALTER TABLE filas_excel ADD COLUMN IF NOT EXISTS email_cliente_raw VARCHAR(200)",
         ]
         for sql in migraciones:
             try:
@@ -120,6 +123,7 @@ if os.path.exists("app/static"):
 
 app.include_router(auth_router)
 app.include_router(superadmin_router)
+app.include_router(pdf_router)
 app.include_router(ui_router)
 
 

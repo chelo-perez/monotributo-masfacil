@@ -71,6 +71,7 @@ class FilaExcel(Base):
     importe_raw = Column(String(50))
     cliente_raw = Column(String(200))
     dni_cliente_raw = Column(String(50), nullable=True)
+    email_cliente_raw = Column(String(200), nullable=True)
     concepto_raw = Column(String(500))
     monotributista_raw = Column(String(200))              # nombre o CUIT
 

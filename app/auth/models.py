@@ -88,6 +88,7 @@ class Monotributista(Base):
     cuit = Column(String(13), nullable=False)             # "27-12345678-9"
     razon_social = Column(String(200), nullable=False)
     nombre_fantasia = Column(String(200), nullable=True)
+    logo_base64 = Column(Text, nullable=True)              # PNG/JPG en base64
     domicilio = Column(String(300), nullable=True)
     email = Column(String(200), nullable=True)            # para notificaciones al mono
     telefono = Column(String(50), nullable=True)

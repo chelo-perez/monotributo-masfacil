@@ -30,6 +30,7 @@ ALIAS_COLUMNAS = {
     "importe": ["importe", "monto", "total", "amount", "precio", "valor"],
     "cliente": ["cliente", "alumno", "paciente", "receptor", "nombre_cliente", "nombre cliente"],
     "dni_cliente": ["dni", "dni_cliente", "cuit_cliente", "documento", "doc"],
+    "email_cliente": ["email", "email_cliente", "mail", "mail_cliente", "correo"],
     "concepto": ["concepto", "descripcion", "descripción", "detalle", "servicio"],
     "monotributista": ["monotributista", "emisor", "profesional", "cuit_emisor", "nombre_emisor"],
 }
@@ -43,6 +44,7 @@ class FilaParsed:
     importe_raw: str
     cliente_raw: str
     dni_cliente_raw: Optional[str]
+    email_cliente_raw: Optional[str]
     concepto_raw: str
     monotributista_raw: str
 
@@ -204,6 +206,7 @@ def parsear_excel(file_bytes: bytes) -> ResultadoParseo:
         fecha_raw = row[mapa["fecha"]] if mapa.get("fecha") is not None else None
         importe_raw = row[mapa["importe"]] if mapa.get("importe") is not None else None
         dni_raw = celda("dni_cliente") if "dni_cliente" in mapa else None
+        email_raw = celda("email_cliente") if "email_cliente" in mapa else None
 
         # Saltear filas completamente vacías
         if not any([monotributista_raw, cliente_raw, str(fecha_raw or "").strip(), str(importe_raw or "").strip()]):
@@ -215,6 +218,7 @@ def parsear_excel(file_bytes: bytes) -> ResultadoParseo:
             importe_raw=str(importe_raw) if importe_raw is not None else "",
             cliente_raw=cliente_raw,
             dni_cliente_raw=dni_raw if dni_raw else None,
+            email_cliente_raw=email_raw if email_raw else None,
             concepto_raw=concepto_raw,
             monotributista_raw=monotributista_raw,
         )

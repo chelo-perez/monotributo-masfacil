@@ -9,6 +9,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.auth import CurrentUser, get_current_user, get_current_user_page
@@ -613,7 +614,10 @@ async def lista_facturas(
     limit = 50
     offset = (page - 1) * limit
 
-    q = select(Factura).where(
+    q = select(Factura).options(
+        selectinload(Factura.monotributista),
+        selectinload(Factura.cliente),
+    ).where(
         Factura.tenant_id == current_user.tenant_id,
         Factura.anulada == False,
     )
