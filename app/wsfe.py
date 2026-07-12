@@ -328,3 +328,27 @@ async def solicitar_cae(
         return cae, cae_vto, obs_str
 
     return None, None, obs_str or "ARCA rechazó la factura sin observaciones"
+
+
+async def get_puntos_venta(
+    token: str,
+    sign: str,
+    cuit: str,
+    environment: str = "production",
+) -> list[int]:
+    """
+    Devuelve los puntos de venta activos habilitados para el CUIT.
+    Usa FEParamGetPtosVenta del WSFE.
+    """
+    body = f"""{_wsfe_header(token, sign, cuit)}"""
+    root = await _wsfe_call("FEParamGetPtosVenta", body, environment)
+    ns = "http://ar.gov.afip.dif.FEV1/"
+
+    pvs = []
+    for pv in root.findall(f".//{{{ns}}}PtoVenta"):
+        nro = pv.findtext(f"{{{ns}}}Nro")
+        bloqueado = pv.findtext(f"{{{ns}}}Bloqueado")
+        if nro and bloqueado == "N":
+            pvs.append(int(nro))
+
+    return sorted(pvs)

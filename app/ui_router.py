@@ -520,7 +520,7 @@ async def crear_monotributista(
         nombre_fantasia=str(form.get("nombre_fantasia", "")).strip() or None,
         domicilio=str(form.get("domicilio", "")).strip() or None,
         email=str(form.get("email", "")).strip() or None,
-        afip_punto_venta=int(form.get("afip_punto_venta", 1)),
+        afip_punto_venta=None,  # Se detecta automáticamente al cargar el certificado
         categoria_actual=form.get("categoria_actual") or None,
         actividad=str(form.get("actividad", "")).strip() or None,
     )
@@ -701,17 +701,68 @@ async def guardar_certificado(
         raise HTTPException(status_code=400, detail="El archivo .key no parece una clave privada PEM válida")
 
     from app.config import FERNET_KEY
-    from app.wsfe import encrypt_credentials
+    from app.wsfe import encrypt_credentials, get_token_sign, get_puntos_venta
 
-    cert_enc, key_enc = encrypt_credentials(
-        cert_bytes.decode("utf-8", errors="replace"),
-        key_bytes.decode("utf-8", errors="replace"),
-        FERNET_KEY,
-    )
+    cert_pem = cert_bytes.decode("utf-8", errors="replace")
+    key_pem  = key_bytes.decode("utf-8", errors="replace")
+
+    cert_enc, key_enc = encrypt_credentials(cert_pem, key_pem, FERNET_KEY)
     mono.cert_encrypted = cert_enc
     mono.key_encrypted  = key_enc
+
+    # Detectar puntos de venta automáticamente
+    pvs_detectados = []
+    error_pv = None
+    try:
+        token, sign = await get_token_sign(
+            cert_pem, key_pem,
+            environment=mono.afip_environment or "production"
+        )
+        cuit_limpio = mono.cuit.replace("-", "")
+        pvs_detectados = await get_puntos_venta(
+            token, sign, cuit_limpio,
+            environment=mono.afip_environment or "production"
+        )
+        if len(pvs_detectados) == 1:
+            mono.afip_punto_venta = pvs_detectados[0]
+    except Exception as e:
+        error_pv = str(e)
+
     await db.commit()
 
+    # Si hay más de un PV → mostrar selector
+    if len(pvs_detectados) > 1:
+        return templates.TemplateResponse("monotributistas/seleccionar_pv.html", {
+            "request": request,
+            "current_user": current_user,
+            "tenant_nombre": current_user.tenant_nombre,
+            "mono": mono,
+            "pvs": pvs_detectados,
+        })
+
+    return RedirectResponse(f"/monotributistas/{mono_id}", status_code=303)
+
+
+@router.post("/monotributistas/{mono_id}/set-pv")
+async def set_punto_venta(
+    mono_id: int,
+    request: Request,
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    form = await request.form()
+    pv = int(form.get("punto_venta", 1))
+    result = await db.execute(
+        select(Monotributista).where(
+            Monotributista.id == mono_id,
+            Monotributista.tenant_id == current_user.tenant_id,
+        )
+    )
+    mono = result.scalar_one_or_none()
+    if not mono:
+        raise HTTPException(status_code=404)
+    mono.afip_punto_venta = pv
+    await db.commit()
     return RedirectResponse(f"/monotributistas/{mono_id}", status_code=303)
 
 

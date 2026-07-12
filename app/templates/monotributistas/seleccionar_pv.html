@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Seleccionar punto de venta — {{ mono.razon_social }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Seleccionar punto de venta</div>
+    <div class="page-subtitle">{{ mono.razon_social }} — {{ mono.cuit }}</div>
+  </div>
+</div>
+
+<div style="background:white;border-radius:var(--radius);box-shadow:var(--shadow);padding:28px;max-width:480px">
+  <div style="background:#DCFCE7;border:1px solid #86EFAC;border-radius:8px;padding:12px 16px;
+              font-size:13px;color:#166534;margin-bottom:20px">
+    ✓ Certificado cargado correctamente. Se detectaron <strong>{{ pvs|length }} puntos de venta</strong> activos en ARCA.
+  </div>
+
+  <p style="font-size:14px;color:var(--muted);margin-bottom:20px">
+    Seleccioná cuál usar para emitir las facturas de <strong>{{ mono.razon_social }}</strong>:
+  </p>
+
+  <form action="/monotributistas/{{ mono.id }}/set-pv" method="post">
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+      {% for pv in pvs %}
+      <label style="display:flex;align-items:center;gap:12px;padding:14px 16px;
+                    border:1.5px solid var(--border);border-radius:8px;cursor:pointer;
+                    transition:border-color .15s"
+             onmouseover="this.style.borderColor='var(--navy)'"
+             onmouseout="this.style.borderColor='var(--border)'">
+        <input type="radio" name="punto_venta" value="{{ pv }}"
+               {% if loop.first %}checked{% endif %}
+               style="width:18px;height:18px;accent-color:var(--navy)">
+        <div>
+          <div style="font-family:'Nunito',sans-serif;font-weight:800;font-size:16px;color:var(--navy)">
+            Punto de Venta {{ pv }}
+          </div>
+          <div style="font-size:12px;color:var(--muted)">PV {{ "%04d"|format(pv) }} — activo en ARCA</div>
+        </div>
+      </label>
+      {% endfor %}
+    </div>
+
+    <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center">
+      Confirmar punto de venta →
+    </button>
+  </form>
+</div>
+{% endblock %}
