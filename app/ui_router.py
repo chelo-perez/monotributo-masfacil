@@ -523,6 +523,7 @@ async def crear_monotributista(
         cuit=cuit,
         razon_social=str(form.get("razon_social", "")).strip(),
         nombre_fantasia=str(form.get("nombre_fantasia", "")).strip() or None,
+        logo_base64=str(form.get("logo_base64", "")).strip() or None,
         domicilio=str(form.get("domicilio", "")).strip() or None,
         email=str(form.get("email", "")).strip() or None,
         afip_punto_venta=None,  # Se detecta automáticamente al cargar el certificado
@@ -830,6 +831,9 @@ async def guardar_edicion(
         mono.cuit = f"{cuit_raw[:2]}-{cuit_raw[2:10]}-{cuit_raw[10]}"
 
     mono.razon_social      = str(form.get("razon_social", mono.razon_social)).strip()
+    logo_b64 = str(form.get("logo_base64", "")).strip()
+    if logo_b64:
+        mono.logo_base64 = logo_b64
     mono.domicilio         = str(form.get("domicilio", "")).strip() or None
     mono.email             = str(form.get("email", "")).strip() or None
     mono.telefono          = str(form.get("telefono", "")).strip() or None

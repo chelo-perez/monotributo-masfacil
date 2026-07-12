@@ -1,5 +1,22 @@
 {% extends "base.html" %}
-{% block title %}Editar — {{ mono.razon_social }}{% endblock %}
+{% block title %}Editar — {{ mono.razon_social }}
+<script>
+function previewLogo(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) { alert('El logo debe ser menor a 2 MB'); input.value=''; return; }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const b64 = e.target.result.split(',')[1];
+    document.getElementById('logo_base64').value = b64;
+    const img = document.getElementById('logo-preview');
+    img.src = e.target.result;
+    img.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+</script>
+{% endblock %}
 
 {% block extra_styles %}
 
@@ -48,7 +65,7 @@
   </div>
 </div>
 
-<form class="form-card" action="/monotributistas/{{ mono.id }}/editar" method="post">
+<form class="form-card" action="/monotributistas/{{ mono.id }}/editar" method="post" enctype="multipart/form-data">
   <div class="form-section">
     <div class="form-section-title">Datos fiscales</div>
     <div class="form-row">
@@ -105,6 +122,25 @@
         <label>Teléfono <span class="opt">(opcional)</span></label>
         <input type="text" name="telefono" value="{{ mono.telefono or '' }}">
       </div>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <div class="form-section-title">Logo <span style="font-weight:400;text-transform:none;font-size:11px;color:var(--muted)">— encabezado del PDF de facturas</span></div>
+    <div class="form-group">
+      {% if mono.logo_base64 %}
+      <div style="margin-bottom:10px">
+        <img src="data:image/png;base64,{{ mono.logo_base64 }}" style="max-height:56px;border-radius:6px;border:1px solid var(--border)">
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">Logo actual</div>
+      </div>
+      {% endif %}
+      <label for="logo">{% if mono.logo_base64 %}Reemplazar logo{% else %}Subir logo{% endif %} <span class="opt">(opcional)</span></label>
+      <input type="file" id="logo" name="logo" accept="image/png,image/jpeg,image/jpg"
+             style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px"
+             onchange="previewLogo(this)">
+      <div class="hint">PNG o JPG. Máximo 2 MB.</div>
+      <img id="logo-preview" src="" style="display:none;max-height:60px;margin-top:10px;border-radius:6px">
+      <input type="hidden" id="logo_base64" name="logo_base64" value="{{ mono.logo_base64 or '' }}">
     </div>
   </div>
 
