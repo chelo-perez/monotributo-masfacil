@@ -2,25 +2,33 @@
 {% block title %}Dashboard — Monotributo Más Fácil{% endblock %}
 
 {% block extra_styles %}
-.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
-.kpi-card { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; }
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+@media (min-width: 1024px) {
+  .kpis { grid-template-columns: repeat(4, 1fr); }
+}
+.kpi-card { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px; }
 .kpi-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 8px; }
-.kpi-value { font-family: 'Nunito', sans-serif; font-size: 28px; font-weight: 800; color: var(--navy); line-height: 1; }
+.kpi-value { font-family: 'Nunito', sans-serif; font-size: 26px; font-weight: 800; color: var(--navy); line-height: 1; }
 .kpi-value.coral { color: var(--coral); }
 .kpi-sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
 
 .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .section-title { font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 800; color: var(--navy); }
 
-.table-card { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
-table { width: 100%; border-collapse: collapse; }
+.table-card { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; min-width: 600px; }
 thead tr { border-bottom: 2px solid var(--border); }
-th { padding: 11px 16px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+th { padding: 11px 14px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); white-space: nowrap; }
 th.right { text-align: right; }
 tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
 tbody tr:last-child { border-bottom: none; }
 tbody tr:hover { background: #fafafa; }
-td { padding: 13px 16px; font-size: 13px; vertical-align: middle; }
+td { padding: 13px 14px; font-size: 13px; vertical-align: middle; white-space: nowrap; }
 td.right { text-align: right; font-variant-numeric: tabular-nums; }
 
 .mono-name { font-weight: 700; color: var(--navy); display: block; margin-bottom: 2px; }
@@ -38,8 +46,6 @@ td.right { text-align: right; font-variant-numeric: tabular-nums; }
 .facts-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; }
 .facts-badge .check { color: var(--green); font-weight: 700; }
 .facts-badge .warn  { color: var(--yellow); font-weight: 700; }
-
-@media (max-width: 1024px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
 {% endblock %}
 
 {% block content %}
@@ -59,7 +65,7 @@ td.right { text-align: right; font-variant-numeric: tabular-nums; }
   <div class="kpi-card">
     <div class="kpi-label">Monotributistas activos</div>
     <div class="kpi-value">{{ total_monotributistas }}</div>
-    <div class="kpi-sub">{{ sin_certificado }} sin certificado configurado</div>
+    <div class="kpi-sub">{{ sin_certificado }} sin certificado</div>
   </div>
   <div class="kpi-card">
     <div class="kpi-label">Facturas este mes</div>
@@ -76,7 +82,7 @@ td.right { text-align: right; font-variant-numeric: tabular-nums; }
     <div class="kpi-value" style="color: {% if alertas > 0 %}var(--red){% else %}var(--green){% endif %}">
       {{ alertas }}
     </div>
-    <div class="kpi-sub">{% if alertas > 0 %}clientes cerca del tope{% else %}Todo en orden{% endif %}</div>
+    <div class="kpi-sub">{% if alertas > 0 %}cerca del tope{% else %}Todo en orden{% endif %}</div>
   </div>
 </div>
 
@@ -93,10 +99,10 @@ td.right { text-align: right; font-variant-numeric: tabular-nums; }
     <thead>
       <tr>
         <th>Monotributista</th>
-        <th>Categoría</th>
+        <th>Cat.</th>
         <th>Acumulado anual</th>
         <th class="right">Tope</th>
-        <th>Estado monotributo</th>
+        <th>Estado</th>
         <th class="right">Facts. {{ mes_actual }}</th>
         <th></th>
       </tr>
@@ -108,10 +114,10 @@ td.right { text-align: right; font-variant-numeric: tabular-nums; }
           <span class="mono-name">{{ m.razon_social }}</span>
           <span class="mono-cuit">{{ m.cuit }}</span>
         </td>
-        <td><strong>Cat. {{ m.categoria }}</strong></td>
+        <td><strong>{{ m.categoria }}</strong></td>
         <td>
           $ {{ m.acumulado | format_money }}
-          <div style="margin-top:5px; background:var(--border); border-radius:4px; height:4px; width:100px;">
+          <div style="margin-top:5px; background:var(--border); border-radius:4px; height:4px; width:90px;">
             <div style="height:4px; border-radius:4px; width:{{ m.pct_tope }}%;
               background:{% if m.pct_tope >= 90 %}var(--red){% elif m.pct_tope >= 75 %}var(--yellow){% else %}var(--green){% endif %};"></div>
           </div>
@@ -119,11 +125,11 @@ td.right { text-align: right; font-variant-numeric: tabular-nums; }
         <td class="right" style="font-size:12px; color:var(--muted);">$ {{ m.tope | format_money }}</td>
         <td>
           {% if m.pct_tope >= 90 %}
-          <span class="semaforo rojo"><span class="semaforo-dot"></span>{{ m.pct_tope | int }}% — Cerca del tope</span>
+          <span class="semaforo rojo"><span class="semaforo-dot"></span>{{ m.pct_tope | int }}%</span>
           {% elif m.pct_tope >= 75 %}
-          <span class="semaforo amarillo"><span class="semaforo-dot"></span>{{ m.pct_tope | int }}% — Cat. {{ m.categoria }}</span>
+          <span class="semaforo amarillo"><span class="semaforo-dot"></span>{{ m.pct_tope | int }}%</span>
           {% else %}
-          <span class="semaforo verde"><span class="semaforo-dot"></span>{{ m.pct_tope | int }}% — Cat. {{ m.categoria }}</span>
+          <span class="semaforo verde"><span class="semaforo-dot"></span>{{ m.pct_tope | int }}%</span>
           {% endif %}
         </td>
         <td class="right">
