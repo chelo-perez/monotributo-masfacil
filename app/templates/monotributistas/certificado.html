@@ -3,66 +3,61 @@
 
 {% block extra_styles %}
 .cert-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px; max-width: 560px; }
-.steps { display: flex; flex-direction: column; gap: 20px; }
-.step { display: flex; gap: 14px; }
+.steps { display: flex; flex-direction: column; gap: 0; }
+.step-box {
+  padding: 14px 16px; background: var(--bg);
+  border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px;
+}
+.step-box.done { background: #f0fdf4; border-color: #bbf7d0; }
+.step-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
 .step-num {
-  width: 30px; height: 30px; border-radius: 50%;
+  width: 24px; height: 24px; border-radius: 50%;
   background: var(--navy); color: white;
-  font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 14px;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; margin-top: 2px;
+  font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 12px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
-.step-body { flex: 1; }
-.step-title { font-weight: 700; font-size: 14px; color: var(--navy); margin-bottom: 5px; }
-.step-desc { font-size: 13px; color: var(--muted); line-height: 1.6; }
-.step-desc strong { color: var(--navy); }
+.step-box.done .step-num { background: #16a34a; }
+.step-title { font-weight: 700; font-size: 14px; color: var(--navy); }
+.step-box.done .step-title { color: #15803d; }
+.step-body { font-size: 13px; color: var(--muted); line-height: 1.6; padding-left: 34px; }
+.step-body strong { color: var(--text); }
+.step-body a { color: var(--coral); text-decoration: none; font-weight: 700; }
 
-.btn-generar {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 10px 18px; border-radius: 8px;
-  background: var(--navy); color: white;
-  font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 13px;
-  border: none; cursor: pointer; margin-top: 10px; transition: background .15s;
-}
-.btn-generar:hover { background: #1e2456; }
-.btn-generar:disabled { background: #ccc; cursor: not-allowed; }
-
-.download-links { margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap; }
+.dl-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 .dl-btn {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 8px 14px; border-radius: 8px;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 7px 12px; border-radius: 8px;
   border: 1.5px solid var(--border); background: white;
-  color: var(--navy); font-size: 13px; font-weight: 700;
+  color: var(--navy); font-size: 12px; font-weight: 700;
   cursor: pointer; text-decoration: none; transition: all .15s;
+  font-family: inherit;
 }
 .dl-btn:hover { border-color: var(--navy); }
-.dl-btn.primary-dl { background: var(--coral); color: white; border-color: var(--coral); }
-.dl-btn.primary-dl:hover { background: #e06b4a; }
+.dl-btn.coral { background: var(--coral); color: white; border-color: var(--coral); }
+.dl-btn.coral:hover { background: #e06b4a; }
+.dl-btn:disabled { opacity: .5; cursor: not-allowed; }
 
 .upload-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
 .file-zone {
-  border: 2px dashed var(--border); border-radius: 10px;
-  padding: 16px 12px; text-align: center; cursor: pointer; transition: all .2s;
+  border: 2px dashed var(--border); border-radius: 8px;
+  padding: 14px 10px; text-align: center; cursor: pointer; transition: all .2s;
 }
 .file-zone:hover, .file-zone.has-file { border-color: var(--coral); background: #fff8f6; }
-.file-zone i { font-size: 24px; color: var(--muted); display: block; margin-bottom: 6px; }
-.file-zone .fz-label { font-size: 12px; font-weight: 700; color: var(--navy); }
-.file-zone .fz-ext { font-size: 11px; color: var(--muted); }
-.file-zone .fz-name { font-size: 11px; color: var(--coral); font-weight: 700; margin-top: 4px; word-break: break-all; }
+.file-zone i { font-size: 22px; color: var(--muted); display: block; margin-bottom: 4px; }
+.fz-label { font-size: 12px; font-weight: 700; color: var(--navy); }
+.fz-ext { font-size: 10px; color: var(--muted); }
+.fz-name { font-size: 10px; color: var(--coral); font-weight: 700; margin-top: 3px; word-break: break-all; }
 input[type=file] { display: none; }
 
-.info-box { background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #1E40AF; margin-top: 10px; }
 .error-box { background: #FEF2F2; border: 1px solid #FECACA; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #991B1B; margin-top: 10px; display: none; }
 .error-box.visible { display: block; }
-
-.divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
 .form-actions { display: flex; gap: 10px; margin-top: 16px; }
 {% endblock %}
 
 {% block content %}
 <div class="page-header">
   <div>
-    <div class="page-title">Certificado ARCA</div>
+    <div class="page-title">Configurar certificado</div>
     <div class="page-subtitle">
       <a href="/monotributistas/{{ mono.id }}" style="color:var(--coral);font-weight:700;text-decoration:none">
         ← {{ mono.razon_social }}
@@ -74,60 +69,81 @@ input[type=file] { display: none; }
 <div class="cert-card">
   <div class="steps">
 
-    <!-- Paso 1 -->
-    <div class="step">
-      <div class="step-num">1</div>
+    <!-- Paso 1: Generar CSR -->
+    <div class="step-box">
+      <div class="step-head">
+        <div class="step-num">1</div>
+        <div class="step-title">Generá el CSR y la clave privada</div>
+      </div>
       <div class="step-body">
-        <div class="step-title">Generá el archivo CSR</div>
-        <div class="step-desc">
-          Hacé clic en el botón para generar el par de archivos que necesitás.
-          Se descargan automáticamente el <strong>.csr</strong> (lo vas a subir a ARCA)
-          y el <strong>.key</strong> (lo guardás para el paso 3).
-        </div>
-        <button class="btn-generar" id="btn-generar" onclick="generarCSR()">
-          <i class="ti ti-key"></i>
-          <span id="btn-generar-label">Generar CSR y clave privada</span>
-        </button>
-        <div class="download-links" id="download-links" style="display:none">
-          <a id="dl-csr" class="dl-btn primary-dl" download>
-            <i class="ti ti-download"></i> Descargar .csr
+        Hacé clic para generar los archivos. Se descargan automáticamente:
+        el <strong>.csr</strong> (lo subís a ARCA) y el <strong>.key</strong> (lo guardás para el paso 4).
+        <div class="dl-row">
+          <button class="dl-btn coral" id="btn-generar" onclick="generarCSR()">
+            <i class="ti ti-key" style="font-size:13px"></i>
+            <span id="btn-label">Generar CSR y .key</span>
+          </button>
+          <a id="dl-csr" class="dl-btn" style="display:none" download>
+            <i class="ti ti-download" style="font-size:12px"></i> Descargar .csr
           </a>
-          <a id="dl-key" class="dl-btn" download>
-            <i class="ti ti-download"></i> Descargar .key
+          <a id="dl-key" class="dl-btn" style="display:none" download>
+            <i class="ti ti-download" style="font-size:12px"></i> Descargar .key
           </a>
         </div>
       </div>
     </div>
 
-    <hr class="divider">
-
-    <!-- Paso 2 -->
-    <div class="step">
-      <div class="step-num">2</div>
-      <div class="step-body">
+    <!-- Paso 2: Subir CSR a ARCA -->
+    <div class="step-box">
+      <div class="step-head">
+        <div class="step-num">2</div>
         <div class="step-title">Subí el .csr a ARCA y descargá el .crt</div>
-        <div class="step-desc">
-          Entrá a <strong>arca.gob.ar</strong> con la clave fiscal del monotributista
-          → <strong>Administrador de Relaciones</strong> → <strong>Generar certificado</strong>.
-          Subí el archivo <strong>.csr</strong> y descargá el <strong>.crt</strong> que te da ARCA.
-        </div>
-        <div class="info-box">
-          <i class="ti ti-info-circle"></i>
-          El estudio contable generalmente tiene acceso a la clave fiscal del monotributista
-          y puede hacer este proceso directamente.
-        </div>
+      </div>
+      <div class="step-body">
+        Entrá a <a href="https://arca.gob.ar" target="_blank">arca.gob.ar</a> con la clave fiscal
+        del monotributista → <strong>Administrador de Relaciones → Generar certificado</strong>
+        → subí el <strong>.csr</strong> → descargá el <strong>.crt</strong> que te da ARCA.
       </div>
     </div>
 
-    <hr class="divider">
-
-    <!-- Paso 3 -->
-    <div class="step">
-      <div class="step-num">3</div>
+    <!-- Paso 3: Crear punto de venta -->
+    <div class="step-box">
+      <div class="step-head">
+        <div class="step-num">3</div>
+        <div class="step-title">Creá el punto de venta en ARCA</div>
+      </div>
       <div class="step-body">
-        <div class="step-title">Subí el .crt y el .key acá</div>
-        <div class="step-desc">El .key es el que descargaste en el paso 1.</div>
+        En ARCA → <strong>Datos Registrales → Puntos de Venta</strong> → <strong>Agregar</strong>.
+        Elegí tipo <strong>"Web Services"</strong> y sistema <strong>"RCEL"</strong>.
+        Anotá el número de PV que te asigna — lo vas a necesitar.
+      </div>
+    </div>
 
+    <!-- Paso 4: Crear relación -->
+    <div class="step-box">
+      <div class="step-head">
+        <div class="step-num">4</div>
+        <div class="step-title">Creá la relación con el servicio wsfe</div>
+      </div>
+      <div class="step-body">
+        En ARCA → <strong>Administrador de Relaciones → Nueva Relación</strong>.
+        Seleccioná:
+        <ul style="margin:6px 0 0 12px;line-height:1.8">
+          <li>Representado: <strong>{{ mono.cuit }}</strong></li>
+          <li>Servicio: <strong>wsfe (Facturación Electrónica)</strong></li>
+          <li>Computador Fiscal: el certificado que generaste</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Paso 5: Subir crt y key -->
+    <div class="step-box done">
+      <div class="step-head">
+        <div class="step-num">5</div>
+        <div class="step-title">Subí el .crt y el .key acá</div>
+      </div>
+      <div class="step-body">
+        El .key es el que descargaste en el paso 1. El .crt es el que te dio ARCA en el paso 2.
         <div class="upload-pair">
           <div class="file-zone" id="zone-cert" onclick="document.getElementById('input-cert').click()">
             <i class="ti ti-file-certificate"></i>
@@ -136,7 +152,6 @@ input[type=file] { display: none; }
             <div class="fz-name" id="name-cert"></div>
           </div>
           <input type="file" id="input-cert" accept=".crt,.pem,.cer">
-
           <div class="file-zone" id="zone-key" onclick="document.getElementById('input-key').click()">
             <i class="ti ti-lock-key"></i>
             <div class="fz-label">Clave privada</div>
@@ -145,7 +160,6 @@ input[type=file] { display: none; }
           </div>
           <input type="file" id="input-key" accept=".key,.pem">
         </div>
-
         <div class="error-box" id="error-box"></div>
       </div>
     </div>
@@ -156,7 +170,7 @@ input[type=file] { display: none; }
     <a href="/monotributistas/{{ mono.id }}" class="btn btn-ghost">Cancelar</a>
     <button class="btn btn-primary" id="btn-guardar" onclick="guardarCertificado()" disabled>
       <div class="spinner"></div>
-      <span class="btn-label">Guardar certificado →</span>
+      <span class="btn-label">Guardar y detectar PV →</span>
     </button>
   </div>
 </div>
@@ -166,43 +180,37 @@ input[type=file] { display: none; }
 <script>
 let certFile = null, keyFile = null;
 
-// ── Paso 1: Generar CSR ──
 async function generarCSR() {
   const btn = document.getElementById('btn-generar');
-  const label = document.getElementById('btn-generar-label');
+  const label = document.getElementById('btn-label');
   btn.disabled = true;
   label.textContent = 'Generando...';
-
   try {
     const res = await fetch('/monotributistas/{{ mono.id }}/generar-csr', { method: 'POST' });
     if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
 
-    // Crear links de descarga
     const dlCSR = document.getElementById('dl-csr');
     dlCSR.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(data.csr_pem);
     dlCSR.download = data.nombre_csr;
+    dlCSR.style.display = 'inline-flex';
 
     const dlKey = document.getElementById('dl-key');
     dlKey.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(data.key_pem);
     dlKey.download = data.nombre_key;
+    dlKey.style.display = 'inline-flex';
 
-    document.getElementById('download-links').style.display = 'flex';
     label.textContent = 'Generar de nuevo';
     btn.disabled = false;
-
-    // Auto-descargar ambos archivos
     dlCSR.click();
     setTimeout(() => dlKey.click(), 800);
-
   } catch(e) {
     label.textContent = 'Error — reintentar';
     btn.disabled = false;
-    alert('Error al generar CSR: ' + e.message);
+    alert('Error al generar: ' + e.message);
   }
 }
 
-// ── Paso 3: Subir archivos ──
 function setFile(tipo, file) {
   if (tipo === 'cert') {
     certFile = file;
@@ -224,19 +232,17 @@ async function guardarCertificado() {
   const errEl = document.getElementById('error-box');
   btn.disabled = true;
   errEl.classList.remove('visible');
-
   const fd = new FormData();
   fd.append('cert_file', certFile);
   fd.append('key_file', keyFile);
-
   try {
     const res = await fetch('/monotributistas/{{ mono.id }}/certificado', { method: 'POST', body: fd });
     if (res.redirected || res.ok) { window.location.href = '/monotributistas/{{ mono.id }}'; return; }
     const data = await res.json().catch(() => ({}));
-    errEl.textContent = data.detail || 'Error al guardar el certificado.';
+    errEl.textContent = data.detail || 'Error al guardar.';
     errEl.classList.add('visible');
   } catch(e) {
-    errEl.textContent = 'Error de conexión: ' + e.message;
+    errEl.textContent = 'Error: ' + e.message;
     errEl.classList.add('visible');
   } finally {
     btn.disabled = false;
