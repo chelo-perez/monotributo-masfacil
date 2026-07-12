@@ -32,7 +32,9 @@
     <div class="page-title">Mis monotributistas</div>
     <div class="page-subtitle">{{ monotributistas | length }} cliente(s) configurado(s)</div>
   </div>
+  {% if monotributistas %}
   <a href="/monotributistas/nuevo" class="btn btn-primary">+ Agregar monotributista</a>
+  {% endif %}
 </div>
 
 <div class="table-card">
