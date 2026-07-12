@@ -2,56 +2,56 @@
 {% block title %}Certificado ARCA — {{ mono.razon_social }}{% endblock %}
 
 {% block extra_styles %}
-.cert-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px; max-width: 560px; }
-.steps { display: flex; flex-direction: column; gap: 0; }
-.step-box {
-  padding: 14px 16px; background: var(--bg);
-  border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px;
-}
-.step-box.done { background: #f0fdf4; border-color: #bbf7d0; }
+.cert-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); max-width: 560px; }
+.step-box { padding: 14px 16px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px; }
 .step-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-.step-num {
-  width: 24px; height: 24px; border-radius: 50%;
-  background: var(--navy); color: white;
-  font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 12px;
-  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-}
-.step-box.done .step-num { background: #16a34a; }
+.step-num { width: 24px; height: 24px; border-radius: 50%; background: var(--navy); color: white; font-family: 'Nunito',sans-serif; font-weight: 800; font-size: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .step-title { font-weight: 700; font-size: 14px; color: var(--navy); }
-.step-box.done .step-title { color: #15803d; }
 .step-body { font-size: 13px; color: var(--muted); line-height: 1.6; padding-left: 34px; }
 .step-body strong { color: var(--text); }
-.step-body a { color: var(--coral); text-decoration: none; font-weight: 700; }
 
 .dl-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-.dl-btn {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 7px 12px; border-radius: 8px;
-  border: 1.5px solid var(--border); background: white;
-  color: var(--navy); font-size: 12px; font-weight: 700;
-  cursor: pointer; text-decoration: none; transition: all .15s;
-  font-family: inherit;
-}
+.dl-btn { display: inline-flex; align-items: center; gap: 5px; padding: 7px 12px; border-radius: 8px; border: 1.5px solid var(--border); background: white; color: var(--navy); font-size: 12px; font-weight: 700; cursor: pointer; text-decoration: none; transition: all .15s; font-family: inherit; }
 .dl-btn:hover { border-color: var(--navy); }
 .dl-btn.coral { background: var(--coral); color: white; border-color: var(--coral); }
 .dl-btn.coral:hover { background: #e06b4a; }
 .dl-btn:disabled { opacity: .5; cursor: not-allowed; }
 
+/* Instructivo animado */
+.inst-screen { animation: instFadeIn .25s ease; }
+@keyframes instFadeIn { from { opacity:0; transform:translateX(10px); } to { opacity:1; transform:none; } }
+.inst-mock { background:#fff;border-bottom:1px solid var(--border); }
+.inst-mock-bar { display:flex;align-items:center;gap:5px;background:#f0f0f0;padding:5px 8px; }
+.inst-mock-dot { width:6px;height:6px;border-radius:50%; }
+.inst-mock-url { flex:1;background:#fff;border-radius:3px;font-size:.48rem;color:#888;padding:2px 6px;margin-left:4px; }
+.inst-mock-body { padding:10px 12px;min-height:90px; }
+.inst-pulse { animation: instPulse 1.8s ease-in-out infinite; }
+@keyframes instPulse { 0%,100%{box-shadow:0 0 0 0 rgba(0,158,227,0);} 50%{box-shadow:0 0 0 4px rgba(0,158,227,.2);} }
+.inst-click-anim { animation: instClick 2.2s ease infinite; }
+@keyframes instClick { 0%,75%,100%{transform:scale(1);opacity:1;} 85%{transform:scale(.95);opacity:.85;} }
+.inst-caption { padding:12px 14px;background:#fff; }
+.inst-step-label { font-size:.65rem;font-weight:700;color:var(--coral);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px; }
+.inst-caption-title { font-size:.85rem;font-weight:700;color:var(--navy);font-family:'Nunito',sans-serif;margin-bottom:4px; }
+.inst-caption-desc { font-size:.76rem;color:var(--soft);line-height:1.5; }
+<
+
 .upload-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
-.file-zone {
-  border: 2px dashed var(--border); border-radius: 8px;
-  padding: 14px 10px; text-align: center; cursor: pointer; transition: all .2s;
-}
+.file-zone { border: 2px dashed var(--border); border-radius: 8px; padding: 14px 10px; text-align: center; cursor: pointer; transition: all .2s; }
 .file-zone:hover, .file-zone.has-file { border-color: var(--coral); background: #fff8f6; }
 .file-zone i { font-size: 22px; color: var(--muted); display: block; margin-bottom: 4px; }
 .fz-label { font-size: 12px; font-weight: 700; color: var(--navy); }
 .fz-ext { font-size: 10px; color: var(--muted); }
 .fz-name { font-size: 10px; color: var(--coral); font-weight: 700; margin-top: 3px; word-break: break-all; }
 input[type=file] { display: none; }
-
 .error-box { background: #FEF2F2; border: 1px solid #FECACA; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #991B1B; margin-top: 10px; display: none; }
 .error-box.visible { display: block; }
 .form-actions { display: flex; gap: 10px; margin-top: 16px; }
+
+/* Sección instructivo colapsable */
+.inst-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #f0f4ff; border: 1.5px solid #c7d2fe; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 700; color: var(--navy); margin-top: 6px; }
+.inst-toggle:hover { background: #e0e7ff; }
+.inst-container { display: none; margin-top: 8px; }
+.inst-container.open { display: block; }
 {% endblock %}
 
 {% block content %}
@@ -66,104 +66,674 @@ input[type=file] { display: none; }
   </div>
 </div>
 
-<div class="cert-card">
-  <div class="steps">
+<div class="cert-card" style="padding:20px">
 
-    <!-- Paso 1: Generar CSR -->
-    <div class="step-box">
-      <div class="step-head">
-        <div class="step-num">1</div>
-        <div class="step-title">Generá el CSR y la clave privada</div>
+  <!-- Paso 1: Generar CSR -->
+  <div class="step-box">
+    <div class="step-head">
+      <div class="step-num">1</div>
+      <div class="step-title">Generá el CSR y la clave privada</div>
+    </div>
+    <div class="step-body">
+      Hacé clic para generar los archivos. Se descargan automáticamente:
+      el <strong>.csr</strong> (lo subís a ARCA) y el <strong>.key</strong> (lo guardás para el paso 3).
+      <div class="dl-row">
+        <button class="dl-btn coral" id="btn-generar" onclick="generarCSR()">
+          <i class="ti ti-key" style="font-size:13px"></i>
+          <span id="btn-label">Generar CSR y .key</span>
+        </button>
+        <a id="dl-csr" class="dl-btn" style="display:none" download>
+          <i class="ti ti-download" style="font-size:12px"></i> Descargar .csr
+        </a>
+        <a id="dl-key" class="dl-btn" style="display:none" download>
+          <i class="ti ti-download" style="font-size:12px"></i> Descargar .key
+        </a>
       </div>
-      <div class="step-body">
-        Hacé clic para generar los archivos. Se descargan automáticamente:
-        el <strong>.csr</strong> (lo subís a ARCA) y el <strong>.key</strong> (lo guardás para el paso 4).
-        <div class="dl-row">
-          <button class="dl-btn coral" id="btn-generar" onclick="generarCSR()">
-            <i class="ti ti-key" style="font-size:13px"></i>
-            <span id="btn-label">Generar CSR y .key</span>
-          </button>
-          <a id="dl-csr" class="dl-btn" style="display:none" download>
-            <i class="ti ti-download" style="font-size:12px"></i> Descargar .csr
-          </a>
-          <a id="dl-key" class="dl-btn" style="display:none" download>
-            <i class="ti ti-download" style="font-size:12px"></i> Descargar .key
-          </a>
+    </div>
+  </div>
+
+  <!-- Paso 2: Instructivo ARCA -->
+  <div class="step-box">
+    <div class="step-head">
+      <div class="step-num">2</div>
+      <div class="step-title">Hacé el trámite en ARCA (certificado + relación + PV)</div>
+    </div>
+    <div class="step-body">
+      Seguí el instructivo paso a paso. Al final vas a tener el <strong>.crt</strong>
+      y el punto de venta configurado.
+
+      <button class="inst-toggle" id="inst-toggle-btn" onclick="toggleInstructivo()">
+        <span>📋 Ver instructivo animado paso a paso (17 pasos)</span>
+        <i class="ti ti-chevron-down" id="inst-chevron"></i>
+      </button>
+
+      <div class="inst-container" id="inst-container">
+        <div style="margin-top:4px">
+          <!-- Barra de progreso -->
+          <div style="display:flex;gap:3px;margin-bottom:10px;padding:0 2px">
+            {% for i in range(17) %}
+            <div id="dot-{{i}}" style="height:3px;border-radius:2px;background:var(--border);flex:1;transition:background .3s"></div>
+            {% endfor %}
+          </div>
+
+          <div style="border-radius:12px;overflow:hidden;border:1px solid var(--border);background:#fff">
+{# 0: Login ARCA #}
+      <div class="inst-screen" id="inst-0">
+        <div class="inst-mock">
+          <div class="inst-mock-bar"><div class="inst-mock-dot" style="background:#ff5f57"></div><div class="inst-mock-dot" style="background:#febc2e"></div><div class="inst-mock-dot" style="background:#28c840"></div><div class="inst-mock-url">arca.gob.ar</div></div>
+          <div class="inst-mock-body" style="padding:10px 14px;background:#f4f6fb">
+            <div style="text-align:center;padding:4px 0 8px">
+              <div style="font-size:.55rem;color:#444;margin-bottom:4px">Ingresar con Clave Fiscal</div>
+              <div style="font-size:.8rem;margin-bottom:6px">🔒</div>
+              <div style="height:1px;background:#dde1ea;margin:0 -14px"></div>
+            </div>
+            <div style="font-size:.52rem;font-weight:700;color:#222;margin:8px 0 3px">CUIT/CUIL</div>
+            <div style="border:1.5px solid #b0b8c9;border-radius:6px;background:#fff;padding:6px 10px;margin-bottom:10px;font-size:.65rem;color:#222;font-weight:600">27-18374652-1</div>
+            <div class="inst-click-anim" style="background:#009ee3;color:#fff;border-radius:6px;text-align:center;padding:8px;font-size:.65rem;font-weight:700;margin-bottom:10px">Siguiente</div>
+            <div style="text-align:center;font-size:.5rem;color:#009ee3;margin-bottom:8px">¿Olvidaste tu clave?</div>
+            <div style="border:1.5px solid #009ee3;border-radius:6px;text-align:center;padding:6px;font-size:.55rem;color:#009ee3;font-weight:700;margin-bottom:6px">Obtené tu Clave Fiscal</div>
+            <div style="text-align:center;font-size:.45rem;color:#888">¿Qué es la Clave Fiscal? · Ayuda</div>
+          </div>
+        </div>
+        <div class="inst-caption">
+          <div class="inst-step-label">Parte 1 · Paso 1 de 6</div>
+          <div class="inst-caption-title">Ingresá a ARCA con tu Clave Fiscal</div>
+          <div class="inst-caption-desc">Entrá a <strong>arca.gob.ar</strong>, ingresá tu CUIT y tocá <strong>Siguiente</strong>.</div>
+        </div>
+      </div>
+
+      {# 1: Portal → Certificados #}
+      <div class="inst-screen" id="inst-1" style="display:none">
+        <div class="inst-mock">
+          <div class="inst-mock-bar"><div class="inst-mock-dot" style="background:#ff5f57"></div><div class="inst-mock-dot" style="background:#febc2e"></div><div class="inst-mock-dot" style="background:#28c840"></div><div class="inst-mock-url">portalcf.cloud.afip.gob.ar</div></div>
+          <div style="background:#1a2e5a;padding:6px 10px;display:flex;align-items:center;justify-content:space-between">
+            <div style="font-size:.75rem;font-weight:900;color:#fff">ARCA</div>
+            <div style="font-size:.42rem;color:#a0b4d0;text-align:right"><div style="font-weight:700;color:#fff">LOPEZ A.</div><div>27-18374652-1</div></div>
+          </div>
+          <div style="background:#1a2e5a;padding:6px 4px 8px;display:flex;justify-content:space-around">
+            <div style="text-align:center"><div style="width:22px;height:22px;border-radius:50%;border:1.5px solid rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;font-size:.55rem;color:#fff;margin:0 auto 2px">$</div><div style="font-size:.38rem;color:#a0b4d0">Estado</div></div>
+            <div style="text-align:center"><div style="width:22px;height:22px;border-radius:50%;border:1.5px solid rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;font-size:.55rem;color:#fff;margin:0 auto 2px">✓</div><div style="font-size:.38rem;color:#a0b4d0">Registro</div></div>
+            <div style="text-align:center"><div style="width:22px;height:22px;border-radius:50%;border:1.5px solid rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;font-size:.55rem;color:#fff;margin:0 auto 2px">≡</div><div style="font-size:.38rem;color:#a0b4d0">Trámites</div></div>
+            <div style="text-align:center"><div style="width:22px;height:22px;border-radius:50%;border:1.5px solid rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;font-size:.55rem;color:#fff;margin:0 auto 2px">👥</div><div style="font-size:.38rem;color:#a0b4d0">Relaciones</div></div>
+          </div>
+          <div style="background:#fff;padding:6px 8px">
+            <div style="border:1px solid #ccc;border-radius:20px;padding:4px 10px;font-size:.5rem;color:#aaa;display:flex;align-items:center;justify-content:space-between"><span>¿Qué necesitás? | Buscá trámites y servicios</span><span style="color:#009ee3">🔍</span></div>
+          </div>
+          <div style="background:#fff;padding:4px 8px 8px">
+            <div style="font-size:.48rem;font-weight:700;color:#333;margin-bottom:4px">Servicios | <span style="color:#009ee3">Más utilizados</span></div>
+            <div style="border:1px solid #e0e4ed;border-radius:4px;overflow:hidden">
+              <div style="font-size:.52rem;color:#333;padding:4px 8px;border-bottom:1px solid #e0e4ed;text-align:center">Comprobantes en línea</div>
+              <div style="font-size:.52rem;color:#333;padding:4px 8px;border-bottom:1px solid #e0e4ed;text-align:center">Monotributo</div>
+              <div class="inst-pulse" style="font-size:.52rem;font-weight:700;color:#009ee3;padding:4px 8px;border-bottom:1px solid #e0e4ed;text-align:center;background:#f0f8ff">Administración de Certificados Digitales</div>
+              <div style="font-size:.52rem;color:#009ee3;padding:4px 8px;text-align:center">Ver todos</div>
+            </div>
+          </div>
+        </div>
+        <div class="inst-caption">
+          <div class="inst-step-label">Parte 1 · Paso 2 de 6</div>
+          <div class="inst-caption-title">Buscá "Certificados Digitales"</div>
+          <div class="inst-caption-desc">Tocá <strong>Administración de Certificados Digitales</strong>. Si no aparece, buscalo en la barra.</div>
+        </div>
+      </div>
+
+      {# 2: Pantalla inicial Certificados #}
+      <div class="inst-screen" id="inst-2" style="display:none">
+        <div class="inst-mock">
+          <div class="inst-mock-bar"><div class="inst-mock-dot" style="background:#ff5f57"></div><div class="inst-mock-dot" style="background:#febc2e"></div><div class="inst-mock-dot" style="background:#28c840"></div><div class="inst-mock-url">serviciosweb.afip.gob.ar/clavefisca...</div></div>
+          <div class="inst-mock-body" style="padding:8px 10px;background:#fff">
+            <div style="font-size:.6rem;font-weight:700;color:#000;margin-bottom:6px">Administración de Certificados Digitales</div>
+            <div style="background:#ddeeff;border:1px solid #aaccee;border-radius:3px;padding:5px 7px;display:flex;align-items:center;gap:6px;margin-bottom:8px">
+              <div style="font-size:1rem">👤</div>
+              <div style="font-size:.44rem;color:#333">Bienvenido Usuario <strong>LOPEZ ANA CAROLINA [27-18374652-1]</strong></div>
+            </div>
+            <div style="text-align:center;margin-bottom:8px">
+              <div style="display:inline-block;background:#e8f0fe;border:1px solid #aab;border-radius:3px;padding:3px 14px;font-size:.55rem;color:#333">Certificados</div>
+            </div>
+            <div style="display:flex;gap:6px;justify-content:center">
+              <div class="inst-pulse" style="background:#4a90d9;color:#fff;border-radius:3px;padding:4px 10px;font-size:.55rem;font-weight:700">Agregar alias</div>
+              <div style="background:#4a90d9;color:#fff;border-radius:3px;padding:4px 10px;font-size:.55rem;font-weight:700">VOLVER</div>
+            </div>
+          </div>
+        </div>
+        <div class="inst-caption">
+          <div class="inst-step-label">Parte 1 · Paso 3 de 6</div>
+          <div class="inst-caption-title">Tocá "Agregar alias"</div>
+          <div class="inst-caption-desc">Tocá el botón azul <strong>Agregar alias</strong>.</div>
+        </div>
+      </div>
+
+      {# 3: Formulario alias + CSR #}
+      <div class="inst-screen" id="inst-3" style="display:none">
+        <div class="inst-mock">
+          <div class="inst-mock-bar"><div class="inst-mock-dot" style="background:#ff5f57"></div><div class="inst-mock-dot" style="background:#febc2e"></div><div class="inst-mock-dot" style="background:#28c840"></div><div class="inst-mock-url">serviciosweb.afip.gob.ar/clavefisca...</div></div>
+          <div class="inst-mock-body" style="padding:8px 10px;background:#fff">
+            <div style="font-size:.6rem;font-weight:700;color:#000;margin-bottom:5px">Administración de Certificados Digitales</div>
+            <div style="background:#ddeeff;border:1px solid #aaccee;border-radius:3px;padding:4px 7px;margin-bottom:5px;font-size:.44rem;color:#333">Bienvenido Usuario <strong>LOPEZ ANA CAROLINA [27-18374652-1]</strong></div>
+            <div style="background:#e8f4ff;border:1px solid #aaccee;border-radius:3px;padding:3px 7px;margin-bottom:5px;font-size:.44rem;color:#333;text-align:center">Usted está solicitando un certificado con las siguientes características</div>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+              <div style="font-size:.48rem;font-weight:700;color:#333;width:28px">CUIT</div>
+              <div style="font-size:.5rem;color:#333">27-18374652-1</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+              <div style="font-size:.48rem;font-weight:700;color:#333;width:28px">Alias</div>
+              <div style="border:1px solid #aaa;border-radius:2px;background:#fff;padding:3px 6px;font-size:.5rem;color:#333;flex:1">Mono MF</div>
+            </div>
+            <div style="font-size:.44rem;color:#555;margin-bottom:3px">Para obtener un nuevo certificado, debe subir un CSR...</div>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+              <div style="border:1px solid #aaa;border-radius:2px;background:#e8e8e8;padding:3px 6px;font-size:.46rem;color:#333;white-space:nowrap">Seleccionar archivo</div>
+              <div style="font-size:.44rem;color:#555">csr_27183746521.csr</div>
+            </div>
+            <div style="display:flex;gap:6px;justify-content:center">
+              <div class="inst-click-anim" style="background:#4a90d9;color:#fff;border-radius:3px;padding:4px 10px;font-size:.55rem;font-weight:700">Agregar alias</div>
+              <div style="background:#4a90d9;color:#fff;border-radius:3px;padding:4px 10px;font-size:.55rem;font-weight:700">VOLVER</div>
+            </div>
+          </div>
+        </div>
+        <div class="inst-caption">
+          <div class="inst-step-label">Parte 1 · Paso 4 de 6</div>
+          <div class="inst-caption-title">Completá el alias y subí el CSR</div>
+          <div class="inst-caption-desc">En Alias escribí <strong>Mono MF</strong>. Después seleccioná el archivo CSR que descargaste en el primer paso y tocá <strong>Agregar alias</strong>.</div>
+        </div>
+      </div>
+
+      {# 4: Tabla confirmación → Ver #}
+      <div class="inst-screen" id="inst-4" style="display:none">
+        <div class="inst-mock">
+          <div class="inst-mock-bar"><div class="inst-mock-dot" style="background:#ff5f57"></div><div class="inst-mock-dot" style="background:#febc2e"></div><div class="inst-mock-dot" style="background:#28c840"></div><div class="inst-mock-url">serviciosweb.afip.gob.ar/clavefisca...</div></div>
+          <div class="inst-mock-body" style="padding:8px 10px;background:#fff">
+            <div style="font-size:.6rem;font-weight:700;color:#000;margin-bottom:5px">Administración de Certificados Digitales</div>
+            <div style="background:#ddeeff;border:1px solid #aaccee;border-radius:3px;padding:4px 7px;margin-bottom:6px;font-size:.44rem;color:#333">Bienvenido Usuario <strong>LOPEZ ANA CAROLINA [27-18374652-1]</strong></div>
+            <div style="text-align:center;margin-bottom:6px">
+              <div style="display:inline-block;background:#e8f0fe;border:1px solid #aab;border-radius:3px;padding:3px 14px;font-size:.55rem;color:#333">Certificados</div>
+            </div>
+            <div style="border:1px solid #ccc;border-radius:3px;overflow:hidden;margin-bottom:8px">
+              <div style="display:flex;background:#e8f0fe;border-bottom:1px solid #ccc">
+                <div style="flex:1;font-size:.48rem;font-weight:700;color:#333;padding:3px 8px">Alias</div>
+                <div style="font-size:.48rem;font-weight:700;color:#333;padding:3px 8px">Ver Detalle</div>
+              </div>
+              <div style="display:flex;align-items:center">
+                <div style="flex:1;font-size:.5rem;color:#333;padding:4px 8px">Mono MF</div>
+                <div class="inst-pulse" style="font-size:.5rem;color:#009ee3;font-weight:700;padding:4px 8px;text-decoration:underline">Ver</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;justify-content:center">
+              <div style="background:#4a90d9;color:#fff;border-radius:3px;padding:4px 10px;font-size:.52rem;font-weight:700">Agregar alias</div>
+              <div style="background:#4a90d9;color:#fff;border-radius:3px;padding:4px 10px;font-size:.52rem;font-weight:700">VOLVER</div>
+            </div>
+          </div>
+        </div>
+        <div class="inst-caption">
+          <div class="inst-step-label">Parte 1 · Paso 5 de 6</div>
+          <div class="inst-caption-title">Alias creado — tocá "Ver"</div>
+          <div class="inst-caption-desc">El alias <strong>Mono MF</strong> aparece en la tabla. Tocá <strong>Ver</strong> para entrar al detalle.</div>
+        </div>
+      </div>
+
+      {# 5: Detalle → descargar .crt #}
+      <div class="inst-screen" id="inst-5" style="display:none">
+        <div class="inst-mock">
+          <div class="inst-mock-bar"><div class="inst-mock-dot" style="background:#ff5f57"></div><div class="inst-mock-dot" style="background:#febc2e"></div><div class="inst-mock-dot" style="background:#28c840"></div><div class="inst-mock-url">serviciosweb.afip.gob.ar/clavefisca...</div></div>
+          <div class="inst-mock-body" style="padding:8px 10px;background:#fff">
+            <div style="font-size:.6rem;font-weight:700;color:#000;margin-bottom:5px">Administración de Certificados Digitales</div>
+            <div style="background:#ddeeff;border:1px solid #aaccee;border-radius:3px;padding:4px 7px;margin-bottom:5px;font-size:.44rem;color:#333">Bienvenido Usuario <strong>LOPEZ ANA CAROLINA [27-18374652-1]</strong></div>
+            <div style="font-size:.44rem;color:#333;margin-bottom:1px"><strong>CUIT</strong> 27-18374652-1</div>
+            <div style="font-size:.44rem;color:#333;margin-bottom:1px"><strong>Alias</strong> Mono MF</div>
+            <div style="font-size:.42rem;color:#555;margin-bottom:5px"><strong>DN</strong> SERIALNUMBER=CUIT 23..., CN=más fácil</div>
+            <div style="border:1px solid #ccc;border-radius:3px;overflow:hidden;margin-bottom:7px">
+              <div style="display:flex;background:#e8f0fe;border-bottom:1px solid #ccc">
+                <div style="font-size:.4rem;font-weight:700;color:#333;padding:3px 3px;flex:1.5">Nro Serie</div>
+                <div style="font-size:.4rem;font-weight:700;color:#333;padding:3px 3px;flex:1">Emisión</div>
+                <div style="font-size:.4rem;font-weight:700;color:#333;padding:3px 3px;flex:1">Venc.</div>
+                <div style="font-size:.4rem;font-weight:700;color:#333;padding:3px 3px">Estado</div>
+                <div style="font-size:.4rem;font-weight:700;color:#333;padding:3px 5px">↓</div>
+              </div>
+              <div style="display:flex;align-items:center">
+                <div style="font-size:.38rem;color:#333;padding:3px 3px;flex:1.5">79b0e7...</div>
+                <div style="font-size:.38rem;color:#333;padding:3px 3px;flex:1">6/25/26</div>
+                <div style="font-size:.38rem;color:#333;padding:3px 3px;flex:1">6/24/28</div>
+                <div style="font-size:.38rem;color:#009900;font-weight:700;padding:3px 3px">VALIDO</div>
+                <div class="inst-click-anim" style="font-size:.75rem;padding:3px 5px">📥</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;justify-content:center">
+              <div style="background:#4a90d9;color:#fff;border-radius:3px;padding:3px 8px;font-size:.48rem;font-weight:700">Agregar certificado</div>
+              <div style="background:#4a90d9;color:#fff;border-radius:3px;padding:3px 8px;font-size:.48rem;font-weight:700">VOLVER</div>
+            </div>
+          </div>
+        </div>
+        <div class="inst-caption">
+          <div class="inst-step-label">Parte 1 · Paso 6 de 6</div>
+          <div class="inst-caption-title">Descargá el certificado .crt</div>
+          <div class="inst-caption-desc">El estado dice <strong>VALIDO</strong>. Tocá 📥 para descargar el <strong>.crt</strong>. Guardalo — lo subís en el último paso.</div>
+        </div>
+      </div>
+
+      {# 6: Portal → Relaciones #}
+      <div class="inst-screen" id="inst-6" style="display:none">
+        <div class="inst-mock">
+          <div class="inst-mock-bar"><div class="inst-mock-dot" style="background:#ff5f57"></div><div class="inst-mock-dot" style="background:#febc2e"></div><div class="inst-mock-dot" style="background:#28c840"></div><div class="inst-mock-url">portalcf.cloud.afip.gob.ar</div></div>
+          <div style="background:#1a2e5a;padding:6px 10px;display:flex;align-items:center;justify-content:space-between">
+            <div style="font-size:.75rem;font-weight:900;color:#fff">ARCA</div>
+            <div style="font-size:.42rem;color:#a0b4d0;text-align:right"><div style="font-weight:700;color:#fff">LOPEZ A.</div><div>27-18374652-1</div></div>
+          </div>
+          <div style="background:#1a2e5a;padding:6px 4px 8px;display:flex;justify-content:space-around">
+            <div style="text-align:center"><div style="width:22px;height:22px;border-radius:50%;border:1.5px solid rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;font-size:.55rem;color:#fff;margin:0 auto 2px">$</div><div style="font-size:.38rem;color:#a0b4d0">Estado</div></div>
+            <div style="text-align:center"><div style="width:22px;height:22px;border-radius:50%;border:1.5px solid rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;font-size:.55rem;color:#fff;margin:0 auto 2px">✓</div><div style="font-size:.38rem;color:#a0b4d0">Registro</div></div>
+            <div style="text-align:center"><div style="width:22px;height:22px;border-radius:50%;border:1.5px solid rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;font-size:.55rem;color:#fff;margin:0 auto 2px">≡</div><div style="font-size:.38rem;color:#a0b4d0">Trámites</div></div>
+            <div class="inst-pulse" style="text-align:center"><div style="width:22px;height:22px;border-radius:50%;border:2px solid #009ee3;background:rgba(0,158,227,.2);display:flex;align-items:center;justify-content:center;font-size:.55rem;color:#fff;margin:0 auto 2px">👥</div><div style="font-size:.38rem;color:#009ee3;font-weight:700">Relaciones</div></div>
+          </div>
+          <div style="background:#fff;padding:6px 8px">
+            <div style="border:1px solid #ccc;border-radius:20px;padding:4px 10px;font-size:.5rem;color:#aaa;display:flex;align-items:center;justify-content:space-between"><span>¿Qué necesitás? | Buscá trámites y servicios</span><span style="color:#009ee3">🔍</span></div>
+          </div>
+          <div style="background:#fff;padding:4px 8px 8px">
+            <div style="font-size:.48rem;font-weight:700;color:#333;margin-bottom:4px">Servicios | <span style="color:#009ee3">Más utilizados</span></div>
+            <div style="border:1px solid #e0e4ed;border-radius:4px;overflow:hidden">
+              <div style="font-size:.52rem;color:#333;padding:4px 8px;border-bottom:1px solid #e0e4ed;text-align:center">Certificados Digitales</div>
+              <div class="inst-pulse" style="font-size:.52rem;font-weight:700;color:#009ee3;padding:4px 8px;border-bottom:1px solid #e0e4ed;text-align:center;background:#f0f8ff">Administrador de Relaciones de Clave Fiscal</div>
+              <div style="font-size:.52rem;color:#009ee3;padding:4px 8px;text-align:center">Ver todos</div>
+            </div>
+          </div>
+        </div>
+        <div class="inst-caption">
+          <div class="inst-step-label">Parte 2 · Paso 1 de 5</div>
+          <div class="inst-caption-title">Buscá "Relaciones de Clave Fiscal"</div>
+          <div class="inst-caption-desc">Volvé al inicio de ARCA y tocá <strong>Administrador de Relaciones de Clave Fiscal</strong>.</div>
+        </div>
+      </div>
+
+      {# 7: Pantalla inicial Relaciones → Adherir Servicio #}
+      <div class="inst-screen" id="inst-7" style="display:none">
+        <div class="inst-mock">
+          <div class="inst-mock-bar"><div class="inst-mock-dot" style="background:#ff5f57"></div><div class="inst-mock-dot" style="background:#febc2e"></div><div class="inst-mock-dot" style="background:#28c840"></div><div class="inst-mock-url">serviciosweb.afip.gob.ar/claveFisc...</div></div>
+          <div class="inst-mock-body" style="padding:8px 10px;background:#fff">
+            <div style="font-size:.6rem;font-weight:700;color:#000;margin-bottom:6px">Administrador de Relaciones</div>
+            <div style="background:#e8f4ff;border:1px solid #aaccee;border-radius:3px;padding:5px 8px;margin-bottom:6px;font-size:.44rem;color:#333">
+              <strong>Servicio Administrador de Relaciones</strong><br>
+              Este servicio le permite gestionar autorizaciones para operar servicios en su nombre.
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
+                <div style="font-size:.44rem;color:#333;flex:1">Utilizando <strong>"Adherir Servicio"</strong> podrá asociar un servicio a su Clave Fiscal.</div>
+                <div class="inst-pulse" style="background:#4a90d9;color:#fff;border-radius:3px;padding:3px 7px;font-size:.46rem;font-weight:700;white-space:nowrap">ADHERIR SERVICIO</div>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
+                <div style="font-size:.44rem;color:#333;flex:1">Utilizando <strong>"Nueva Relación"</strong> podrá generar nuevas autorizaciones para utilizar servicios.</div>
+                <div style="background:#4a90d9;color:#fff;border-radius:3px;padding:3px 7px;font-size:.46rem;font-weight:700;white-space:nowrap">Nueva Relación</div>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
+                <div style="font-size:.44rem;color:#333;flex:1">Utilizando <strong>"Consultar"</strong> podrá buscar las distintas relaciones existentes.</div>
+                <div style="background:#4a90d9;color:#fff;border-radius:3px;padding:3px 7px;font-size:.46rem;font-weight:700;white-space:nowrap">CONSULTAR</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="inst-caption">
+          <div class="inst-step-label">Parte 2 · Paso 2 de 5</div>
+          <div class="inst-caption-title">Tocá "Adherir Servicio"</div>
+          <div class="inst-caption-desc">En esta pantalla tocá el botón azul <strong>ADHERIR SERVICIO</strong>.</div>
+        </div>
+      </div>
+
+      {# 8: Lista de servicios → Facturación Electrónica bajo ARCA #}
+      <div class="inst-screen" id="inst-8" style="display:none">
+        <div class="inst-mock">
+          <div class="inst-mock-bar"><div class="inst-mock-dot" style="background:#ff5f57"></div><div class="inst-mock-dot" style="background:#febc2e"></div><div class="inst-mock-dot" style="background:#28c840"></div><div class="inst-mock-url">serviciosweb.afip.gob.ar/claveFisc...</div></div>
+          <div class="inst-mock-body" style="padding:6px 10px;background:#fff">
+            <div style="font-size:.55rem;font-weight:700;color:#000;margin-bottom:4px">Selección de Servicio a Habilitar</div>
+            <div style="font-size:.42rem;color:#555;margin-bottom:5px">Seleccione el servicio de su interés. Los servicios están ordenados alfabéticamente.</div>
+            {# Logos de organismos #}
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-bottom:5px">
+              <div style="border:1px solid #ccc;border-radius:3px;background:#f5f5f5;padding:3px 5px;font-size:.44rem;font-weight:700;color:#555">ANAC</div>
+              <div style="border:1px solid #ccc;border-radius:3px;background:#f5f5f5;padding:3px 5px;font-size:.44rem;font-weight:700;color:#1a6e3c">ANSES</div>
+              <div style="border:1px solid #ccc;border-radius:3px;background:#f5f5f5;padding:3px 5px;font-size:.44rem;font-weight:700;color:#0055a4">API</div>
+              <div class="inst-pulse" style="border:2px solid #009ee3;border-radius:3px;background:#f0f8ff;padding:3px 5px;font-size:.48rem;font-weight:900;color:#1a2e5a">ARCA</div>
+            </div>
+            {# Lista bajo ARCA #}
+            <div style="font-size:.42rem;color:#555;margin-bottom:2px">➤ WebServices</div>
+            <div style="border:1px solid #e0e4ed;border-radius:3px;overflow:hidden">
+              <div style="font-size:.44rem;color:#777;padding:3px 6px;border-bottom:1px solid #eee">Actualización/Consulta PEMA</div>
+              <div style="font-size:.44rem;color:#777;padding:3px 6px;border-bottom:1px solid #eee">Archivo de Proveedores - Reproweb</div>
+              <div class="inst-pulse" style="font-size:.46rem;font-weight:700;color:#009ee3;padding:3px 6px;background:#f0f8ff;border-bottom:1px solid #eee">Facturación Electrónica</div>
+              <div style="font-size:.44rem;color:#777;padding:3px 6px">Información sobre relaciones laborales...</div>
+            </div>
+          </div>
+        </div>
+        <div class="inst-caption">
+          <div class="inst-step-label">Parte 2 · Paso 3 de 5</div>
+          <div class="inst-caption-title">Elegí "Facturación Electrónica" bajo ARCA</div>
+          <div class="inst-caption-desc">Tocá el logo <strong>ARCA</strong>, después <strong>WebServices</strong> y elegí <strong>Facturación Electrónica</strong>.</div>
+        </div>
+      </div>
+
+      {# 9: Selección del representante → dropdown Más Fácil → Confirmar #}
+      {# 9: Incorporar nueva Relación → BUSCAR en Representante #}
+      <div class="inst-screen" id="inst-9" style="display:none">
+        <div class="inst-mock">
+          <div class="inst-mock-bar"><div class="inst-mock-dot" style="background:#ff5f57"></div><div class="inst-mock-dot" style="background:#febc2e"></div><div class="inst-mock-dot" style="background:#28c840"></div><div class="inst-mock-url">serviciosweb.afip.gob.ar/claveFisc...</div></div>
+          <div class="inst-mock-body" style="padding:8px 10px;background:#fff">
+            <div style="font-size:.55rem;font-weight:700;color:#000;margin-bottom:4px">Administrador de Relaciones</div>
+            <div style="background:#ddeeff;border:1px solid #aaccee;border-radius:3px;padding:4px 7px;margin-bottom:5px;font-size:.44rem;color:#333">Bienvenido Usuario <strong>LOPEZ ANA CAROLINA [27-18374652-1]</strong></div>
+            <div style="background:#e8f4ff;border:1px solid #aaccee;border-radius:3px;padding:3px 7px;margin-bottom:5px;font-size:.44rem;text-align:center;color:#333">Incorporar nueva Relación</div>
+            <div style="border:1px solid #b0c8e0;border-radius:3px;overflow:hidden">
+              <div style="display:flex;align-items:center;border-bottom:1px solid #d0dcea;background:#f0f4f8;padding:3px 6px">
+                <div style="font-size:.44rem;color:#555;width:70px">Autorizante</div>
+                <div style="font-size:.44rem;font-weight:700;color:#333;flex:1">LOPEZ ANA CAROLINA [27-18374652-1]</div>
+              </div>
+              <div style="display:flex;align-items:center;border-bottom:1px solid #d0dcea;padding:3px 6px">
+                <div style="font-size:.44rem;color:#555;width:70px">Representado</div>
+                <div style="font-size:.44rem;color:#333;flex:1">LOPEZ ANA CAROLINA [27-18374652-1] ▾</div>
+              </div>
+              <div style="display:flex;align-items:center;border-bottom:1px solid #d0dcea;background:#f0f4f8;padding:3px 6px;gap:4px">
+                <div style="font-size:.44rem;color:#555;width:70px">Servicio</div>
+                <div style="font-size:.42rem;color:#333;flex:1">Facturación Electrónica (Nivel mínimo 3)</div>
+                <div style="background:#4a90d9;color:#fff;border-radius:2px;padding:2px 5px;font-size:.42rem;font-weight:700">BUSCAR</div>
+              </div>
+              <div style="display:flex;align-items:center;padding:3px 6px;gap:4px">
+                <div style="font-size:.44rem;color:#555;width:70px">Representante</div>
+                <div style="font-size:.42rem;color:#333;flex:1">LOPEZ ANA CAROLINA [Clave Fiscal Nivel 3]</div>
+                <div class="inst-pulse" style="background:#4a90d9;color:#fff;border-radius:2px;padding:2px 5px;font-size:.42rem;font-weight:700">BUSCAR</div>
+              </div>
+            </div>
+            <div style="text-align:center;margin-top:6px">
+              <div style="display:inline-block;background:#4a90d9;color:#fff;border-radius:3px;padding:4px 14px;font-size:.52rem;font-weight:700">CONFIRMAR</div>
+            </div>
+          </div>
+        </div>
+        <div class="inst-caption">
+          <div class="inst-step-label">Parte 2 · Paso 4 de 6</div>
+          <div class="inst-caption-title">Tocá BUSCAR en "Representante"</div>
+          <div class="inst-caption-desc">El Representante aparece con tu nombre. Tocá <strong>BUSCAR</strong> al lado de Representante para cambiarlo por <strong>Mono MF</strong>.</div>
+        </div>
+      </div>
+
+      {# 10: Selección representante → dropdown Más Fácil → CONFIRMAR #}
+      <div class="inst-screen" id="inst-10" style="display:none">
+        <div class="inst-mock">
+          <div class="inst-mock-bar"><div class="inst-mock-dot" style="background:#ff5f57"></div><div class="inst-mock-dot" style="background:#febc2e"></div><div class="inst-mock-dot" style="background:#28c840"></div><div class="inst-mock-url">serviciosweb.afip.gob.ar/claveFisc...</div></div>
+          <div class="inst-mock-body" style="padding:8px 10px;background:#fff">
+            <div style="font-size:.55rem;font-weight:700;color:#000;margin-bottom:4px">Administrador de Relaciones</div>
+            <div style="background:#ddeeff;border:1px solid #aaccee;border-radius:3px;padding:4px 7px;margin-bottom:5px;font-size:.44rem;color:#333">Bienvenido Usuario <strong>LOPEZ ANA CAROLINA [27-18374652-1]</strong></div>
+            <div style="background:#e8f4ff;border:1px solid #aaccee;border-radius:3px;padding:4px 7px;margin-bottom:5px;font-size:.44rem;color:#333;text-align:center">Selección del Representante a autorizar</div>
+            <div style="font-size:.42rem;color:#333;margin-bottom:6px;line-height:1.4">Está generando una autorización para <strong>Facturación Electrónica</strong>. Debe determinar un Computador Fiscal habilitado.</div>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+              <div style="font-size:.46rem;color:#333;width:65px">Computador Fiscal</div>
+              <div class="inst-pulse" style="border:1px solid #aaa;border-radius:2px;background:#fff;padding:3px 8px;font-size:.48rem;font-weight:700;color:#333;flex:1">Mono MF ▾</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+              <div style="font-size:.46rem;color:#333;width:65px">CUIT/CUIL<br>Usuario</div>
+              <div style="border:1px solid #aaa;border-radius:2px;background:#f5f5f5;padding:3px 6px;font-size:.44rem;color:#aaa;flex:1">(vacío)</div>
+              <div style="background:#4a90d9;color:#fff;border-radius:3px;padding:2px 6px;font-size:.44rem;font-weight:700">BUSCAR</div>
+            </div>
+            <div class="inst-click-anim" style="background:#4a90d9;color:#fff;border-radius:3px;text-align:center;padding:5px;font-size:.55rem;font-weight:700">CONFIRMAR</div>
+          </div>
+        </div>
+        <div class="inst-caption">
+          <div class="inst-step-label">Parte 2 · Paso 5 de 6</div>
+          <div class="inst-caption-title">Elegí "Mono MF" y confirmá</div>
+          <div class="inst-caption-desc">En el dropdown <strong>Computador Fiscal</strong> elegí <strong>Mono MF</strong>. Dejá el CUIT vacío y tocá <strong>CONFIRMAR</strong>.</div>
+        </div>
+      </div>
+
+      <div class="inst-screen" id="inst-11" style="display:none">
+        <div class="inst-mock">
+          <div class="inst-mock-bar"><div class="inst-mock-dot" style="background:#ff5f57"></div><div class="inst-mock-dot" style="background:#febc2e"></div><div class="inst-mock-dot" style="background:#28c840"></div><div class="inst-mock-url">serviciosweb.afip.gob.ar/claveFisc...</div></div>
+          <div class="inst-mock-body" style="padding:8px 10px;background:#fff">
+            <div style="font-size:.55rem;font-weight:700;color:#000;margin-bottom:4px">Administrador de Relaciones</div>
+            <div style="background:#ddeeff;border:1px solid #aaccee;border-radius:3px;padding:4px 7px;margin-bottom:5px;font-size:.44rem;color:#333">Bienvenido Usuario <strong>LOPEZ ANA CAROLINA [27-18374652-1]</strong></div>
+            <div style="background:#e8f4ff;border:1px solid #aaccee;border-radius:3px;padding:3px 7px;margin-bottom:5px;font-size:.44rem;text-align:center;color:#333">Incorporar nueva Relación</div>
+            <div style="border:1px solid #b0c8e0;border-radius:3px;overflow:hidden;margin-bottom:6px">
+              <div style="display:flex;border-bottom:1px solid #d0dcea;background:#f0f4f8">
+                <div style="font-size:.44rem;color:#555;padding:3px 6px;width:70px">Autorizante</div>
+                <div style="font-size:.44rem;font-weight:700;color:#333;padding:3px 6px">LOPEZ ANA CAROLINA [27-18374652-1]</div>
+              </div>
+              <div style="display:flex;border-bottom:1px solid #d0dcea">
+                <div style="font-size:.44rem;color:#555;padding:3px 6px;width:70px">Representado</div>
+                <div style="font-size:.44rem;color:#333;padding:3px 6px">LOPEZ ANA CAROLINA [27-18374652-1]</div>
+              </div>
+              <div style="display:flex;border-bottom:1px solid #d0dcea;background:#f0f4f8">
+                <div style="font-size:.44rem;color:#555;padding:3px 6px;width:70px">Servicio</div>
+                <div style="font-size:.42rem;color:#333;padding:3px 6px;flex:1">Facturación Electrónica (Nivel de seguridad mínimo requerido 3)</div>
+              </div>
+              <div style="display:flex">
+                <div style="font-size:.44rem;color:#555;padding:3px 6px;width:70px">Representante</div>
+                <div style="font-size:.42rem;color:#333;padding:3px 6px;flex:1">Computador Fiscal identificado como <strong>Mono MF</strong> relacionado con la persona <strong>27183746521</strong></div>
+              </div>
+            </div>
+            <div class="inst-click-anim" style="background:#4a90d9;color:#fff;border-radius:3px;text-align:center;padding:5px;font-size:.58rem;font-weight:700">CONFIRMAR</div>
+          </div>
+        </div>
+        <div class="inst-caption">
+          <div class="inst-step-label">Parte 2 · Paso 5 de 6</div>
+          <div class="inst-caption-title">Revisá y confirmá</div>
+          <div class="inst-caption-desc">Revisá que el Representante diga <strong>Mono MF</strong> y el Servicio diga <strong>Facturación Electrónica</strong>. Tocá <strong>CONFIRMAR</strong>.</div>
+        </div>
+      </div>
+
+      {# 11: F.3283/E — confirmación relación #}
+<div class="inst-screen" id="inst-12" style="display:none">
+        <div class="inst-mock">
+          <div class="inst-mock-bar"><div class="inst-mock-dot" style="background:#ff5f57"></div><div class="inst-mock-dot" style="background:#febc2e"></div><div class="inst-mock-dot" style="background:#28c840"></div><div class="inst-mock-url">serviciosweb.afip.gob.ar/claveFisc...</div></div>
+          <div class="inst-mock-body" style="padding:8px 10px;background:#fff">
+            <div style="font-size:.75rem;font-weight:900;color:#1a2e5a;margin-bottom:1px">ARCA</div>
+            <div style="font-size:.44rem;color:#555;margin-bottom:6px">F. 3283/E</div>
+            <div style="border:1px solid #ccc;border-radius:3px;overflow:hidden">
+              <div style="background:#fff;padding:4px 7px;border-bottom:1px solid #ddd">
+                <div style="font-size:.46rem;font-weight:700;color:#333;margin-bottom:2px">Rubro 1. AUTORIZANTE</div>
+                <div style="font-size:.42rem;color:#555">Apellido y Nombre: LOPEZ ANA CAROLINA</div>
+                <div style="font-size:.42rem;color:#555">CUIT: 27-18374652-1</div>
+              </div>
+              <div style="background:#f7f9fb;padding:4px 7px;border-bottom:1px solid #ddd">
+                <div style="font-size:.46rem;font-weight:700;color:#333;margin-bottom:2px">Rubro 2. AUTORIZADO</div>
+                <div style="font-size:.42rem;color:#555">Computador Fiscal MjMxMDEyMjAxODQ6...</div>
+                <div style="font-size:.42rem;color:#555">CUIT: 27183746521</div>
+                <div style="font-size:.42rem;color:#555">Tipo: <strong>Facturación Electrónica</strong></div>
+              </div>
+              <div style="background:#fff;padding:4px 7px;border-bottom:1px solid #ddd">
+                <div style="font-size:.46rem;font-weight:700;color:#333;margin-bottom:2px">Rubro 3. AUTORIZACIÓN</div>
+                <div style="font-size:.42rem;color:#555">El autorizante autoriza a la persona del Rubro 2 a utilizar servicios en su nombre.</div>
+              </div>
+              <div style="background:#f7f9fb;padding:4px 7px">
+                <div style="font-size:.46rem;font-weight:700;color:#333;margin-bottom:2px">Rubro 4. ACEPTACIÓN</div>
+                <div style="font-size:.42rem;color:#555">Esta autorización tendrá vigencia a partir del <strong>25/06/2026</strong></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="inst-caption">
+          <div class="inst-step-label">Parte 2 · Paso 6 de 6 ✓</div>
+          <div class="inst-caption-title">¡Relación habilitada!</div>
+          <div class="inst-caption-desc">El formulario F. 3283/E confirma que la autorización quedó activa. Ahora seguí con el <strong>Punto de Venta</strong> — todavía estás en ARCA.</div>
+        </div>
+      </div>
+
+
+      {# 12: Portal ARCA → buscar Punto de Venta #}
+      <div class="inst-screen" id="inst-13" style="display:none">
+        <div class="inst-mock">
+          <div class="inst-mock-bar"><div class="inst-mock-dot" style="background:#ff5f57"></div><div class="inst-mock-dot" style="background:#febc2e"></div><div class="inst-mock-dot" style="background:#28c840"></div><div class="inst-mock-url">portalcf.cloud.afip.gob.ar</div></div>
+          <div style="background:#1a2e5a;padding:6px 10px;display:flex;align-items:center;justify-content:space-between">
+            <div style="font-size:.75rem;font-weight:900;color:#fff">ARCA</div>
+            <div style="font-size:.42rem;color:#a0b4d0;text-align:right"><div style="font-weight:700;color:#fff">LOPEZ A.</div><div>27-18374652-1</div></div>
+          </div>
+          <div style="background:#1a2e5a;padding:6px 4px 8px;display:flex;justify-content:space-around">
+            <div style="text-align:center"><div style="width:22px;height:22px;border-radius:50%;border:1.5px solid rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;font-size:.55rem;color:#fff;margin:0 auto 2px">$</div><div style="font-size:.38rem;color:#a0b4d0">Estado</div></div>
+            <div style="text-align:center"><div style="width:22px;height:22px;border-radius:50%;border:1.5px solid rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;font-size:.55rem;color:#fff;margin:0 auto 2px">✓</div><div style="font-size:.38rem;color:#a0b4d0">Registro</div></div>
+            <div style="text-align:center"><div style="width:22px;height:22px;border-radius:50%;border:1.5px solid rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;font-size:.55rem;color:#fff;margin:0 auto 2px">≡</div><div style="font-size:.38rem;color:#a0b4d0">Trámites</div></div>
+            <div style="text-align:center"><div style="width:22px;height:22px;border-radius:50%;border:1.5px solid rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;font-size:.55rem;color:#fff;margin:0 auto 2px">👥</div><div style="font-size:.38rem;color:#a0b4d0">Relaciones</div></div>
+          </div>
+          <div style="background:#fff;padding:6px 8px">
+            <div style="border:1.5px solid #009ee3;border-radius:20px;padding:4px 10px;font-size:.5rem;color:#333;display:flex;align-items:center;justify-content:space-between">
+              <span style="font-weight:600">puntos de</span><span style="color:#009ee3">🔍</span>
+            </div>
+          </div>
+          <div style="background:#fff;padding:4px 8px 8px">
+            <div class="inst-pulse" style="border:1px solid #e0e4ed;border-radius:4px;padding:6px 8px;background:#f0f8ff">
+              <div style="font-size:.54rem;font-weight:700;color:#009ee3">Administración de puntos de venta y domicilios</div>
+              <div style="font-size:.44rem;color:#777;margin-top:1px">Administración de Puntos de Venta y Domicilios</div>
+            </div>
+          </div>
+        </div>
+        <div class="inst-caption">
+          <div class="inst-step-label">Parte 3 · Paso 1 de 4</div>
+          <div class="inst-caption-title">Buscá "puntos de venta"</div>
+          <div class="inst-caption-desc">En la barra del portal ARCA escribí <strong>puntos de</strong> y tocá <strong>Administración de puntos de venta y domicilios</strong>.</div>
+        </div>
+      </div>
+
+      {# 13: Sistema PVE → A/B/M #}
+      <div class="inst-screen" id="inst-14" style="display:none">
+        <div class="inst-mock">
+          <div class="inst-mock-bar"><div class="inst-mock-dot" style="background:#ff5f57"></div><div class="inst-mock-dot" style="background:#febc2e"></div><div class="inst-mock-dot" style="background:#28c840"></div><div class="inst-mock-url">fes.afip.gob.ar/pvel/jsp/abmPuntosVenta.do</div></div>
+          <div class="inst-mock-body" style="padding:8px 10px;background:#f0f0f0">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <div style="font-size:.6rem;font-weight:900;color:#1a2e5a">ARCA</div>
+              <div style="font-size:.5rem;font-style:italic;color:#4a90d9;font-weight:700;text-align:right;line-height:1.2">PVE<br><span style="font-size:.4rem;font-weight:400">Gestión de puntos de venta</span></div>
+            </div>
+            <div style="font-size:.5rem;color:#555;margin-bottom:8px">Usuario: 27183746521 - LOPEZ ANA CAROLINA</div>
+            <div style="background:#fff;border:1px solid #ccc;border-radius:3px;padding:8px;text-align:center">
+              <div style="font-size:.52rem;font-weight:700;color:#333;margin-bottom:8px">Menú Principal</div>
+              <div class="inst-pulse" style="display:inline-flex;align-items:center;gap:6px;border:1px solid #ccc;border-radius:3px;padding:6px 10px;background:#f8f8f8;cursor:pointer">
+                <div style="font-size:.8rem;color:#c00">📄</div>
+                <div style="font-size:.48rem;font-weight:700;color:#333;text-align:left">A/B/M de puntos de venta /<br>emisión</div>
+                <div style="font-size:.5rem;color:#999">▶</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="inst-caption">
+          <div class="inst-step-label">Parte 3 · Paso 2 de 4</div>
+          <div class="inst-caption-title">Tocá "A/B/M de puntos de venta"</div>
+          <div class="inst-caption-desc">En el Menú Principal tocá <strong>A/B/M de puntos de venta / emisión</strong>.</div>
+        </div>
+      </div>
+
+      {# 14: Listado PV → Agregar #}
+      <div class="inst-screen" id="inst-15" style="display:none">
+        <div class="inst-mock">
+          <div class="inst-mock-bar"><div class="inst-mock-dot" style="background:#ff5f57"></div><div class="inst-mock-dot" style="background:#febc2e"></div><div class="inst-mock-dot" style="background:#28c840"></div><div class="inst-mock-url">fes.afip.gob.ar/pvel/jsp/abmPuntosVenta.do</div></div>
+          <div class="inst-mock-body" style="padding:6px 8px;background:#f0f0f0">
+            <div style="font-size:.48rem;color:#555;margin-bottom:4px">Menú Principal › <strong>A/B/M de Puntos de venta / emisión</strong></div>
+            <div style="background:#4a90d9;color:#fff;font-size:.48rem;font-weight:700;padding:3px 8px;border-radius:2px;margin-bottom:5px">ATENCIÓN</div>
+            <div style="background:#fff;border:1px solid #ccc;border-radius:3px;overflow:hidden;margin-bottom:6px">
+              <div style="background:#4a90d9;color:#fff;font-size:.48rem;font-weight:700;padding:3px 8px">Listado de Puntos de Venta / Emisión</div>
+              <div style="padding:4px 6px">
+                <div style="display:flex;background:#e8f0fe;border-bottom:1px solid #ddd">
+                  <div style="font-size:.42rem;font-weight:700;color:#333;padding:2px 5px;width:35px">Número</div>
+                  <div style="font-size:.42rem;font-weight:700;color:#333;padding:2px 5px;flex:1">Nombre de Fantasía</div>
+                  <div style="font-size:.42rem;font-weight:700;color:#333;padding:2px 5px">Sistema</div>
+                </div>
+                <div style="display:flex;border-bottom:1px solid #eee">
+                  <div style="font-size:.42rem;color:#333;padding:2px 5px;width:35px">1</div>
+                  <div style="font-size:.42rem;color:#333;padding:2px 5px;flex:1">MI ESTUDIO</div>
+                  <div style="font-size:.4rem;color:#555;padding:2px 5px">Factura en Línea</div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:center;gap:6px">
+              <div class="inst-pulse" style="background:#4a90d9;color:#fff;border-radius:3px;padding:4px 10px;font-size:.52rem;font-weight:700">Agregar...</div>
+              <div style="background:#fff;border:1px solid #aaa;color:#333;border-radius:3px;padding:4px 10px;font-size:.52rem">Imprimir listado...</div>
+            </div>
+          </div>
+        </div>
+        <div class="inst-caption">
+          <div class="inst-step-label">Parte 3 · Paso 3 de 4</div>
+          <div class="inst-caption-title">Tocá "Agregar"</div>
+          <div class="inst-caption-desc">Ves el listado de tus puntos de venta actuales. Tocá el botón <strong>Agregar...</strong> para crear uno nuevo.</div>
+        </div>
+      </div>
+
+      {# 15: Formulario Alta PV completo → Aceptar #}
+      <div class="inst-screen" id="inst-16" style="display:none">
+        <div class="inst-mock">
+          <div class="inst-mock-bar"><div class="inst-mock-dot" style="background:#ff5f57"></div><div class="inst-mock-dot" style="background:#febc2e"></div><div class="inst-mock-dot" style="background:#28c840"></div><div class="inst-mock-url">fes.afip.gob.ar/pvel/jsp/abmPuntosVenta.do</div></div>
+          <div class="inst-mock-body" style="padding:8px 10px;background:#f0f0f0">
+            <div style="background:#fff;border:1px solid #ccc;border-radius:3px;padding:8px 10px">
+              <div style="font-size:.52rem;font-weight:700;color:#333;margin-bottom:6px;text-align:center">Alta de Punto de Venta / Emisión</div>
+              <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:2px;padding:3px 6px;margin-bottom:6px;font-size:.4rem;color:#856404"><strong>ATENCIÓN:</strong> EN CASO QUE NO SE VISUALICE EL DOMICILIO DEBERÁ CONCURRIR A LA DEPENDENCIA.</div>
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                <div style="font-size:.46rem;color:#333;width:65px;text-align:right">Número:</div>
+                <div style="border:1px solid #aaa;border-radius:2px;background:#fff;padding:3px 6px;font-size:.48rem;font-weight:700;color:#333;width:30px">11</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                <div style="font-size:.46rem;color:#333;width:65px;text-align:right">Nombre Fantasía:</div>
+                <div style="border:1px solid #aaa;border-radius:2px;background:#fff;padding:3px 6px;font-size:.48rem;font-weight:700;color:#333;flex:1">LOPEZ PILATES</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                <div style="font-size:.46rem;color:#333;width:65px;text-align:right">Dominio Asoc.:</div>
+                <div style="border:1px solid #aaa;border-radius:2px;background:#fff;padding:3px 6px;font-size:.44rem;color:#aaa;flex:1">(vacío)</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                <div style="font-size:.46rem;color:#333;width:65px;text-align:right">Sistema:</div>
+                <div style="border:1px solid #aaa;border-radius:2px;background:#fff;padding:3px 6px;font-size:.44rem;font-weight:700;color:#333;flex:1">Factura Electrónica - Monotributo - Web Services ▾</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+                <div style="font-size:.46rem;color:#333;width:65px;text-align:right">Nuevo domicilio:</div>
+                <div style="border:1px solid #aaa;border-radius:2px;background:#fff;padding:3px 6px;font-size:.44rem;color:#333;flex:1">FISCAL - 0001 - TU DIRECCIÓN - CABA ▾</div>
+              </div>
+              <div style="display:flex;justify-content:flex-end;gap:6px">
+                <div class="inst-click-anim" style="background:#4a90d9;color:#fff;border-radius:3px;padding:4px 12px;font-size:.52rem;font-weight:700">Aceptar</div>
+                <div style="background:#fff;border:1px solid #aaa;color:#555;border-radius:3px;padding:4px 10px;font-size:.52rem">Cancelar</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="inst-caption">
+          <div class="inst-step-label">Parte 3 · Paso 4 de 4</div>
+          <div class="inst-caption-title">Completá el formulario y aceptá</div>
+          <div class="inst-caption-desc">Completá: <strong>Número</strong> (el que quieras, ej. 11), <strong>Nombre Fantasía</strong> (nombre de tu estudio), <strong>Sistema: Factura Electrónica - Monotributo - Web Services</strong>, <strong>Nuevo domicilio</strong> (elegí el fiscal). Tocá <strong>Aceptar</strong>.</div>
+        </div>
+      </div>
+
+      {# Navegación #}
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-top:1px solid var(--border);background:#fff">
+        <button onclick="instPrev()" id="inst-prev" style="font-size:.75rem;color:var(--soft);background:none;border:none;cursor:pointer;padding:4px 0;opacity:.3">← Anterior</button>
+        <div id="inst-counter" style="font-size:.7rem;color:var(--soft)">1 / 17</div>
+        <button onclick="instNext()" id="inst-next" style="font-size:.75rem;color:var(--coral);font-weight:700;background:none;border:none;cursor:pointer;padding:4px 0">Siguiente →</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+            <!-- Navegación -->
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-top:1px solid var(--border);background:#fff">
+              <button onclick="instPrev()" id="inst-prev" style="font-size:.75rem;color:var(--muted);background:none;border:none;cursor:pointer;padding:4px 0;opacity:.3">← Anterior</button>
+              <div id="inst-counter" style="font-size:.7rem;color:var(--muted)">1 / 17</div>
+              <button onclick="instNext()" id="inst-next" style="font-size:.75rem;color:var(--coral);font-weight:700;background:none;border:none;cursor:pointer;padding:4px 0">Siguiente →</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
+  </div>
 
-    <!-- Paso 2: Subir CSR a ARCA -->
-    <div class="step-box">
-      <div class="step-head">
-        <div class="step-num">2</div>
-        <div class="step-title">Subí el .csr a ARCA y descargá el .crt</div>
-      </div>
-      <div class="step-body">
-        Entrá a <a href="https://arca.gob.ar" target="_blank">arca.gob.ar</a> con la clave fiscal
-        del monotributista → <strong>Administrador de Relaciones → Generar certificado</strong>
-        → subí el <strong>.csr</strong> → descargá el <strong>.crt</strong> que te da ARCA.
-      </div>
+  <!-- Paso 3: Subir crt -->
+  <div class="step-box" style="background:#f0fdf4;border-color:#bbf7d0">
+    <div class="step-head">
+      <div class="step-num" style="background:#16a34a">3</div>
+      <div class="step-title" style="color:#15803d">Subí el .crt y el .key acá</div>
     </div>
-
-    <!-- Paso 3: Crear punto de venta -->
-    <div class="step-box">
-      <div class="step-head">
-        <div class="step-num">3</div>
-        <div class="step-title">Creá el punto de venta en ARCA</div>
-      </div>
-      <div class="step-body">
-        En ARCA → <strong>Datos Registrales → Puntos de Venta</strong> → <strong>Agregar</strong>.
-        Elegí tipo <strong>"Web Services"</strong> y sistema <strong>"RCEL"</strong>.
-        Anotá el número de PV que te asigna — lo vas a necesitar.
-      </div>
-    </div>
-
-    <!-- Paso 4: Crear relación -->
-    <div class="step-box">
-      <div class="step-head">
-        <div class="step-num">4</div>
-        <div class="step-title">Creá la relación con el servicio wsfe</div>
-      </div>
-      <div class="step-body">
-        En ARCA → <strong>Administrador de Relaciones → Nueva Relación</strong>.
-        Seleccioná:
-        <ul style="margin:6px 0 0 12px;line-height:1.8">
-          <li>Representado: <strong>{{ mono.cuit }}</strong></li>
-          <li>Servicio: <strong>wsfe (Facturación Electrónica)</strong></li>
-          <li>Computador Fiscal: el certificado que generaste</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- Paso 5: Subir crt y key -->
-    <div class="step-box done">
-      <div class="step-head">
-        <div class="step-num">5</div>
-        <div class="step-title">Subí el .crt y el .key acá</div>
-      </div>
-      <div class="step-body">
-        El .key es el que descargaste en el paso 1. El .crt es el que te dio ARCA en el paso 2.
-        <div class="upload-pair">
-          <div class="file-zone" id="zone-cert" onclick="document.getElementById('input-cert').click()">
-            <i class="ti ti-file-certificate"></i>
-            <div class="fz-label">Certificado</div>
-            <div class="fz-ext">.crt o .pem</div>
-            <div class="fz-name" id="name-cert"></div>
-          </div>
-          <input type="file" id="input-cert" accept=".crt,.pem,.cer">
-          <div class="file-zone" id="zone-key" onclick="document.getElementById('input-key').click()">
-            <i class="ti ti-lock-key"></i>
-            <div class="fz-label">Clave privada</div>
-            <div class="fz-ext">.key o .pem</div>
-            <div class="fz-name" id="name-key"></div>
-          </div>
-          <input type="file" id="input-key" accept=".key,.pem">
+    <div class="step-body" style="color:#166534">
+      El <strong>.key</strong> es el que descargaste en el paso 1.
+      El <strong>.crt</strong> es el que te dio ARCA en el paso 2.
+      Al guardar detectamos el punto de venta automáticamente.
+      <div class="upload-pair">
+        <div class="file-zone" id="zone-cert" onclick="document.getElementById('input-cert').click()">
+          <i class="ti ti-file-certificate"></i>
+          <div class="fz-label">Certificado .crt</div>
+          <div class="fz-ext">.crt o .pem</div>
+          <div class="fz-name" id="name-cert"></div>
         </div>
-        <div class="error-box" id="error-box"></div>
+        <input type="file" id="input-cert" accept=".crt,.pem,.cer">
+        <div class="file-zone" id="zone-key" onclick="document.getElementById('input-key').click()">
+          <i class="ti ti-lock-key"></i>
+          <div class="fz-label">Clave privada .key</div>
+          <div class="fz-ext">.key o .pem</div>
+          <div class="fz-name" id="name-key"></div>
+        </div>
+        <input type="file" id="input-key" accept=".key,.pem">
       </div>
+      <div class="error-box" id="error-box"></div>
     </div>
-
   </div>
 
   <div class="form-actions">
@@ -178,75 +748,86 @@ input[type=file] { display: none; }
 
 {% block extra_scripts %}
 <script>
-let certFile = null, keyFile = null;
+// ── Instructivo toggle ──
+function toggleInstructivo() {
+  const cont = document.getElementById('inst-container');
+  const chev = document.getElementById('inst-chevron');
+  cont.classList.toggle('open');
+  chev.style.transform = cont.classList.contains('open') ? 'rotate(180deg)' : '';
+  if (cont.classList.contains('open')) instGo(0);
+}
 
+// ── Stepper ──
+const INST_TOTAL = 17;
+let instCurrent = 0;
+function instGo(n) {
+  const prev = document.getElementById('inst-' + instCurrent);
+  if (prev) prev.style.display = 'none';
+  instCurrent = Math.max(0, Math.min(INST_TOTAL - 1, n));
+  const screen = document.getElementById('inst-' + instCurrent);
+  if (screen) { screen.style.display = 'block'; }
+  for (let i = 0; i < INST_TOTAL; i++) {
+    const dot = document.getElementById('dot-' + i);
+    if (dot) dot.style.background = i <= instCurrent ? 'var(--navy)' : 'var(--border)';
+  }
+  const counter = document.getElementById('inst-counter');
+  if (counter) counter.textContent = (instCurrent + 1) + ' / ' + INST_TOTAL;
+  const prev_btn = document.getElementById('inst-prev');
+  if (prev_btn) prev_btn.style.opacity = instCurrent === 0 ? '.3' : '1';
+  const next_btn = document.getElementById('inst-next');
+  if (next_btn) next_btn.textContent = instCurrent === INST_TOTAL - 1 ? 'Listo, subir certificado →' : 'Siguiente →';
+}
+function instNext() {
+  if (instCurrent < INST_TOTAL - 1) instGo(instCurrent + 1);
+  else {
+    // Al terminar el instructivo, scroll al paso 3
+    document.getElementById('zone-cert').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+function instPrev() { if (instCurrent > 0) instGo(instCurrent - 1); }
+
+// ── Generar CSR ──
 async function generarCSR() {
   const btn = document.getElementById('btn-generar');
   const label = document.getElementById('btn-label');
-  btn.disabled = true;
-  label.textContent = 'Generando...';
+  btn.disabled = true; label.textContent = 'Generando...';
   try {
     const res = await fetch('/monotributistas/{{ mono.id }}/generar-csr', { method: 'POST' });
     if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
-
     const dlCSR = document.getElementById('dl-csr');
     dlCSR.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(data.csr_pem);
-    dlCSR.download = data.nombre_csr;
-    dlCSR.style.display = 'inline-flex';
-
+    dlCSR.download = data.nombre_csr; dlCSR.style.display = 'inline-flex';
     const dlKey = document.getElementById('dl-key');
     dlKey.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(data.key_pem);
-    dlKey.download = data.nombre_key;
-    dlKey.style.display = 'inline-flex';
-
-    label.textContent = 'Generar de nuevo';
-    btn.disabled = false;
-    dlCSR.click();
-    setTimeout(() => dlKey.click(), 800);
-  } catch(e) {
-    label.textContent = 'Error — reintentar';
-    btn.disabled = false;
-    alert('Error al generar: ' + e.message);
-  }
+    dlKey.download = data.nombre_key; dlKey.style.display = 'inline-flex';
+    label.textContent = 'Generar de nuevo'; btn.disabled = false;
+    dlCSR.click(); setTimeout(() => dlKey.click(), 800);
+  } catch(e) { label.textContent = 'Error — reintentar'; btn.disabled = false; alert('Error: ' + e.message); }
 }
 
+// ── Subir certificado ──
+let certFile = null, keyFile = null;
 function setFile(tipo, file) {
-  if (tipo === 'cert') {
-    certFile = file;
-    document.getElementById('name-cert').textContent = file.name;
-    document.getElementById('zone-cert').classList.add('has-file');
-  } else {
-    keyFile = file;
-    document.getElementById('name-key').textContent = file.name;
-    document.getElementById('zone-key').classList.add('has-file');
-  }
+  if (tipo === 'cert') { certFile = file; document.getElementById('name-cert').textContent = file.name; document.getElementById('zone-cert').classList.add('has-file'); }
+  else { keyFile = file; document.getElementById('name-key').textContent = file.name; document.getElementById('zone-key').classList.add('has-file'); }
   document.getElementById('btn-guardar').disabled = !(certFile && keyFile);
 }
-
 document.getElementById('input-cert').addEventListener('change', e => { if(e.target.files[0]) setFile('cert', e.target.files[0]); });
 document.getElementById('input-key').addEventListener('change',  e => { if(e.target.files[0]) setFile('key',  e.target.files[0]); });
 
 async function guardarCertificado() {
   const btn = document.getElementById('btn-guardar');
   const errEl = document.getElementById('error-box');
-  btn.disabled = true;
-  errEl.classList.remove('visible');
-  const fd = new FormData();
-  fd.append('cert_file', certFile);
-  fd.append('key_file', keyFile);
+  btn.disabled = true; errEl.classList.remove('visible');
+  const fd = new FormData(); fd.append('cert_file', certFile); fd.append('key_file', keyFile);
   try {
     const res = await fetch('/monotributistas/{{ mono.id }}/certificado', { method: 'POST', body: fd });
     if (res.redirected || res.ok) { window.location.href = '/monotributistas/{{ mono.id }}'; return; }
     const data = await res.json().catch(() => ({}));
-    errEl.textContent = data.detail || 'Error al guardar.';
-    errEl.classList.add('visible');
-  } catch(e) {
-    errEl.textContent = 'Error: ' + e.message;
-    errEl.classList.add('visible');
-  } finally {
-    btn.disabled = false;
-  }
+    errEl.textContent = data.detail || 'Error al guardar.'; errEl.classList.add('visible');
+  } catch(e) { errEl.textContent = 'Error: ' + e.message; errEl.classList.add('visible'); }
+  finally { btn.disabled = false; }
 }
 </script>
 {% endblock %}
