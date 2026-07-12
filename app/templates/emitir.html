@@ -6,11 +6,10 @@
   background: white;
   border: 2.5px dashed var(--border);
   border-radius: var(--radius);
-  padding: 40px 24px;
+  padding: 56px 24px;
   text-align: center;
   cursor: pointer;
   transition: all .2s;
-  margin-bottom: 20px;
 }
 .upload-zone:hover, .upload-zone.drag-over {
   border-color: var(--coral);
@@ -18,98 +17,38 @@
 }
 .upload-title {
   font-family: 'Nunito', sans-serif; font-weight: 800;
-  font-size: 18px; color: var(--navy); margin: 12px 0 6px;
+  font-size: 18px; color: var(--navy); margin: 14px 0 6px;
 }
-.upload-sub { font-size: 13px; color: var(--muted); line-height: 1.6; }
+.upload-sub { font-size: 13px; color: var(--muted); }
 .upload-sub a { color: var(--coral); font-weight: 700; text-decoration: none; }
 #excel-input { display: none; }
-
-.progress-bar { display: none; background: var(--border); border-radius: 4px; height: 4px; margin-top: 16px; overflow: hidden; }
+.progress-bar { display: none; background: var(--border); border-radius: 4px; height: 4px; margin-top: 20px; overflow: hidden; }
 .progress-bar.visible { display: block; }
 .progress-fill { height: 100%; background: var(--coral); border-radius: 4px; animation: prog 1.5s ease-in-out infinite; }
 @keyframes prog { 0%{width:0%} 50%{width:70%} 100%{width:95%} }
-
-.col-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; margin-bottom: 20px; }
-.col-card-title { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 14px; color: var(--navy); margin-bottom: 12px; }
-.col-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.col-item { background: var(--bg); border-radius: 8px; padding: 10px 12px; }
-.col-item code { display: block; font-family: monospace; font-weight: 700; color: var(--navy); font-size: 12px; margin-bottom: 2px; }
-.col-item small { color: var(--muted); font-size: 11px; }
-.col-item.opcional code { color: var(--muted); }
-
-.info-cards { display: grid; grid-template-columns: 1fr; gap: 10px; }
-@media (min-width: 640px) { .info-cards { grid-template-columns: repeat(3, 1fr); } }
-.info-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; display: flex; gap: 12px; align-items: flex-start; }
-.info-card-icon { width: 36px; height: 36px; border-radius: 9px; background: #f0f4ff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--navy); }
-.info-card-title { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 13px; color: var(--navy); margin-bottom: 3px; }
-.info-card-text { font-size: 12px; color: var(--muted); line-height: 1.5; }
 {% endblock %}
 
 {% block content %}
 <div class="page-header">
   <div>
     <div class="page-title">Emitir facturas</div>
-    <div class="page-subtitle">Subí el Excel y emitimos en simultáneo</div>
+    <div class="page-subtitle">Subí el Excel con todas las facturas del mes</div>
   </div>
   <a href="/static/plantilla_monotributo_masfacil.xlsx" class="btn btn-ghost" download>
     <i class="ti ti-download"></i>
-    Plantilla
+    Plantilla Excel
   </a>
 </div>
 
-<!-- Upload zone -->
-<div id="upload-container">
-  <div class="upload-zone" id="upload-zone" onclick="document.getElementById('excel-input').click()">
-    <i class="ti ti-table-import" style="font-size:44px;color:#CBD5E1"></i>
-    <div class="upload-title">Arrastrá el Excel acá o hacé clic</div>
-    <div class="upload-sub">
-      Archivos .xlsx o .xls — máximo 5 MB<br>
-      ¿No tenés el formato? <a href="/static/plantilla_monotributo_masfacil.xlsx" download>Descargá la plantilla</a>
-    </div>
-    <div class="progress-bar" id="progress-bar">
-      <div class="progress-fill"></div>
-    </div>
-  </div>
-  <input type="file" id="excel-input" accept=".xlsx,.xls">
-</div>
-
-<!-- Columnas del Excel -->
-<div class="col-card">
-  <div class="col-card-title"><i class="ti ti-table"></i> Columnas del Excel</div>
-  <div class="col-grid">
-    <div class="col-item"><code>fecha</code><small>Fecha de la factura. Ej: 01/07/2026</small></div>
-    <div class="col-item"><code>importe</code><small>Monto en pesos. Ej: 50000</small></div>
-    <div class="col-item"><code>cliente</code><small>Nombre completo del receptor</small></div>
-    <div class="col-item"><code>concepto</code><small>Descripción del servicio</small></div>
-    <div class="col-item"><code>monotributista</code><small>Nombre o CUIT del emisor</small></div>
-    <div class="col-item opcional"><code>dni_cliente</code><small>DNI o CUIT del receptor (opcional)</small></div>
+<div class="upload-zone" id="upload-zone" onclick="document.getElementById('excel-input').click()">
+  <i class="ti ti-table-import" style="font-size:48px;color:#CBD5E1"></i>
+  <div class="upload-title">Arrastrá el Excel acá o hacé clic para seleccionar</div>
+  <div class="upload-sub">Archivos .xlsx o .xls · máximo 5 MB</div>
+  <div class="progress-bar" id="progress-bar">
+    <div class="progress-fill"></div>
   </div>
 </div>
-
-<!-- Info cards -->
-<div class="info-cards">
-  <div class="info-card">
-    <div class="info-card-icon"><i class="ti ti-bolt" style="font-size:18px"></i></div>
-    <div>
-      <div class="info-card-title">Emisión simultánea</div>
-      <div class="info-card-text">Todos los monotributistas en paralelo. 10 clientes = el tiempo de 1.</div>
-    </div>
-  </div>
-  <div class="info-card">
-    <div class="info-card-icon"><i class="ti ti-eye" style="font-size:18px"></i></div>
-    <div>
-      <div class="info-card-title">Preview antes de emitir</div>
-      <div class="info-card-text">Revisás todo antes de confirmar. Los errores se marcan fila por fila.</div>
-    </div>
-  </div>
-  <div class="info-card">
-    <div class="info-card-icon"><i class="ti ti-mail" style="font-size:18px"></i></div>
-    <div>
-      <div class="info-card-title">Email automático</div>
-      <div class="info-card-text">Al terminar recibís un resumen de todo lo emitido.</div>
-    </div>
-  </div>
-</div>
+<input type="file" id="excel-input" accept=".xlsx,.xls">
 {% endblock %}
 
 {% block extra_scripts %}
