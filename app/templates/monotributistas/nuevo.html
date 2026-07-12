@@ -77,9 +77,16 @@ input:focus, select:focus { border-color: var(--navy); }
 
     <div class="form-row">
       <div class="form-group">
-        <label for="razon_social">Razón social / Nombre</label>
-        <input type="text" id="razon_social" name="razon_social" placeholder="García, Silvana" required>
+        <label for="razon_social">Nombre y Apellido</label>
+        <input type="text" id="razon_social" name="razon_social" placeholder="García Silvana" required>
       </div>
+      <div class="form-group">
+        <label for="nombre_fantasia">Nombre de Fantasía <span class="opt">(opcional)</span></label>
+        <input type="text" id="nombre_fantasia" name="nombre_fantasia" placeholder="Silvana García Contadora">
+      </div>
+    </div>
+
+    <div class="form-row">
       <div class="form-group">
         <label for="categoria_actual">Categoría actual</label>
         <select id="categoria_actual" name="categoria_actual">

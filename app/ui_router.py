@@ -517,6 +517,7 @@ async def crear_monotributista(
         tenant_id=current_user.tenant_id,
         cuit=cuit,
         razon_social=str(form.get("razon_social", "")).strip(),
+        nombre_fantasia=str(form.get("nombre_fantasia", "")).strip() or None,
         domicilio=str(form.get("domicilio", "")).strip() or None,
         email=str(form.get("email", "")).strip() or None,
         afip_punto_venta=int(form.get("afip_punto_venta", 1)),
