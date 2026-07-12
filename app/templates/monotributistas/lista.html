@@ -1,29 +1,59 @@
 {% extends "base.html" %}
-{% block title %}Monotributistas — Monotributo Más Fácil{% endblock %}
+{% block title %}Mis monotributistas — Monotributo Más Fácil{% endblock %}
 
 {% block extra_styles %}
+.search-bar {
+  background: white; border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: 12px 16px; margin-bottom: 14px;
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+}
+.search-input {
+  flex: 1; min-width: 180px;
+  border: 1.5px solid var(--border); border-radius: 8px;
+  padding: 8px 12px; font-size: 14px; font-family: inherit; outline: none;
+  transition: border-color .15s;
+}
+.search-input:focus { border-color: var(--navy); }
+.filter-select {
+  border: 1.5px solid var(--border); border-radius: 8px;
+  padding: 8px 10px; font-size: 13px; font-family: inherit; outline: none;
+  background: white; color: var(--text); cursor: pointer;
+}
 
-  .table-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
-  table { width: 100%; border-collapse: collapse; }
-  thead tr { border-bottom: 2px solid var(--border); }
-  th { padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
-  tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
-  tbody tr:last-child { border-bottom: none; }
-  tbody tr:hover { background: #fafafa; }
-  td { padding: 14px 16px; font-size: 14px; vertical-align: middle; }
-  .mono-name { font-weight: 700; color: var(--navy); display: block; }
-  .mono-cuit { font-size: 12px; color: var(--muted); }
-  .cert-ok { color: #22C55E; font-weight: 700; font-size: 13px; }
-  .cert-no { color: #F59E0B; font-weight: 700; font-size: 13px; }
-  .cat-badge {
-    display: inline-block; background: var(--navy); color: white;
-    border-radius: 6px; padding: 2px 8px;
-    font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 13px;
-  }
-  .empty-state { text-align: center; padding: 60px; color: var(--muted); }
-  .empty-state .empty-icon { font-size: 48px; color: #CBD5E1; margin-bottom: 12px; }
-  .empty-state h3 { font-family: 'Nunito', sans-serif; font-weight: 800; color: var(--navy); margin-bottom: 8px; }
+.mono-list { display: flex; flex-direction: column; gap: 8px; }
+.mono-item {
+  background: white; border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: 14px 16px;
+  display: flex; align-items: center; gap: 12px;
+  text-decoration: none; color: inherit;
+  transition: box-shadow .15s;
+}
+.mono-item:hover { box-shadow: 0 3px 10px rgba(0,0,0,.1); }
+.mono-avatar {
+  width: 40px; height: 40px; border-radius: 10px;
+  background: var(--navy); color: white;
+  font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 15px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.mono-body { flex: 1; min-width: 0; }
+.mono-nombre { font-weight: 700; color: var(--navy); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mono-cuit { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.mono-meta { font-size: 11px; color: var(--muted); margin-top: 4px; display: flex; gap: 8px; flex-wrap: wrap; }
+.mono-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+.cat-pill {
+  background: var(--navy); color: white;
+  font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 12px;
+  padding: 2px 8px; border-radius: 6px;
+}
+.cert-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+.cert-ok   { background: #DCFCE7; color: #166534; }
+.cert-pend { background: #FEF9C3; color: #854D0E; }
 
+.empty-state { text-align: center; padding: 56px 24px; color: var(--muted); }
+.empty-state h3 { font-family: 'Nunito', sans-serif; font-weight: 800; color: var(--navy); margin: 12px 0 6px; font-size: 18px; }
+
+.results-count { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
 {% endblock %}
 
 {% block content %}
@@ -33,58 +63,95 @@
     <div class="page-subtitle">{{ monotributistas | length }} cliente(s) configurado(s)</div>
   </div>
   {% if monotributistas %}
-  <a href="/monotributistas/nuevo" class="btn btn-primary">+ Agregar monotributista</a>
+  <a href="/monotributistas/nuevo" class="btn btn-primary">
+    <i class="ti ti-plus"></i> Agregar
+  </a>
   {% endif %}
 </div>
 
-<div class="table-card">
-  {% if monotributistas %}
-  <table>
-    <thead>
-      <tr>
-        <th>Nombre / CUIT</th>
-        <th>Categoría</th>
-        <th>Punto de venta</th>
-        <th>Certificado</th>
-        <th>Email</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for m in monotributistas %}
-      <tr>
-        <td>
-          <span class="mono-name">{{ m.razon_social }}</span>
-          <span class="mono-cuit">{{ m.cuit }}</span>
-        </td>
-        <td>
-          {% if m.categoria_actual %}
-          <span class="cat-badge">{{ m.categoria_actual.value }}</span>
-          {% else %}
-          <span style="color:var(--muted); font-size:13px;">No configurada</span>
-          {% endif %}
-        </td>
-        <td>PV {{ m.afip_punto_venta or '—' }}</td>
-        <td>
-          {% if m.cert_encrypted %}
-          <span class="cert-ok">✓ Cargado</span>
-          {% else %}
-          <span class="cert-no">⚠ Pendiente</span>
-          {% endif %}
-        </td>
-        <td style="color:var(--muted); font-size:13px;">{{ m.email or '—' }}</td>
-        <td><a href="/monotributistas/{{ m.id }}" class="btn btn-ghost btn-sm">Ver</a></td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  <div class="empty-state">
-    <div class="empty-icon"><i class="ti ti-users" style="font-size:52px;color:#CBD5E1"></i></div>
-    <h3>Todavía no tenés monotributistas</h3>
-    <p>Agregá el primero para empezar a emitir facturas.</p>
-    <a href="/monotributistas/nuevo" class="btn btn-primary" style="margin-top:16px;">+ Agregar monotributista</a>
-  </div>
-  {% endif %}
+{% if monotributistas %}
+<!-- Buscador y filtros -->
+<div class="search-bar">
+  <input type="text" class="search-input" id="search" placeholder="Buscar por nombre o CUIT..." oninput="filtrar()">
+  <select class="filter-select" id="filter-cert" onchange="filtrar()">
+    <option value="">Todos</option>
+    <option value="ok">Con certificado</option>
+    <option value="pend">Sin certificado</option>
+  </select>
+  <select class="filter-select" id="filter-cat" onchange="filtrar()">
+    <option value="">Todas las categorías</option>
+    {% set cats = [] %}
+    {% for m in monotributistas %}
+      {% if m.categoria_actual and m.categoria_actual.value not in cats %}
+        {% set _ = cats.append(m.categoria_actual.value) %}
+        <option value="{{ m.categoria_actual.value }}">Cat. {{ m.categoria_actual.value }}</option>
+      {% endif %}
+    {% endfor %}
+  </select>
 </div>
+
+<div class="results-count" id="results-count">{{ monotributistas | length }} resultado(s)</div>
+
+<div class="mono-list" id="mono-list">
+  {% for m in monotributistas | sort(attribute='razon_social') %}
+  <a href="/monotributistas/{{ m.id }}" class="mono-item"
+     data-nombre="{{ m.razon_social | lower }}"
+     data-cuit="{{ m.cuit }}"
+     data-cert="{{ 'ok' if m.cert_encrypted else 'pend' }}"
+     data-cat="{{ m.categoria_actual.value if m.categoria_actual else '' }}">
+    <div class="mono-avatar">{{ m.razon_social[:2].upper() }}</div>
+    <div class="mono-body">
+      <div class="mono-nombre">{{ m.razon_social }}</div>
+      <div class="mono-cuit">{{ m.cuit }}</div>
+      <div class="mono-meta">
+        {% if m.nombre_fantasia %}<span>{{ m.nombre_fantasia }}</span>{% endif %}
+        {% if m.actividad %}<span>{{ m.actividad[:40] }}</span>{% endif %}
+        {% if m.afip_punto_venta %}<span>PV {{ m.afip_punto_venta }}</span>{% endif %}
+      </div>
+    </div>
+    <div class="mono-right">
+      {% if m.categoria_actual %}
+      <span class="cat-pill">{{ m.categoria_actual.value }}</span>
+      {% endif %}
+      {% if m.cert_encrypted %}
+      <span class="cert-badge cert-ok"><i class="ti ti-check" style="font-size:10px"></i> Cert</span>
+      {% else %}
+      <span class="cert-badge cert-pend"><i class="ti ti-alert-triangle" style="font-size:10px"></i> Pendiente</span>
+      {% endif %}
+    </div>
+  </a>
+  {% endfor %}
+</div>
+
+{% else %}
+<div class="empty-state">
+  <i class="ti ti-users" style="font-size:52px;color:#CBD5E1"></i>
+  <h3>Todavía no tenés monotributistas</h3>
+  <p>Agregá el primero para empezar a emitir facturas.</p>
+  <a href="/monotributistas/nuevo" class="btn btn-primary" style="margin-top:20px;display:inline-flex">
+    <i class="ti ti-plus"></i> Agregar monotributista
+  </a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function filtrar() {
+  const q = document.getElementById('search').value.toLowerCase().trim();
+  const cert = document.getElementById('filter-cert').value;
+  const cat = document.getElementById('filter-cat').value;
+  const items = document.querySelectorAll('.mono-item');
+  let visible = 0;
+  items.forEach(item => {
+    const matchQ = !q || item.dataset.nombre.includes(q) || item.dataset.cuit.includes(q);
+    const matchCert = !cert || item.dataset.cert === cert;
+    const matchCat = !cat || item.dataset.cat === cat;
+    const show = matchQ && matchCert && matchCat;
+    item.style.display = show ? 'flex' : 'none';
+    if (show) visible++;
+  });
+  document.getElementById('results-count').textContent = visible + ' resultado(s)';
+}
+</script>
 {% endblock %}
