@@ -373,6 +373,96 @@ async def lista_monotributistas(
     })
 
 
+@router.post("/monotributistas/consultar-cuit", response_class=HTMLResponse)
+async def consultar_cuit_arca(
+    request: Request,
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Consulta el CUIT en ARCA y devuelve datos para pre-llenar el formulario."""
+    form = await request.form()
+    cuit_raw = str(form.get("cuit", "")).strip().replace("-", "").replace(" ", "")
+
+    if not cuit_raw or len(cuit_raw) != 11:
+        return HTMLResponse("""
+            <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:10px 14px;
+                        font-size:13px;color:#991B1B;margin-top:8px">
+                ⚠️ CUIT inválido. Ingresá los 11 dígitos sin guiones.
+            </div>""")
+
+    # Buscar un monotributista con certificado para hacer la consulta
+    from app.config import FERNET_KEY
+    from app.wsfe import load_credentials
+    from app.afip.padron import consultar_constancia
+
+    result = await db.execute(
+        select(Monotributista).where(
+            Monotributista.tenant_id == current_user.tenant_id,
+            Monotributista.activo == True,
+            Monotributista.cert_encrypted.is_not(None),
+        ).limit(1)
+    )
+    consultante = result.scalar_one_or_none()
+
+    if not consultante:
+        return HTMLResponse("""
+            <div style="background:#FEF9C3;border:1px solid #F59E0B;border-radius:8px;padding:10px 14px;
+                        font-size:13px;color:#854D0E;margin-top:8px">
+                ⚠️ Necesitás tener al menos un monotributista con certificado ARCA configurado
+                para poder consultar el padrón. Completá los datos manualmente por ahora.
+            </div>""")
+
+    try:
+        cert_pem, key_pem = load_credentials(consultante, FERNET_KEY)
+        cuit_representada = consultante.cuit.replace("-", "")
+        constancia = await consultar_constancia(
+            cuit_consulta=cuit_raw,
+            cuit_representada=cuit_representada,
+            cert_pem=cert_pem,
+            key_pem=key_pem,
+            environment=consultante.afip_environment or "production",
+        )
+    except Exception as e:
+        return HTMLResponse(f"""
+            <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:10px 14px;
+                        font-size:13px;color:#991B1B;margin-top:8px">
+                ⚠️ Error consultando ARCA: {e}
+            </div>""")
+
+    if constancia.error:
+        return HTMLResponse(f"""
+            <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:10px 14px;
+                        font-size:13px;color:#991B1B;margin-top:8px">
+                ⚠️ ARCA: {constancia.error}
+            </div>""")
+
+    dom_str = str(constancia.domicilio_fiscal) if constancia.domicilio_fiscal else ""
+    cat = constancia.categoria_monotributo or ""
+    actividad = constancia.actividades[0] if constancia.actividades else ""
+    estado_color = "#166534" if constancia.estado_clave == "ACTIVO" else "#991B1B"
+
+    return HTMLResponse(f"""
+        <div style="background:#DCFCE7;border:1px solid #86EFAC;border-radius:8px;padding:10px 14px;
+                    font-size:13px;color:#166534;margin-top:8px;margin-bottom:4px">
+            ✓ CUIT encontrado en ARCA —
+            <span style="color:{estado_color};font-weight:700">{constancia.estado_clave}</span>
+        </div>
+        <script>
+            document.getElementById('razon_social').value = {constancia.razon_social!r};
+            document.getElementById('domicilio').value = {dom_str!r};
+            document.getElementById('actividad').value = {actividad!r};
+            var catSelect = document.getElementById('categoria_actual');
+            if (catSelect && {cat!r}) {{
+                for (var i=0; i<catSelect.options.length; i++) {{
+                    if (catSelect.options[i].value === {cat!r}) {{
+                        catSelect.selectedIndex = i; break;
+                    }}
+                }}
+            }}
+        </script>
+    """)
+
+
 @router.get("/monotributistas/nuevo", response_class=HTMLResponse)
 async def nuevo_monotributista_page(
     request: Request,
