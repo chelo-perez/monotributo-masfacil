@@ -33,6 +33,7 @@
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    button, input, select, textarea { font-family: inherit; }
     body { font-family: 'Nunito Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; }
 
     /* ── Sidebar ── */
@@ -175,8 +176,28 @@
     /* ── Responsive ── */
     @media (max-width: 768px) {
       .sidebar { display: none; }
-      .main { margin-left: 0; padding: 16px; }
+      .main { margin-left: 0; padding: 16px; padding-bottom: 80px; }
     }
+
+    /* Nav inferior mobile */
+    .bottom-nav {
+      display: none;
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--navy);
+      border-top: 1px solid rgba(255,255,255,.1);
+      padding: 8px 0 4px;
+      z-index: 100;
+    }
+    @media (max-width: 768px) { .bottom-nav { display: flex; } }
+    .bottom-item {
+      flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+      padding: 4px; text-decoration: none;
+      color: rgba(255,255,255,.5); font-size: .62rem; font-weight: 600;
+      transition: color .15s;
+    }
+    .bottom-item:hover, .bottom-item.active { color: #fff; }
+    .bottom-item.active i { color: var(--coral); }
+    .bottom-item i { font-size: 1.3rem; line-height: 1; }
 
     {% block extra_styles %}{% endblock %}
   </style>
@@ -243,6 +264,30 @@
 <main class="main">
   {% block content %}{% endblock %}
 </main>
+
+<!-- Nav inferior mobile -->
+<nav class="bottom-nav">
+  <a href="/dashboard" class="bottom-item {% if active_page == 'dashboard' %}active{% endif %}">
+    <i class="ti ti-layout-dashboard"></i>
+    <span>Inicio</span>
+  </a>
+  <a href="/emitir" class="bottom-item {% if active_page == 'emitir' %}active{% endif %}">
+    <i class="ti ti-upload"></i>
+    <span>Emitir</span>
+  </a>
+  <a href="/monotributistas" class="bottom-item {% if active_page == 'monotributistas' %}active{% endif %}">
+    <i class="ti ti-users"></i>
+    <span>Clientes</span>
+  </a>
+  <a href="/facturas" class="bottom-item {% if active_page == 'facturas' %}active{% endif %}">
+    <i class="ti ti-receipt"></i>
+    <span>Facturas</span>
+  </a>
+  <a href="/auth/logout" class="bottom-item">
+    <i class="ti ti-logout"></i>
+    <span>Salir</span>
+  </a>
+</nav>
 
 <script src="/static/app.js"></script>
 {% block extra_scripts %}{% endblock %}
