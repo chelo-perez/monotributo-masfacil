@@ -713,24 +713,17 @@ input[type=file] { display: none; }
       <div class="step-title" style="color:#15803d">Subí el .crt y el .key acá</div>
     </div>
     <div class="step-body" style="color:#166534">
-      El <strong>.key</strong> es el que descargaste en el paso 1.
-      El <strong>.crt</strong> es el que te dio ARCA en el paso 2.
-      Al guardar detectamos el punto de venta automáticamente.
-      <div class="upload-pair">
-        <div class="file-zone" id="zone-cert" onclick="document.getElementById('input-cert').click()">
+      Subí el <strong>.crt</strong> que te generó ARCA. La clave privada <strong>.key</strong>
+      la tenemos guardada del paso 1 — no necesitás subirla de nuevo.
+      <div style="margin-top:10px">
+        <div class="file-zone" id="zone-cert" onclick="document.getElementById('input-cert').click()" style="max-width:240px">
           <i class="ti ti-file-certificate"></i>
-          <div class="fz-label">Certificado .crt</div>
+          <div class="fz-label">Certificado de ARCA</div>
           <div class="fz-ext">.crt o .pem</div>
           <div class="fz-name" id="name-cert"></div>
         </div>
         <input type="file" id="input-cert" accept=".crt,.pem,.cer">
-        <div class="file-zone" id="zone-key" onclick="document.getElementById('input-key').click()">
-          <i class="ti ti-lock-key"></i>
-          <div class="fz-label">Clave privada .key</div>
-          <div class="fz-ext">.key o .pem</div>
-          <div class="fz-name" id="name-key"></div>
-        </div>
-        <input type="file" id="input-key" accept=".key,.pem">
+        <input type="hidden" id="input-key">
       </div>
       <div class="error-box" id="error-box"></div>
     </div>
@@ -806,21 +799,22 @@ async function generarCSR() {
   } catch(e) { label.textContent = 'Error — reintentar'; btn.disabled = false; alert('Error: ' + e.message); }
 }
 
-// ── Subir certificado ──
-let certFile = null, keyFile = null;
-function setFile(tipo, file) {
-  if (tipo === 'cert') { certFile = file; document.getElementById('name-cert').textContent = file.name; document.getElementById('zone-cert').classList.add('has-file'); }
-  else { keyFile = file; document.getElementById('name-key').textContent = file.name; document.getElementById('zone-key').classList.add('has-file'); }
-  document.getElementById('btn-guardar').disabled = !(certFile && keyFile);
-}
-document.getElementById('input-cert').addEventListener('change', e => { if(e.target.files[0]) setFile('cert', e.target.files[0]); });
-document.getElementById('input-key').addEventListener('change',  e => { if(e.target.files[0]) setFile('key',  e.target.files[0]); });
+// ── Subir certificado (.crt solo) ──
+let certFile = null;
+document.getElementById('input-cert').addEventListener('change', e => {
+  if (e.target.files[0]) {
+    certFile = e.target.files[0];
+    document.getElementById('name-cert').textContent = certFile.name;
+    document.getElementById('zone-cert').classList.add('has-file');
+    document.getElementById('btn-guardar').disabled = false;
+  }
+});
 
 async function guardarCertificado() {
   const btn = document.getElementById('btn-guardar');
   const errEl = document.getElementById('error-box');
   btn.disabled = true; errEl.classList.remove('visible');
-  const fd = new FormData(); fd.append('cert_file', certFile); fd.append('key_file', keyFile);
+  const fd = new FormData(); fd.append('cert_file', certFile);
   try {
     const res = await fetch('/monotributistas/{{ mono.id }}/certificado', { method: 'POST', body: fd });
     if (res.redirected || res.ok) { window.location.href = '/monotributistas/{{ mono.id }}'; return; }

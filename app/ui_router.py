@@ -702,6 +702,15 @@ async def generar_csr(
     )
     csr_pem = csr.public_bytes(serialization.Encoding.PEM)
 
+    # Guardar la .key encriptada en BD — se usará cuando el contador suba el .crt
+    from app.config import FERNET_KEY
+    from app.wsfe import encrypt_credentials
+    if FERNET_KEY:
+        from cryptography.fernet import Fernet
+        f = Fernet(FERNET_KEY)
+        mono.key_encrypted = f.encrypt(key_pem.decode().encode()).decode()
+        await db.commit()
+
     # Devolver ambos archivos para descarga
     from fastapi.responses import JSONResponse
     return JSONResponse({
@@ -748,8 +757,8 @@ async def guardar_certificado(
     current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
     db: Annotated[AsyncSession, Depends(get_db)],
     cert_file: UploadFile = File(...),
-    key_file: UploadFile = File(...),
 ):
+    """Solo recibe el .crt de ARCA. La .key la guardamos al generar el CSR."""
     result = await db.execute(
         select(Monotributista).where(
             Monotributista.id == mono_id,
@@ -761,20 +770,25 @@ async def guardar_certificado(
         raise HTTPException(status_code=404)
 
     cert_bytes = await cert_file.read()
-    key_bytes  = await key_file.read()
 
-    # Validar que son PEM válidos
     if b"CERTIFICATE" not in cert_bytes:
         raise HTTPException(status_code=400, detail="El archivo .crt no parece un certificado PEM válido")
-    if b"PRIVATE KEY" not in key_bytes and b"RSA" not in key_bytes:
-        raise HTTPException(status_code=400, detail="El archivo .key no parece una clave privada PEM válida")
 
     from app.config import FERNET_KEY
     from app.wsfe import encrypt_credentials, get_token_sign, get_puntos_venta
+    from cryptography.fernet import Fernet
 
     cert_pem = cert_bytes.decode("utf-8", errors="replace")
-    key_pem  = key_bytes.decode("utf-8", errors="replace")
 
+    # Recuperar la .key que guardamos al generar el CSR
+    if not mono.key_encrypted:
+        raise HTTPException(status_code=400,
+            detail="No encontramos la clave privada. Volvé al paso 1 y generá el CSR nuevamente.")
+
+    f = Fernet(FERNET_KEY)
+    key_pem = f.decrypt(mono.key_encrypted.encode()).decode()
+
+    # Guardar el .crt encriptado junto con la .key
     cert_enc, key_enc = encrypt_credentials(cert_pem, key_pem, FERNET_KEY)
     mono.cert_encrypted = cert_enc
     mono.key_encrypted  = key_enc
