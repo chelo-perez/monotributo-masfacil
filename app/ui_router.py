@@ -556,7 +556,9 @@ async def detalle_monotributista(
 
     # Últimas facturas
     result_facts = await db.execute(
-        select(Factura).where(
+        select(Factura).options(
+            selectinload(Factura.cliente),
+        ).where(
             Factura.monotributista_id == mono_id,
             Factura.anulada == False,
         ).order_by(Factura.cbte_fecha.desc()).limit(20)
