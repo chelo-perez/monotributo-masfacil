@@ -76,17 +76,14 @@ input[type=file] { display: none; }
     </div>
     <div class="step-body">
       Hacé clic para generar los archivos. Se descargan automáticamente:
-      el <strong>.csr</strong> (lo subís a ARCA) y el <strong>.key</strong> (lo guardás para el paso 3).
+      el <strong>.csr</strong> que vas a subir a ARCA. La clave privada la guardamos nosotros.
       <div class="dl-row">
         <button class="dl-btn coral" id="btn-generar" onclick="generarCSR()">
           <i class="ti ti-key" style="font-size:13px"></i>
-          <span id="btn-label">Generar CSR y .key</span>
+          <span id="btn-label">Generar CSR</span>
         </button>
         <a id="dl-csr" class="dl-btn" style="display:none" download>
           <i class="ti ti-download" style="font-size:12px"></i> Descargar .csr
-        </a>
-        <a id="dl-key" class="dl-btn" style="display:none" download>
-          <i class="ti ti-download" style="font-size:12px"></i> Descargar .key
         </a>
       </div>
     </div>
@@ -791,11 +788,8 @@ async function generarCSR() {
     const dlCSR = document.getElementById('dl-csr');
     dlCSR.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(data.csr_pem);
     dlCSR.download = data.nombre_csr; dlCSR.style.display = 'inline-flex';
-    const dlKey = document.getElementById('dl-key');
-    dlKey.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(data.key_pem);
-    dlKey.download = data.nombre_key; dlKey.style.display = 'inline-flex';
     label.textContent = 'Generar de nuevo'; btn.disabled = false;
-    dlCSR.click(); setTimeout(() => dlKey.click(), 800);
+    dlCSR.click();
   } catch(e) { label.textContent = 'Error — reintentar'; btn.disabled = false; alert('Error: ' + e.message); }
 }
 
