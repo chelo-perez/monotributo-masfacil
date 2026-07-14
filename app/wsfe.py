@@ -246,6 +246,7 @@ async def solicitar_cae(
     cliente_nombre: str = "Consumidor Final",
     cliente_dni: Optional[str] = None,
     environment: str = "production",
+    cond_iva_receptor: Optional[int] = None,  # 1=RI, 4=Exento, 5=CF, 6=Monotributo
 ) -> tuple[Optional[str], Optional[date], Optional[str]]:
     """
     Solicita CAE para una factura.
@@ -256,17 +257,22 @@ async def solicitar_cae(
     fch_desde = (fch_serv_desde or cbte_fecha.replace(day=1)).strftime("%Y%m%d")
     fch_hasta = (fch_serv_hasta or cbte_fecha).strftime("%Y%m%d")
 
-    # Receptor
-    doc_tipo = 96  # DNI
+    # Receptor — default: Consumidor Final sin identificar (DocTipo 99, DocNro 0,
+    # confirmado contra el WS; 96/0 no es el código correcto para CF anónimo)
+    doc_tipo = 99
     doc_nro  = "0"
     if cliente_dni:
         dni_clean = cliente_dni.replace("-", "").replace(" ", "")
         if len(dni_clean) == 11 and dni_clean.isdigit():
             doc_tipo = 80  # CUIT
             doc_nro = dni_clean
-        elif dni_clean.isdigit() and len(dni_clean) <= 8:
+        elif dni_clean.isdigit() and len(dni_clean) <= 8 and int(dni_clean) > 0:
             doc_tipo = 96  # DNI
             doc_nro = dni_clean
+
+    # Condición IVA del receptor (CondicionIVAReceptorId — obligatorio desde
+    # abril 2025, RG 5616). Si no viene explícita: 5 = Consumidor Final.
+    cond_iva_rec = cond_iva_receptor if cond_iva_receptor is not None else 5
 
     body = f"""{_wsfe_header(token, sign, cuit)}
     <FeCAEReq>
@@ -280,6 +286,7 @@ async def solicitar_cae(
           <Concepto>{concepto}</Concepto>
           <DocTipo>{doc_tipo}</DocTipo>
           <DocNro>{doc_nro}</DocNro>
+          <CondicionIVAReceptorId>{cond_iva_rec}</CondicionIVAReceptorId>
           <CbteDesde>{cbte_nro}</CbteDesde>
           <CbteHasta>{cbte_nro}</CbteHasta>
           <CbteFch>{fecha_str}</CbteFch>

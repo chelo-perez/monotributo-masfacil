@@ -5,6 +5,7 @@ Adaptado de afip/sync_service.py de Facturo Más Fácil.
 
 import logging
 from datetime import date, timedelta
+from ..fechas import hoy_ar
 from decimal import Decimal
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -23,7 +24,7 @@ CBTE_TIPOS = [
 
 def get_fecha_corte() -> date:
     """365 días atrás — cubre el período de exclusión de monotributo."""
-    return date.today() - timedelta(days=365)
+    return hoy_ar() - timedelta(days=365)
 
 
 async def sync_mono_invoices(

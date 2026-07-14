@@ -11,6 +11,7 @@ La diferencia clave con Facturo Más Fácil:
 import asyncio
 from dataclasses import dataclass, field
 from datetime import date, datetime
+from ..fechas import hoy_ar
 from decimal import Decimal
 from typing import Optional
 
@@ -92,6 +93,9 @@ async def _emitir_cuit(
         resultado.error_general = f"Error de autenticación ARCA: {e}"
         return resultado
 
+    # Cache de condición IVA por CUIT receptor (una consulta al padrón por lote)
+    _cond_iva_cache: dict[str, int] = {}
+
     # Emitir secuencialmente
     for fila in filas:
         res_factura = ResultadoFactura(
@@ -109,7 +113,44 @@ async def _emitir_cuit(
             )
             nuevo_nro = (ultimo or 0) + 1
 
-            fecha_cbte = fila.fecha_resuelta or date.today()
+            fecha_cbte = fila.fecha_resuelta or hoy_ar()
+
+            # ── RG 5700/2025: umbral de identificación del receptor ──
+            # Se valida antes de llamar a ARCA para no quemar el intento.
+            from ..config import UMBRAL_CF
+            _dni_raw = (fila.dni_cliente_raw or "").replace("-", "").replace(" ", "")
+            _sin_identificar = not (_dni_raw.isdigit() and int(_dni_raw or "0") > 0)
+            if (_sin_identificar and UMBRAL_CF
+                    and float(fila.importe_resuelto) >= UMBRAL_CF):
+                res_factura.error = (
+                    f"El importe alcanza el umbral de identificación del receptor "
+                    f"(RG 5700/2025, ${UMBRAL_CF:,.0f}). Cargá el DNI o CUIT del "
+                    f"cliente en el Excel y reintentá."
+                )
+                resultado.rechazadas += 1
+                resultado.facturas.append(res_factura)
+                fila.valida = False
+                fila.error = res_factura.error
+                continue  # no consume numeración: nunca se llamó a ARCA
+
+            # ── Cond. IVA del receptor con CUIT (padrón ARCA, RG 5616) ──
+            _cond_iva = None
+            if len(_dni_raw) == 11 and _dni_raw.isdigit():
+                if _dni_raw in _cond_iva_cache:
+                    _cond_iva = _cond_iva_cache[_dni_raw]
+                else:
+                    try:
+                        from ..afip.padron import consultar_constancia
+                        _cons = await consultar_constancia(
+                            _dni_raw, monotributista.cuit,
+                            cert_pem, key_pem,
+                            environment=monotributista.afip_environment,
+                        )
+                        if not _cons.error:
+                            _cond_iva = 6 if _cons.es_monotributo else 1
+                            _cond_iva_cache[_dni_raw] = _cond_iva
+                    except Exception:
+                        _cond_iva = None  # fallback: 5 (CF) en el WSFE
 
             # Llamada a FECAESolicitar
             cae, cae_vto, obs = await wsfe_module.solicitar_cae(
@@ -127,6 +168,7 @@ async def _emitir_cuit(
                 cliente_nombre=fila.cliente_raw,
                 cliente_dni=fila.dni_cliente_raw,
                 environment=monotributista.afip_environment,
+                cond_iva_receptor=_cond_iva,
             )
 
             if cae:

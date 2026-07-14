@@ -16,6 +16,10 @@ EMAIL_FROM = os.environ.get("EMAIL_FROM", "noreply@masfacil.com.ar")
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 8   # 8 horas
 REFRESH_TOKEN_EXPIRE_DAYS = 30
 
+# RG 5700/2025: monto desde el cual ARCA exige identificar al receptor
+# (no se puede facturar a Consumidor Final anónimo). 0 = desactivado.
+UMBRAL_CF = float(os.environ.get("UMBRAL_CF", "10000000"))
+
 # Planes — máximo de monotributistas por plan
 PLAN_LIMITES = {
     "basico":  10,

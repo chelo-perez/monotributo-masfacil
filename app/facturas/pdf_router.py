@@ -7,6 +7,7 @@ GET  /facturas/{id}/whatsapp     → genera link de WhatsApp con mensaje
 """
 
 from datetime import date
+from ..fechas import hoy_ar
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -44,7 +45,7 @@ async def _generar_pdf_factura(
         punto_venta=factura.punto_venta or mono.afip_punto_venta or 1,
         cbte_nro=factura.cbte_nro or 0,
         cbte_tipo=factura.cbte_tipo or 11,
-        cbte_fecha=factura.cbte_fecha or date.today(),
+        cbte_fecha=factura.cbte_fecha or hoy_ar(),
         imp_total=float(factura.imp_total),
         cae=factura.cae or "",
         cae_vto=factura.cae_vto,

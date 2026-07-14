@@ -4,6 +4,7 @@ Todos los endpoints que devuelven HTML.
 """
 
 from datetime import date
+from .fechas import hoy_ar
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
@@ -35,7 +36,7 @@ async def dashboard(
     # Admin → redirigir al panel de gestión
     if current_user.rol == "admin" and current_user.tenant_nombre == "Más Fácil (Admin)":
         return RedirectResponse("/admin/mmf-admin-2025", status_code=302)
-    hoy = date.today()
+    hoy = hoy_ar()
     mes_nombre = [
         "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
         "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
@@ -289,7 +290,7 @@ async def confirmar_emision(
                 cbte_tipo=11,
                 cbte_nro=9999,
                 punto_venta=1,
-                cbte_fecha=fila.fecha_resuelta or date.today(),
+                cbte_fecha=fila.fecha_resuelta or hoy_ar(),
                 imp_total=fila.importe_resuelto,
                 concepto=fila.concepto_raw,
                 cae="DEMO00000000000",
@@ -566,7 +567,7 @@ async def detalle_monotributista(
     facturas = result_facts.scalars().all()
 
     # Acumulado anual
-    hoy = date.today()
+    hoy = hoy_ar()
     result_ac = await db.execute(
         select(func.coalesce(func.sum(Factura.imp_total), 0)).where(
             Factura.monotributista_id == mono_id,
