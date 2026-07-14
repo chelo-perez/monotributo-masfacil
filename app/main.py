@@ -67,6 +67,12 @@ async def lifespan(app: FastAPI):
                 print(f"[migración] {e}")
 
     await _seed_superadmin()
+    # Jobs en background (cada tarea abre su propia sesión de DB)
+    import asyncio as _asyncio
+    from app.jobs import run_daily_tasks, run_weekly_tasks
+    _asyncio.create_task(run_daily_tasks())
+    _asyncio.create_task(run_weekly_tasks())
+
     yield
     await engine.dispose()
 

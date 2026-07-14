@@ -166,3 +166,77 @@ async def enviar_alerta_monotributo(
         subject=f"⚠️ {razon_social} llegó al {pct:.0f}% del tope de monotributo",
         html=_base_html(contenido),
     )
+
+
+async def enviar_alerta_certificado(
+    to_email: str,
+    razon_social: str,
+    cuit: str,
+    dias_restantes: int,
+    vence_el: str,
+) -> bool:
+    """Alerta al contador: el certificado ARCA de un monotributista está por vencer."""
+    urgente = dias_restantes <= 7
+    color = "#b91c1c" if urgente else "#c2410c"
+    contenido = f"""
+      <h2 style="color:#2C3178;margin-top:0">Certificado ARCA por vencer</h2>
+      <p>El certificado digital de <strong>{razon_social}</strong> (CUIT {cuit})
+      vence el <strong>{vence_el}</strong> —
+      <span style="color:{color};font-weight:700">
+        {'¡quedan ' + str(dias_restantes) + ' días!' if dias_restantes > 1 else '¡vence mañana!'}
+      </span></p>
+      <p>Sin certificado vigente no se pueden emitir facturas para este CUIT.
+      Renovalo desde la sección Certificado ARCA del monotributista: la app
+      genera el CSR y te guía paso a paso.</p>
+    """
+    return await _send(
+        to_email,
+        f"⚠ Certificado ARCA de {razon_social} vence en {dias_restantes} día{'s' if dias_restantes != 1 else ''}",
+        _base_html(contenido),
+    )
+
+
+async def enviar_alerta_desfase(
+    to_email: str,
+    desfases: list[dict],
+) -> bool:
+    """
+    Alerta al contador: hay comprobantes autorizados en ARCA que no están
+    registrados en la app (ventana "CAE otorgado, guardado local fallido").
+    """
+    tipo_label = {11: "Factura C", 13: "Nota de Crédito C"}
+    filas = "".join(
+        f"<tr>"
+        f"<td style='padding:6px 10px;border-bottom:1px solid #eee'>{d['razon_social']}<br>"
+        f"<span style='color:#888;font-size:12px'>{d['cuit']}</span></td>"
+        f"<td style='padding:6px 10px;border-bottom:1px solid #eee'>PV {d['pv']:04d}</td>"
+        f"<td style='padding:6px 10px;border-bottom:1px solid #eee'>{tipo_label.get(d['tipo'], d['tipo'])}</td>"
+        f"<td style='padding:6px 10px;border-bottom:1px solid #eee;text-align:right'>{d['local']}</td>"
+        f"<td style='padding:6px 10px;border-bottom:1px solid #eee;text-align:right'>{d['arca']}</td>"
+        f"<td style='padding:6px 10px;border-bottom:1px solid #eee;text-align:right;color:#b91c1c;font-weight:700'>{d['faltan']}</td>"
+        f"</tr>"
+        for d in desfases
+    )
+    contenido = f"""
+      <h2 style="color:#2C3178;margin-top:0">Control de numeración ARCA</h2>
+      <p>Detectamos comprobantes autorizados en ARCA que no están registrados
+      en Monotributo Más Fácil:</p>
+      <table style="border-collapse:collapse;font-size:13px;width:100%">
+        <tr style="background:#f4f4f8">
+          <th style="padding:6px 10px;text-align:left">Monotributista</th>
+          <th style="padding:6px 10px">PV</th>
+          <th style="padding:6px 10px">Tipo</th>
+          <th style="padding:6px 10px">Último local</th>
+          <th style="padding:6px 10px">Último ARCA</th>
+          <th style="padding:6px 10px">Faltan</th>
+        </tr>
+        {filas}
+      </table>
+      <p style="margin-top:16px">Corré la sincronización del historial desde el
+      detalle del monotributista para importarlos.</p>
+    """
+    return await _send(
+        to_email,
+        "⚠ Comprobantes en ARCA sin registrar en Monotributo Más Fácil",
+        _base_html(contenido),
+    )
