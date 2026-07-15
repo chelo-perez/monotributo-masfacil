@@ -334,7 +334,6 @@ async def confirmar_emision(
         filas = result_filas.scalars().all()
         aprobadas = 0
         for fila in filas:
-            from app.facturas.models import Factura, EstadoFactura
             factura = Factura(
                 tenant_id=current_user.tenant_id,
                 lote_id=lote_id,
@@ -353,7 +352,6 @@ async def confirmar_emision(
             db.add(factura)
             aprobadas += 1
 
-        from app.facturas.models import EstadoLote
         lote.estado = EstadoLote.completado
         lote.aprobadas = aprobadas
         lote.rechazadas = 0
