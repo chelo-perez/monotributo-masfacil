@@ -56,7 +56,7 @@ async def page_factura_manual(
 @router.get("/ultimo-cbte", response_class=JSONResponse)
 async def ultimo_cbte(
     mono_id: int,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     mono = await db.get(Monotributista, mono_id)
@@ -91,7 +91,7 @@ async def ultimo_cbte(
 async def buscar_cliente(
     q: str,
     mono_id: int,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     from app.auth.models import ClienteFinal
@@ -115,7 +115,7 @@ async def buscar_cliente(
 @router.post("/emitir", response_class=JSONResponse)
 async def emitir_manual(
     request: Request,
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     body = await request.json()
