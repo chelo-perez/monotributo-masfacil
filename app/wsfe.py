@@ -150,10 +150,9 @@ async def get_token_sign(
             headers={"Content-Type": "text/xml; charset=utf-8", "SOAPAction": ""},
         )
         if resp.status_code != 200:
-            _log.getLogger(__name__).error(
-                f"WSAA error {resp.status_code} para {environment}: {resp.text[:1000]}"
-            )
-            resp.raise_for_status()
+            body = resp.text[:2000]
+            _log.getLogger(__name__).error(f"WSAA {resp.status_code}: {body}")
+            raise ValueError(f"WSAA error {resp.status_code}: {body}")
 
     root = ET.fromstring(resp.text)
     # Buscar loginCmsReturn en cualquier namespace
