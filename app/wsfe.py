@@ -122,23 +122,25 @@ async def get_token_sign(
     Cachea el ticket hasta 10 minutos antes de su vencimiento.
     """
     cache_key = f"{cert_pem[:20]}:{environment}:{service}"
-    if cache_key in _ticket_cache:
-        token, sign, expira = _ticket_cache[cache_key]
-        if datetime.now(timezone.utc) < expira - timedelta(minutes=10):
-            return token, sign
+    # Cache deshabilitado temporalmente para debug
+    # if cache_key in _ticket_cache:
+    #     token, sign, expira = _ticket_cache[cache_key]
+    #     if datetime.now(timezone.utc) < expira - timedelta(minutes=10):
+    #         return token, sign
 
     tra = _build_tra(service)
     cms = _sign_tra(tra, cert_pem, key_pem)
 
-    soap = f"""<?xml version="1.0" encoding="utf-8"?>
-<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
-               xmlns:tns="http://wsaa.view.sua.dvadac.desein.afip.gov">
-  <soap:Body>
-    <tns:loginCms>
-      <tns:in0>{cms}</tns:in0>
-    </tns:loginCms>
-  </soap:Body>
-</soap:Envelope>"""
+    soap = f"""<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                  xmlns:wsaa="http://wsaa.view.sua.dvadac.desein.afip.gov.ar">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <wsaa:loginCms>
+      <wsaa:in0>{cms}</wsaa:in0>
+    </wsaa:loginCms>
+  </soapenv:Body>
+</soapenv:Envelope>"""
 
     import logging as _log
     url = WSAA_URLS.get(environment, WSAA_URLS["production"])
@@ -154,10 +156,12 @@ async def get_token_sign(
             resp.raise_for_status()
 
     root = ET.fromstring(resp.text)
-    ns = {"tns": "http://wsaa.view.sua.dvadac.desein.afip.gov"}
-    result_text = root.find(".//loginCmsReturn", ns)
-    if result_text is None:
-        result_text = root.find(".//{http://wsaa.view.sua.dvadac.desein.afip.gov}loginCmsReturn")
+    # Buscar loginCmsReturn en cualquier namespace
+    result_text = None
+    for elem in root.iter():
+        if "loginCmsReturn" in elem.tag:
+            result_text = elem
+            break
 
     if result_text is None or not result_text.text:
         raise ValueError(f"WSAA no devolvió resultado. Response: {resp.text[:500]}")
