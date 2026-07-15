@@ -106,7 +106,8 @@ def _sign_tra(tra_xml: str, cert_pem: str, key_pem: str) -> str:
     builder = pkcs7.PKCS7SignatureBuilder()
     builder = builder.set_data(data)
     builder = builder.add_signer(cert, key, hashes.SHA256())
-    cms = builder.sign(serialization.Encoding.DER, [pkcs7.PKCS7Options.DetachedSignature])
+    # ARCA requiere firma con contenido incluido (NO DetachedSignature)
+    cms = builder.sign(serialization.Encoding.DER, [])
     return base64.b64encode(cms).decode()
 
 
