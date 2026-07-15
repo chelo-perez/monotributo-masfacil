@@ -54,8 +54,6 @@ async def lifespan(app: FastAPI):
                 cuotas_bienes JSONB,
                 created_at TIMESTAMPTZ DEFAULT NOW()
             )""",
-            """INSERT INTO tablas_categorias (vigente_desde, vigente_hasta, label, fuente, topes, cuotas_servicios, cuotas_bienes) VALUES ('2025-08-01', '2026-01-31', 'Ago 2025 – Ene 2026', 'https://www.afip.gob.ar/monotributo/documentos/categorias/monotributo-categorias-agosto-2025-enero-2026.pdf', '{"A":8992597.87,"B":13175201.52,"C":17566935.37,"D":21824384.17,"E":25683982.47,"F":32176855.36,"G":38508474.38,"H":58453432.83,"I":65462413.42,"J":74925499.19,"K":90264073.02}', '{"A":37085.74,"B":44436.65,"C":52459.76,"D":66729.08,"E":93641.91,"F":116696.78,"G":177978.63,"H":399526.94,"I":716407.77,"J":851897.75,"K":1212025.49}', '{"A":37085.74,"B":44436.65,"C":51184.97,"D":64976.24,"E":84267.13,"F":101148.73,"G":123637.10,"H":246963.29,"I":370445.22,"J":453219.97,"K":549027.92}') ON CONFLICT (vigente_desde) DO NOTHING""",
-            """INSERT INTO tablas_categorias (vigente_desde, vigente_hasta, label, fuente, topes, cuotas_servicios, cuotas_bienes) VALUES ('2026-02-01', NULL, 'Feb 2026 – Jul 2026', 'https://www.afip.gob.ar/monotributo/categorias.asp', '{"A":10277988.13,"B":15058447.71,"C":21113696.52,"D":26212853.42,"E":30833964.37,"F":38642048.36,"G":46211109.37,"H":70113407.33,"I":78479211.62,"J":89872640.30,"K":108357084.05}', '{"A":42386.74,"B":48250.78,"C":56501.85,"D":72414.10,"E":102537.97,"F":129045.32,"G":197108.23,"H":447346.93,"I":824802.26,"J":999007.65,"K":1381687.90}', '{"A":42386.74,"B":48250.78,"C":55227.06,"D":70661.26,"E":92658.35,"F":111198.27,"G":135918.34,"H":272063.40,"I":406512.05,"J":497059.41,"K":600879.51}') ON CONFLICT (vigente_desde) DO NOTHING""",
             """CREATE TABLE IF NOT EXISTS afip_invoice_history (
                 id SERIAL PRIMARY KEY,
                 tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -127,6 +125,54 @@ async def _seed_superadmin():
         db.add(user)
         await db.commit()
         print(f"[seed] ✓ Admin creado: {admin_email}")
+
+    # Seed tablas de categorías ARCA
+    await _seed_tablas_categorias(db)
+
+
+async def _seed_tablas_categorias(db):
+    """Inserta las tablas históricas de categorías si no existen."""
+    from datetime import date
+    from app.monotributo.models import TablaCategorias
+    from sqlalchemy import select
+
+    TABLAS = [
+        {
+            "vigente_desde": date(2025, 8, 1),
+            "vigente_hasta": date(2026, 1, 31),
+            "label": "Ago 2025 – Ene 2026",
+            "fuente": "https://www.afip.gob.ar/monotributo/documentos/categorias/monotributo-categorias-agosto-2025-enero-2026.pdf",
+            "topes": {"A":8992597.87,"B":13175201.52,"C":17566935.37,"D":21824384.17,"E":25683982.47,"F":32176855.36,"G":38508474.38,"H":58453432.83,"I":65462413.42,"J":74925499.19,"K":90264073.02},
+            "cuotas_servicios": {"A":37085.74,"B":44436.65,"C":52459.76,"D":66729.08,"E":93641.91,"F":116696.78,"G":177978.63,"H":399526.94,"I":716407.77,"J":851897.75,"K":1212025.49},
+            "cuotas_bienes": {"A":37085.74,"B":44436.65,"C":51184.97,"D":64976.24,"E":84267.13,"F":101148.73,"G":123637.10,"H":246963.29,"I":370445.22,"J":453219.97,"K":549027.92},
+        },
+        {
+            "vigente_desde": date(2026, 2, 1),
+            "vigente_hasta": None,
+            "label": "Feb 2026 – (vigente)",
+            "fuente": "https://www.afip.gob.ar/monotributo/categorias.asp",
+            "topes": {"A":10277988.13,"B":15058447.71,"C":21113696.52,"D":26212853.42,"E":30833964.37,"F":38642048.36,"G":46211109.37,"H":70113407.33,"I":78479211.62,"J":89872640.30,"K":108357084.05},
+            "cuotas_servicios": {"A":42386.74,"B":48250.78,"C":56501.85,"D":72414.10,"E":102537.97,"F":129045.32,"G":197108.23,"H":447346.93,"I":824802.26,"J":999007.65,"K":1381687.90},
+            "cuotas_bienes": {"A":42386.74,"B":48250.78,"C":55227.06,"D":70661.26,"E":92658.35,"F":111198.27,"G":135918.34,"H":272063.40,"I":406512.05,"J":497059.41,"K":600879.51},
+        },
+    ]
+
+    for t in TABLAS:
+        existing = await db.execute(
+            select(TablaCategorias).where(
+                TablaCategorias.vigente_desde == t["vigente_desde"]
+            )
+        )
+        if existing.scalar_one_or_none():
+            continue
+        db.add(TablaCategorias(**t, activa=True))
+
+    try:
+        await db.commit()
+        print("[seed] ✓ Tablas de categorías ARCA cargadas")
+    except Exception as e:
+        await db.rollback()
+        print(f"[seed] tablas_categorias: {e}")
 
 
 app = FastAPI(
