@@ -78,8 +78,10 @@ def encrypt_credentials(cert_pem: str, key_pem: str, fernet_key: bytes) -> tuple
 def _build_tra(service: str = "wsfe") -> str:
     now = datetime.now(timezone.utc)
     gen = (now - timedelta(minutes=10)).strftime("%Y-%m-%dT%H:%M:%S+00:00")
-    exp = (now + timedelta(hours=12)).strftime("%Y-%m-%dT%H:%M:%S+00:00")
-    uid = hashlib.md5(f"{service}{now}".encode()).hexdigest()
+    exp = (now + timedelta(hours=10)).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+    # ARCA requiere uniqueId como entero de hasta 10 dígitos
+    import time as _time
+    uid = str(int(_time.time()))[-10:]
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <loginTicketRequest version="1.0">
   <header>
