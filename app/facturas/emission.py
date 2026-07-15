@@ -114,6 +114,9 @@ async def _emitir_cuit(
             nuevo_nro = (ultimo or 0) + 1
 
             fecha_cbte = fila.fecha_resuelta or hoy_ar()
+            import calendar as _cal
+            _ult = _cal.monthrange(fecha_cbte.year, fecha_cbte.month)[1]
+            _fch_hasta = fecha_cbte.replace(day=_ult)
 
             # ── RG 5700/2025: umbral de identificación del receptor ──
             # Se valida antes de llamar a ARCA para no quemar el intento.
@@ -164,7 +167,7 @@ async def _emitir_cuit(
                 imp_total=float(fila.importe_resuelto),
                 concepto=1,  # Productos=1, Servicios=2, P+S=3
                 fch_serv_desde=fecha_cbte.replace(day=1),
-                fch_serv_hasta=fecha_cbte,
+                fch_serv_hasta=_fch_hasta,
                 cliente_nombre=fila.cliente_raw,
                 cliente_dni=fila.dni_cliente_raw,
                 environment=monotributista.afip_environment,

@@ -259,8 +259,10 @@ async def solicitar_cae(
     Si ARCA rechaza, devuelve (None, None, mensaje_error).
     """
     fecha_str = cbte_fecha.strftime("%Y%m%d")
+    import calendar as _cal
+    _ultimo_dia = _cal.monthrange(cbte_fecha.year, cbte_fecha.month)[1]
     fch_desde = (fch_serv_desde or cbte_fecha.replace(day=1)).strftime("%Y%m%d")
-    fch_hasta = (fch_serv_hasta or cbte_fecha).strftime("%Y%m%d")
+    fch_hasta = (fch_serv_hasta or cbte_fecha.replace(day=_ultimo_dia)).strftime("%Y%m%d")
 
     # Receptor — default: Consumidor Final sin identificar (DocTipo 99, DocNro 0,
     # confirmado contra el WS; 96/0 no es el código correcto para CF anónimo)
