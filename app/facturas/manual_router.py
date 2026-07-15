@@ -140,8 +140,7 @@ async def emitir_manual(
         return JSONResponse({"ok": False, "error": "El monotributista no tiene certificado configurado"})
 
     try:
-        from app.wsfe import (get_token_sign, get_ultimo_cbte as _ultimo,
-                              emitir_comprobante, ComprobanteRequest, load_credentials)
+        from app.wsfe import get_token_sign, get_ultimo_cbte as _ultimo, solicitar_cae, load_credentials
         from app.config import FERNET_KEY
 
         cert_pem, key_pem = load_credentials(mono, FERNET_KEY)
@@ -158,31 +157,29 @@ async def emitir_manual(
         doc_tipo = 96 if (cliente_dni and cliente_dni.isdigit()) else 99
         doc_nro  = cliente_dni if (cliente_dni and cliente_dni.isdigit()) else "0"
 
+        last_day = calendar.monthrange(fecha.year, fecha.month)[1]
         fch_desde = fecha.replace(day=1)
-        last_day  = calendar.monthrange(fecha.year, fecha.month)[1]
         fch_hasta = fecha.replace(day=last_day)
 
-        req = ComprobanteRequest(
-            cbte_fecha=fecha,
-            imp_total=importe,
-            doc_nro=doc_nro,
-            doc_tipo=doc_tipo,
-            concepto=2,
+        cae, cae_vto, obs_list = await solicitar_cae(
+            token=token, sign=sign,
+            cuit=cuit,
+            punto_venta=mono.afip_punto_venta,
             cbte_tipo=cbte_tipo,
+            cbte_nro=cbte_nro,
+            cbte_fecha=fecha,
+            imp_total=float(importe),
+            concepto=2,
+            doc_tipo=doc_tipo,
+            doc_nro=doc_nro,
             fch_serv_desde=fch_desde,
             fch_serv_hasta=fch_hasta,
-        )
-        resultado = await emitir_comprobante(
-            token, sign, cuit, mono.afip_punto_venta, cbte_nro, req,
-            environment=mono.afip_environment or "production"
+            environment=mono.afip_environment or "production",
         )
 
-        if resultado.resultado != "A":
-            obs = "; ".join(resultado.obs) if resultado.obs else "Error ARCA"
+        if not cae:
+            obs = "; ".join(obs_list) if obs_list else "ARCA rechazó la factura"
             return JSONResponse({"ok": False, "error": obs})
-
-        cae     = resultado.cae
-        cae_vto = resultado.cae_fch_vto
 
         # Guardar en AfipInvoiceHistory
         from app.afip.history_models import AfipInvoiceHistory
