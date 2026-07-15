@@ -151,22 +151,44 @@ def _periodo_recategorizacion(ref: date) -> tuple[date, date, str, str]:
     """
     Retorna (desde, hasta, label_periodo, label_prox_recat).
 
-    Si estamos en Ene–Jun → recategorización en Julio
-        período: Jul(año ant) – Jun(año act)
-    Si estamos en Jul–Dic → recategorización en Enero
-        período: Ene(año act) – Dic(año act)
+    ARCA recategoriza en enero y julio evaluando el período que YA CERRÓ:
+
+      Recategorización Enero → evalúa Ene–Dic del año anterior
+      Recategorización Julio → evalúa Jul(año ant)–Jun(año act)
+
+    La fecha_ref es la fecha a la que queremos calcular. Lo que importa
+    es cuál fue el ÚLTIMO período cerrado antes de esa fecha:
+
+      Si ref <= 30/06 → el último período cerrado es Ene–Dic del año anterior
+                        (recategorizado en enero de este año)
+      Si ref >= 01/07 → el último período cerrado es Jul(año ant)–Jun(año act)
+                        (se recategoriza en julio de este año)
     """
     anio = ref.year
-    if ref.month <= 6:
+
+    # ARCA tiene dos ventanas de recategorización al año:
+    #
+    #   Julio (evalúa Jul año-ant – Jun año-act):
+    #     Si ref >= 01/07 → ya cerró Jun, se puede evaluar ese período
+    #     Si ref == 30/06 → es el cierre exacto del período Jul-Jun
+    #
+    #   Enero (evalúa Ene–Dic año-ant):
+    #     Si ref >= 01/01 y < 01/07 → ya cerró Dic del año anterior
+    #
+    # Usamos >= 01/07 como corte para el período Jul-Jun del año.
+
+    if ref.month >= 7:
+        # Período Jul(año ant) – Jun(año act) → recategoriza enero siguiente
         desde = date(anio - 1, 7, 1)
         hasta = date(anio, 6, 30)
         label = f"Jul {anio - 1} – Jun {anio}"
-        prox  = f"Julio {anio}"
-    else:
-        desde = date(anio, 1, 1)
-        hasta = date(anio, 12, 31)
-        label = f"Ene – Dic {anio}"
         prox  = f"Enero {anio + 1}"
+    else:
+        # Período Ene–Dic(año ant) → recategoriza julio de este año
+        desde = date(anio - 1, 1, 1)
+        hasta = date(anio - 1, 12, 31)
+        label = f"Ene – Dic {anio - 1}"
+        prox  = f"Julio {anio}"
     return desde, hasta, label, prox
 
 
