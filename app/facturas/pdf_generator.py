@@ -406,7 +406,7 @@ def generar_factura_pdf(
     BI(c, 7.5); c.setFillColor(DARK)
     c.drawString(lx, PIE_y + 19*mm, "Comprobante Autorizado")
     I(c, 6.5); c.setFillColor(GRAY)
-    c.drawString(lx, PIE_y + 13*mm, "Emitido con Facturo Más Fácil · masfacil.com.ar")
+    c.drawString(lx, PIE_y + 13*mm, "Emitido con Monotributo Más Fácil · monotributo.masfacil.com.ar")
 
     # Pág. 1/1 centrado
     R(c, 8); c.setFillColor(DARK)
