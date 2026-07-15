@@ -4,7 +4,7 @@
 {% block extra_styles %}
 /* KPIs */
 .kpi-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
-@media (min-width: 640px) { .kpi-row { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 640px) { .kpi-row { grid-template-columns: repeat(3, 1fr); } }
 .kpi { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; }
 .kpi-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 4px; }
 .kpi-val { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 26px; color: var(--navy); line-height: 1; }
@@ -95,11 +95,6 @@
     <div class="kpi-label">Facturas este mes</div>
     <div class="kpi-val">{{ facturas_mes }}</div>
     <div class="kpi-sub">{% if facturas_rechazadas %}{{ facturas_rechazadas }} rechazadas{% else %}0 rechazadas{% endif %}</div>
-  </div>
-  <div class="kpi">
-    <div class="kpi-label">Total facturado</div>
-    <div class="kpi-val" style="font-size:20px">$ {{ "{:,.0f}".format(total_mes).replace(",",".") }}</div>
-    <div class="kpi-sub">en {{ mes_actual }}</div>
   </div>
 </div>
 
