@@ -61,12 +61,41 @@ TOPES_AGO_2026 = {
 }
 
 def _get_topes(fecha_ref=None) -> dict:
-    """Retorna la tabla de topes vigente para la fecha dada."""
+    """Retorna la tabla de topes vigente para la fecha dada (hardcoded fallback)."""
     from datetime import date as _date
     ref = fecha_ref or _date.today()
     if ref >= _date(2026, 8, 1):
         return TOPES_AGO_2026
     return TOPES_FEB_2026
+
+
+async def get_topes_db(db, fecha_ref=None) -> dict:
+    """
+    Lee los topes vigentes desde la BD (TablaCategorias).
+    Fallback a hardcoded si no hay datos en BD.
+    """
+    from datetime import date as _date
+    from app.monotributo.models import TablaCategorias
+    ref = fecha_ref or _date.today()
+    try:
+        from sqlalchemy import and_, or_
+        result = await db.execute(
+            select(TablaCategorias).where(
+                TablaCategorias.activa == True,
+                TablaCategorias.vigente_desde <= ref,
+                or_(
+                    TablaCategorias.vigente_hasta == None,
+                    TablaCategorias.vigente_hasta >= ref,
+                )
+            ).order_by(TablaCategorias.vigente_desde.desc()).limit(1)
+        )
+        tabla = result.scalar_one_or_none()
+        if tabla and tabla.topes:
+            return {k: Decimal(str(v)) for k, v in tabla.topes.items()}
+    except Exception:
+        pass
+    return {k: Decimal(str(v)) for k, v in _get_topes(ref).items()}
+
 
 # Alias para compatibilidad — usa la tabla vigente hoy
 TOPES = _get_topes()
@@ -213,7 +242,7 @@ async def get_semaforo_mono(
     Retorna un dict listo para pasar al template.
     """
     ref = fecha_ref or date.today()
-    topes = _get_topes(ref)
+    topes = await get_topes_db(db, ref)
 
     # ── Control 1: Exclusión — 365 días corridos ──
     desde_365 = ref - timedelta(days=365)

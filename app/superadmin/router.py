@@ -290,3 +290,79 @@ async def crear_tenant(
         "request": request, "rows": rows,
         "secret": SECRET_PATH, "now": datetime.now(timezone.utc),
     })
+
+
+# ---------------------------------------------------------------------------
+# Tablas de categorías ARCA
+# ---------------------------------------------------------------------------
+
+@router.get(f"/{SECRET_PATH}/tablas-categorias", response_class=HTMLResponse)
+async def tablas_categorias_page(
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    _check_auth(request)
+    from app.monotributo.models import TablaCategorias
+    result = await db.execute(
+        select(TablaCategorias).order_by(TablaCategorias.vigente_desde.desc())
+    )
+    tablas = result.scalars().all()
+    return templates.TemplateResponse("superadmin/tablas_categorias.html", {
+        "request": request,
+        "secret": SECRET_PATH,
+        "tablas": tablas,
+    })
+
+
+@router.post(f"/{SECRET_PATH}/tablas-categorias/nueva", response_class=HTMLResponse)
+async def crear_tabla_categorias(
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    _check_auth(request)
+    import json
+    from app.monotributo.models import TablaCategorias
+    form = await request.form()
+
+    letras = ["A","B","C","D","E","F","G","H","I","J","K"]
+
+    topes = {}
+    cuotas_serv = {}
+    cuotas_bien = {}
+    for l in letras:
+        v = str(form.get(f"tope_{l}", "0")).replace(".","").replace(",",".")
+        topes[l] = float(v) if v else 0
+        cs = str(form.get(f"cuota_serv_{l}", "0")).replace(".","").replace(",",".")
+        cuotas_serv[l] = float(cs) if cs else 0
+        cb = str(form.get(f"cuota_bien_{l}", "0")).replace(".","").replace(",",".")
+        cuotas_bien[l] = float(cb) if cb else 0
+
+    desde_str = str(form.get("vigente_desde", ""))
+    hasta_str = str(form.get("vigente_hasta", ""))
+    from datetime import date
+    vigente_desde = date.fromisoformat(desde_str) if desde_str else date.today()
+    vigente_hasta = date.fromisoformat(hasta_str) if hasta_str else None
+
+    tabla = TablaCategorias(
+        vigente_desde=vigente_desde,
+        vigente_hasta=vigente_hasta,
+        label=str(form.get("label", "")),
+        fuente=str(form.get("fuente", "")) or None,
+        activa=True,
+        topes=topes,
+        cuotas_servicios=cuotas_serv,
+        cuotas_bienes=cuotas_bien,
+    )
+    db.add(tabla)
+    await db.commit()
+
+    result = await db.execute(
+        select(TablaCategorias).order_by(TablaCategorias.vigente_desde.desc())
+    )
+    tablas = result.scalars().all()
+    return templates.TemplateResponse("superadmin/tablas_categorias.html", {
+        "request": request,
+        "secret": SECRET_PATH,
+        "tablas": tablas,
+        "ok": "Tabla agregada correctamente.",
+    })

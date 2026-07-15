@@ -42,6 +42,19 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE facturas ADD COLUMN IF NOT EXISTS pdf_path VARCHAR(500)",
             "ALTER TABLE facturas ADD COLUMN IF NOT EXISTS afip_obs TEXT",
             "ALTER TABLE filas_excel ADD COLUMN IF NOT EXISTS email_cliente_raw VARCHAR(200)",
+            """CREATE TABLE IF NOT EXISTS tablas_categorias (
+                id SERIAL PRIMARY KEY,
+                vigente_desde DATE NOT NULL UNIQUE,
+                vigente_hasta DATE,
+                label VARCHAR(50) NOT NULL,
+                fuente VARCHAR(200),
+                activa BOOLEAN DEFAULT TRUE,
+                topes JSONB NOT NULL,
+                cuotas_servicios JSONB,
+                cuotas_bienes JSONB,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            )""",
+            """INSERT INTO tablas_categorias (vigente_desde, vigente_hasta, label, fuente, topes, cuotas_servicios, cuotas_bienes) VALUES ('2026-02-01', '2026-07-31', 'Feb 2026 – Jul 2026', 'https://www.afip.gob.ar/monotributo/categorias.asp', '{"A":10277988.13,"B":15058447.71,"C":21113696.52,"D":26212853.42,"E":30833964.37,"F":38642048.36,"G":46211109.37,"H":70113407.33,"I":78479211.62,"J":89872640.30,"K":108357084.05}', '{"A":42386.74,"B":48250.78,"C":56501.85,"D":72414.10,"E":102537.97,"F":129045.32,"G":197108.23,"H":447346.93,"I":824802.26,"J":999007.65,"K":1381687.90}', '{"A":42386.74,"B":48250.78,"C":55227.06,"D":70661.26,"E":92658.35,"F":111198.27,"G":135918.34,"H":272063.40,"I":406512.05,"J":497059.41,"K":600879.51}') ON CONFLICT (vigente_desde) DO NOTHING""",
             """CREATE TABLE IF NOT EXISTS afip_invoice_history (
                 id SERIAL PRIMARY KEY,
                 tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
