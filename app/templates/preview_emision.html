@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Preview de emisión — Monotributo Más Fácil</title>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&family=Nunito+Sans:wght@400;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
   <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
   <style>
     :root { --navy:#2C3178; --coral:#F07B5A; --bg:#F5F6FA; --border:#E5E7EB; --muted:#6B7280; --green:#22C55E; --red:#EF4444; --yellow:#F59E0B; --radius:12px; }
@@ -117,7 +117,7 @@
         <div class="mono-total">$ {{ "{:,.0f}".format(grupo.total_importe | float) if grupo.total_importe else "0" }}</div>
         <div class="mono-count">{{ grupo.filas_validas }} factura{{ 's' if grupo.filas_validas != 1 }}</div>
       </div>
-      <i class="ti ti-chevron-down" style="color:var(--muted);font-size:16px;margin-left:4px;transition:transform .2s" id="chevron-g{{ loop.index }}"></i>
+      <svg id="chevron-g{{ loop.index }}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="color:var(--muted);margin-left:4px;transition:transform .2s;flex-shrink:0"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
     <div class="mono-filas">
       {% for fila in grupo.filas %}
