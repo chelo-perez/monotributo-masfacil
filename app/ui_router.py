@@ -368,14 +368,20 @@ async def confirmar_emision(
         })
 
     # Producción: emisión real en paralelo
-    from app.facturas.emission import emitir_lote
-    resultado = await emitir_lote(
-        lote_id=lote_id,
-        tenant_id=current_user.tenant_id,
-        db=db,
-        wsfe_module=wsfe_module,
-        fernet_key=FERNET_KEY,
-    )
+    import logging as _log
+    _log.getLogger(__name__).info(f"[emision] Iniciando lote {lote_id}")
+    try:
+        from app.facturas.emission import emitir_lote
+        resultado = await emitir_lote(
+            lote_id=lote_id,
+            tenant_id=current_user.tenant_id,
+            db=db,
+            wsfe_module=wsfe_module,
+            fernet_key=FERNET_KEY,
+        )
+    except Exception as _e:
+        _log.getLogger(__name__).error(f"[emision] Error en lote {lote_id}: {_e}", exc_info=True)
+        raise
 
     # Email de resumen al contador (no bloquea la respuesta)
     try:

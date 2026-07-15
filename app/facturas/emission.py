@@ -270,20 +270,20 @@ async def emitir_lote(
     )
     monos = {m.id: m for m in result.scalars().all()}
 
-    # Lanzar todos en paralelo
-    tasks = [
-        _emitir_cuit(
+    # Emitir secuencialmente por monotributista
+    # (asyncio.gather con la misma sesión DB causa errores en SQLAlchemy async)
+    resultados: list[ResultadoMonotributista] = []
+    for mono_id, filas_del_mono in por_mono.items():
+        if mono_id not in monos:
+            continue
+        resultado_mono = await _emitir_cuit(
             monotributista=monos[mono_id],
             filas=filas_del_mono,
             db=db,
             wsfe_module=wsfe_module,
             fernet_key=fernet_key,
         )
-        for mono_id, filas_del_mono in por_mono.items()
-        if mono_id in monos
-    ]
-
-    resultados: list[ResultadoMonotributista] = await asyncio.gather(*tasks)
+        resultados.append(resultado_mono)
 
     # Consolidar
     total_aprobadas = sum(r.aprobadas for r in resultados)
