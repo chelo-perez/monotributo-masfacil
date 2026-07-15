@@ -241,10 +241,12 @@ async def _suma_historia(mono_id: int, db: AsyncSession, desde: date, hasta: dat
 
 
 async def _suma_sistema(mono_id: int, db: AsyncSession, desde: date, hasta: date) -> Decimal:
-    """Facturas emitidas por el sistema no presentes en el historial (evita duplicados)."""
-    nros_hist = select(AfipInvoiceHistory.cbte_nro).where(
-        AfipInvoiceHistory.mono_id == mono_id
-    )
+    """
+    Facturas emitidas por el sistema no presentes en el historial (evita duplicados).
+    Deduplicación por (cbte_nro, punto_venta, cbte_tipo) para cubrir múltiples PVs.
+    Usa fch_serv_desde con fallback a cbte_fecha (devengamiento).
+    """
+    from sqlalchemy import exists as sa_exists
     r = await db.execute(
         select(func.coalesce(func.sum(Factura.imp_total), 0))
         .where(
@@ -254,7 +256,12 @@ async def _suma_sistema(mono_id: int, db: AsyncSession, desde: date, hasta: date
             Factura.cbte_tipo.in_([11, 1, 6]),
             func.coalesce(Factura.fch_serv_desde, Factura.cbte_fecha) >= desde,
             func.coalesce(Factura.fch_serv_desde, Factura.cbte_fecha) <= hasta,
-            ~Factura.cbte_nro.in_(nros_hist),
+            ~sa_exists().where(
+                AfipInvoiceHistory.mono_id    == mono_id,
+                AfipInvoiceHistory.cbte_nro   == Factura.cbte_nro,
+                AfipInvoiceHistory.cbte_tipo  == Factura.cbte_tipo,
+                AfipInvoiceHistory.punto_venta == Factura.punto_venta,
+            ),
         )
     )
     return Decimal(str(r.scalar() or 0))
