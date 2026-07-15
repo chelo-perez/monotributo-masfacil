@@ -24,6 +24,36 @@ from app.facturas.models import (
 )
 
 
+ARCA_MAX_DIAS_ATRAS = 10
+
+
+def _resolver_fecha_cbte(fecha_pago: date, ultima_fecha_cbte: date | None = None) -> date:
+    """
+    Determina la fecha del comprobante según la fecha del pago.
+    ARCA permite fechas hasta 10 días hacia atrás.
+    - Si el pago está dentro del rango: usar la fecha real
+    - Si es más antiguo: usar hoy - 10 días (mínimo permitido)
+    - Nunca retroceder antes del último comprobante emitido
+    """
+    from datetime import timedelta
+    hoy = date.today()
+    min_valida = hoy - timedelta(days=ARCA_MAX_DIAS_ATRAS)
+
+    if fecha_pago < min_valida:
+        cbte_fecha = min_valida
+    else:
+        cbte_fecha = fecha_pago
+
+    # Respetar secuencia: no retroceder antes del último comprobante
+    if ultima_fecha_cbte and cbte_fecha < ultima_fecha_cbte:
+        cbte_fecha = ultima_fecha_cbte
+
+    if cbte_fecha > hoy:
+        cbte_fecha = hoy
+
+    return cbte_fecha
+
+
 # ---------------------------------------------------------------------------
 # Resultado de emisión
 # ---------------------------------------------------------------------------
@@ -113,7 +143,8 @@ async def _emitir_cuit(
             )
             nuevo_nro = (ultimo or 0) + 1
 
-            fecha_cbte = fila.fecha_resuelta or hoy_ar()
+            _fecha_pago = fila.fecha_resuelta or hoy_ar()
+            fecha_cbte = _resolver_fecha_cbte(_fecha_pago)
             import calendar as _cal
             _ult = _cal.monthrange(fecha_cbte.year, fecha_cbte.month)[1]
             _fch_hasta = fecha_cbte.replace(day=_ult)
