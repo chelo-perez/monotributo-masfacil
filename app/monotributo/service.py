@@ -16,10 +16,13 @@ DOS controles distintos:
 La fecha que importa es fch_serv_desde (devengamiento), con fallback a cbte_fecha.
 """
 
+import logging
 from datetime import date, timedelta
 from decimal import Decimal
-from sqlalchemy import select, func
+from sqlalchemy import select, func, exists
 from sqlalchemy.ext.asyncio import AsyncSession
+
+log = logging.getLogger(__name__)
 
 from app.afip.history_models import AfipInvoiceHistory
 from app.facturas.models import Factura, EstadoFactura
@@ -95,7 +98,7 @@ async def get_topes_db(db, fecha_ref=None) -> dict:
     from app.monotributo.models import TablaCategorias
     ref = fecha_ref or _date.today()
     try:
-        from sqlalchemy import and_, or_
+        from sqlalchemy import or_
         result = await db.execute(
             select(TablaCategorias).where(
                 TablaCategorias.activa == True,
@@ -109,8 +112,8 @@ async def get_topes_db(db, fecha_ref=None) -> dict:
         tabla = result.scalar_one_or_none()
         if tabla and tabla.topes:
             return {k: Decimal(str(v)) for k, v in tabla.topes.items()}
-    except Exception:
-        pass
+    except Exception as e:
+        log.warning(f"get_topes_db falló, usando fallback hardcoded: {e}")
     return {k: Decimal(str(v)) for k, v in _get_topes(ref).items()}
 
 
@@ -246,7 +249,6 @@ async def _suma_sistema(mono_id: int, db: AsyncSession, desde: date, hasta: date
     Deduplicación por (cbte_nro, punto_venta, cbte_tipo) para cubrir múltiples PVs.
     Usa fch_serv_desde con fallback a cbte_fecha (devengamiento).
     """
-    from sqlalchemy import exists as sa_exists
     r = await db.execute(
         select(func.coalesce(func.sum(Factura.imp_total), 0))
         .where(
@@ -256,11 +258,13 @@ async def _suma_sistema(mono_id: int, db: AsyncSession, desde: date, hasta: date
             Factura.cbte_tipo.in_([11, 1, 6]),
             func.coalesce(Factura.fch_serv_desde, Factura.cbte_fecha) >= desde,
             func.coalesce(Factura.fch_serv_desde, Factura.cbte_fecha) <= hasta,
-            ~sa_exists().where(
-                AfipInvoiceHistory.mono_id    == mono_id,
-                AfipInvoiceHistory.cbte_nro   == Factura.cbte_nro,
-                AfipInvoiceHistory.cbte_tipo  == Factura.cbte_tipo,
-                AfipInvoiceHistory.punto_venta == Factura.punto_venta,
+            ~exists(
+                select(AfipInvoiceHistory.id).where(
+                    AfipInvoiceHistory.mono_id    == mono_id,
+                    AfipInvoiceHistory.cbte_nro   == Factura.cbte_nro,
+                    AfipInvoiceHistory.cbte_tipo  == Factura.cbte_tipo,
+                    AfipInvoiceHistory.punto_venta == Factura.punto_venta,
+                ).correlate(Factura)
             ),
         )
     )
