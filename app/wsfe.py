@@ -323,6 +323,8 @@ async def solicitar_cae(
   </soapenv:Body>
 </soapenv:Envelope>"""
 
+    import logging as _log
+    _log.getLogger(__name__).info(f"[WSFE] Enviando FECAESolicitar PtoVta={punto_venta} Tipo={cbte_tipo} Nro={cbte_nro} Fecha={cbte_fecha} Importe={imp_total}")
     async with _afip_http_client(30) as client:
         resp = await client.post(
             url, content=body.encode(),
@@ -332,7 +334,9 @@ async def solicitar_cae(
             },
         )
         if not resp.is_success:
+            _log.getLogger(__name__).error(f"[WSFE] Error {resp.status_code}: {resp.text[:2000]}")
             raise ValueError(f"WSFE FECAESolicitar error {resp.status_code}: {resp.text[:800]}")
+        _log.getLogger(__name__).info(f"[WSFE] Respuesta: {resp.text[:500]}")
 
     root = ET.fromstring(resp.text)
     cae = resultado = cae_vto_s = None
