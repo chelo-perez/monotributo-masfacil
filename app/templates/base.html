@@ -205,13 +205,19 @@
 <body>
 
 <aside class="sidebar">
-  <div class="sidebar-logo">
-    <div class="sidebar-logo-mark">M</div>
-    <div>
-      <div class="sidebar-logo-name">Monotributo Más Fácil</div>
-      <div class="sidebar-logo-sub">{{ tenant_nombre }}</div>
+  <a href="/perfil" class="sidebar-logo" style="text-decoration:none">
+    {% if current_user and current_user.tenant_logo %}
+    <div class="sidebar-logo-mark" style="background:rgba(255,255,255,.15);overflow:hidden">
+      <img src="data:image/png;base64,{{ current_user.tenant_logo }}" style="width:100%;height:100%;object-fit:contain">
     </div>
-  </div>
+    {% else %}
+    <div class="sidebar-logo-mark">{{ tenant_nombre[0].upper() if tenant_nombre else 'M' }}</div>
+    {% endif %}
+    <div>
+      <div class="sidebar-logo-name">{{ tenant_nombre or 'Mi estudio' }}</div>
+      <div class="sidebar-logo-sub">Monotributo Más Fácil</div>
+    </div>
+  </a>
 
   <nav class="sidebar-nav">
     <div class="nav-section">Principal</div>

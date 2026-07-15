@@ -35,6 +35,8 @@ async def lifespan(app: FastAPI):
         migraciones = [
             "ALTER TABLE monotributistas ADD COLUMN IF NOT EXISTS nombre_fantasia VARCHAR(200)",
             "ALTER TABLE monotributistas ADD COLUMN IF NOT EXISTS logo_base64 TEXT",
+            "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS logo_base64 TEXT",
+            "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS telefono VARCHAR(50)",
             "ALTER TABLE monotributistas ADD COLUMN IF NOT EXISTS telefono VARCHAR(50)",
             "ALTER TABLE monotributistas ADD COLUMN IF NOT EXISTS actividad VARCHAR(200)",
             "ALTER TABLE monotributistas ADD COLUMN IF NOT EXISTS afip_environment VARCHAR(20) DEFAULT 'production'",

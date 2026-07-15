@@ -1224,3 +1224,49 @@ async def sincronizar_arca(
                 Ver historial →
             </a>
         </div>""")
+
+
+# ---------------------------------------------------------------------------
+# Perfil del estudio
+# ---------------------------------------------------------------------------
+
+@router.get("/perfil", response_class=HTMLResponse)
+async def perfil_page(
+    request: Request,
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    from app.auth.models import Tenant
+    tenant = await db.get(Tenant, current_user.tenant_id)
+    return templates.TemplateResponse("perfil.html", {
+        "request": request,
+        "current_user": current_user,
+        "active_page": "perfil",
+        "tenant_nombre": current_user.tenant_nombre,
+        "tenant": tenant,
+    })
+
+
+@router.post("/perfil", response_class=HTMLResponse)
+async def perfil_guardar(
+    request: Request,
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    from app.auth.models import Tenant
+    form = await request.form()
+    tenant = await db.get(Tenant, current_user.tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404)
+
+    tenant.nombre   = str(form.get("nombre", tenant.nombre)).strip() or tenant.nombre
+    tenant.telefono = str(form.get("telefono", "")).strip() or None
+
+    logo_b64 = str(form.get("logo_base64", "")).strip()
+    if logo_b64:
+        tenant.logo_base64 = logo_b64
+
+    await db.commit()
+
+    # Recargar current_user.tenant_logo para que el sidebar lo muestre
+    return RedirectResponse("/perfil?ok=1", status_code=303)

@@ -67,6 +67,7 @@ class CurrentUser:
         self.rol = user.rol
         self.tenant_id = tenant.id
         self.tenant_nombre = tenant.nombre
+        self.tenant_logo = getattr(tenant, 'logo_base64', None)
         self.plan = tenant.plan
 
 # ---------------------------------------------------------------------------

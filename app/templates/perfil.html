@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block title %}Perfil del estudio — Monotributo Más Fácil{% endblock %}
+
+{% block extra_styles %}
+.perfil-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; max-width: 560px; }
+.perfil-card-header { padding: 14px 18px; border-bottom: 1px solid var(--border); }
+.perfil-card-title { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 15px; color: var(--navy); }
+.perfil-body { padding: 20px 18px; display: flex; flex-direction: column; gap: 16px; }
+
+.form-group label { display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 6px; }
+.form-group input, .form-group select {
+  width: 100%; padding: 10px 12px; font-size: 14px; font-family: inherit;
+  border: 1.5px solid var(--border); border-radius: 8px; outline: none;
+  transition: border-color .15s;
+}
+.form-group input:focus { border-color: var(--navy); }
+.form-group .hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+/* Logo preview */
+.logo-preview-wrap { display: flex; align-items: center; gap: 16px; }
+.logo-current {
+  width: 64px; height: 64px; border-radius: 12px;
+  background: var(--navy); display: flex; align-items: center; justify-content: center;
+  font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 24px; color: white;
+  flex-shrink: 0; overflow: hidden;
+}
+.logo-upload-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: 8px;
+  border: 1.5px solid var(--border); background: white; color: var(--navy);
+  font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit;
+  transition: all .15s;
+}
+.logo-upload-btn:hover { border-color: var(--navy); }
+
+/* Plan badge */
+.plan-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; background: var(--navy); color: white; text-transform: capitalize; }
+
+.ok-banner { background: #DCFCE7; border: 1px solid #86EFAC; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #166534; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Perfil del estudio</div>
+    <div class="page-subtitle">Información y configuración de la cuenta</div>
+  </div>
+</div>
+
+{% if request.query_params.get('ok') %}
+<div class="ok-banner">
+  <i class="ti ti-circle-check"></i> Cambios guardados correctamente.
+</div>
+{% endif %}
+
+<form action="/perfil" method="post" enctype="multipart/form-data">
+<div style="display:flex;flex-direction:column;gap:16px;max-width:560px">
+
+  <!-- Logo y nombre -->
+  <div class="perfil-card">
+    <div class="perfil-card-header"><div class="perfil-card-title">Identidad del estudio</div></div>
+    <div class="perfil-body">
+
+      <!-- Logo -->
+      <div class="form-group">
+        <label>Logo</label>
+        <div class="logo-preview-wrap">
+          <div class="logo-current" id="logo-preview-box">
+            {% if tenant and tenant.logo_base64 %}
+            <img src="data:image/png;base64,{{ tenant.logo_base64 }}"
+                 style="width:100%;height:100%;object-fit:contain">
+            {% else %}
+            {{ tenant.nombre[0].upper() if tenant else 'M' }}
+            {% endif %}
+          </div>
+          <div>
+            <button type="button" class="logo-upload-btn" onclick="document.getElementById('logo-input').click()">
+              <i class="ti ti-upload" style="font-size:13px"></i>
+              {% if tenant and tenant.logo_base64 %}Cambiar logo{% else %}Subir logo{% endif %}
+            </button>
+            <div class="hint" style="margin-top:6px">PNG o JPG · Se muestra en el sidebar</div>
+          </div>
+        </div>
+        <input type="file" id="logo-input" accept="image/png,image/jpeg" style="display:none" onchange="previewLogo(this)">
+        <input type="hidden" id="logo_base64" name="logo_base64">
+      </div>
+
+      <!-- Nombre -->
+      <div class="form-group">
+        <label>Nombre del estudio</label>
+        <input type="text" name="nombre" value="{{ tenant.nombre if tenant else '' }}" required>
+      </div>
+
+      <!-- Teléfono -->
+      <div class="form-group">
+        <label>Teléfono <span style="font-weight:400;font-size:11px">(opcional)</span></label>
+        <input type="text" name="telefono" value="{{ tenant.telefono if tenant and tenant.telefono else '' }}" placeholder="+54 11 ...">
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Cuenta -->
+  <div class="perfil-card">
+    <div class="perfil-card-header"><div class="perfil-card-title">Cuenta</div></div>
+    <div class="perfil-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:4px">Email</div>
+          <div style="font-size:14px;color:var(--navy)">{{ current_user.email }}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:4px">Plan</div>
+          <span class="plan-badge">{{ current_user.plan.value if current_user.plan else 'básico' }}</span>
+        </div>
+        {% if tenant and tenant.created_at %}
+        <div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:4px">Cuenta creada</div>
+          <div style="font-size:14px;color:var(--navy)">{{ tenant.created_at.strftime('%d/%m/%Y') }}</div>
+        </div>
+        {% endif %}
+        <div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:4px">Monotributistas</div>
+          <div style="font-size:14px;color:var(--navy)">{{ tenant.monotributistas|length if tenant else 0 }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:10px">
+    <a href="/dashboard" class="btn btn-ghost">Cancelar</a>
+    <button type="submit" class="btn btn-primary">
+      <i class="ti ti-device-floppy"></i> Guardar cambios
+    </button>
+  </div>
+
+</div>
+</form>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function previewLogo(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) { alert('El logo debe ser menor a 2 MB'); input.value=''; return; }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const b64 = e.target.result.split(',')[1];
+    document.getElementById('logo_base64').value = b64;
+    const box = document.getElementById('logo-preview-box');
+    box.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:contain">`;
+  };
+  reader.readAsDataURL(file);
+}
+</script>
+{% endblock %}

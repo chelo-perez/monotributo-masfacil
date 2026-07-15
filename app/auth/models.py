@@ -38,6 +38,8 @@ class Tenant(Base):
     activo = Column(Boolean, default=False)               # activa el admin vía email
     trial_hasta = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    logo_base64 = Column(Text, nullable=True)
+    telefono = Column(String(50), nullable=True)
 
     users = relationship("User", back_populates="tenant")
     monotributistas = relationship("Monotributista", back_populates="tenant")
