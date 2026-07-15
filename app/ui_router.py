@@ -594,19 +594,10 @@ async def detalle_monotributista(
     )
     facturas = result_facts.scalars().all()
 
-    # Acumulado 365 días — dual source (historial ARCA + facturas sistema)
-    hoy = hoy_ar()
-    acumulado = await _acumulado_mono(mono_id, db)
-
-    TOPES = {
-        "A": 3_700_000, "B": 5_550_000, "C": 7_400_000,
-        "D": 9_250_000, "E": 11_100_000, "F": 13_500_000,
-        "G": 16_200_000, "H": 19_300_000, "I": 22_700_000,
-        "J": 26_500_000, "K": 30_000_000,
-    }
+    # Semáforo completo (exclusión 365d + recategorización semestral)
+    from app.monotributo.service import get_semaforo_mono
     cat = mono.categoria_actual.value if mono.categoria_actual else "A"
-    tope = TOPES.get(cat, 3_700_000)
-    pct = min((acumulado / tope * 100), 100) if tope else 0
+    semaforo = await get_semaforo_mono(mono_id=mono_id, categoria_actual=cat, db=db)
 
     return templates.TemplateResponse("monotributistas/detalle.html", {
         "request": request,
@@ -615,10 +606,7 @@ async def detalle_monotributista(
         "tenant_nombre": current_user.tenant_nombre,
         "mono": mono,
         "facturas": facturas,
-        "acumulado": acumulado,
-        "tope": tope,
-        "pct_tope": round(pct, 1),
-        "categoria": cat,
+        "sem": semaforo,
     })
 
 

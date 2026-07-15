@@ -68,36 +68,91 @@
   <div class="det-card">
     <div class="det-card-header">
       <div class="det-card-title"><i class="ti ti-chart-bar"></i> Control de monotributo</div>
-      <span style="font-size:11px;color:var(--muted)">Últimos 365 días</span>
+      <span style="font-size:11px;color:var(--muted)">Categoría {{ sem.categoria }}</span>
     </div>
     <div class="det-card-body">
-      <div class="semaforo-row">
-        <div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:2px">Categoría actual</div>
-          <div class="semaforo-cat">Categoría {{ categoria }}</div>
+
+      {# ── CONTROL 1: Exclusión 365 días ── #}
+      <div style="margin-bottom:18px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+          <div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">Exclusión — últimos 365 días</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:1px">{{ sem.desde_365 }} → {{ sem.hasta_365 }}</div>
+          </div>
+          <div style="font-family:'Nunito',sans-serif;font-weight:800;font-size:20px;
+            color:{% if sem.estado_365 == 'rojo' %}var(--red){% elif sem.estado_365 == 'amarillo' %}var(--yellow){% else %}var(--green){% endif %}">
+            {{ sem.pct_365 }}%
+          </div>
         </div>
-        <div class="semaforo-pct" style="color:{% if pct_tope >= 90 %}var(--red){% elif pct_tope >= 75 %}var(--yellow){% else %}var(--green){% endif %}">
-          {{ pct_tope }}%
+
+        {# Barra con marcadores de categorías #}
+        <div style="position:relative;margin-bottom:4px">
+          <div class="progress-track">
+            <div class="progress-fill" style="width:{{ sem.pct_365 }}%;background:{% if sem.estado_365 == 'rojo' %}var(--red){% elif sem.estado_365 == 'amarillo' %}var(--yellow){% else %}var(--green){% endif %}"></div>
+          </div>
+          {% for m in sem.cat_markers %}
+          <div title="Cat {{ m.letra }}: {{ m.tope_fmt }}"
+               style="position:absolute;top:-2px;left:{{ m.pct }}%;width:2px;height:12px;background:{% if m.activa %}var(--navy){% else %}rgba(0,0,0,.15){% endif %};border-radius:1px">
+          </div>
+          {% endfor %}
         </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)">
+          <span>Acumulado: <strong style="color:var(--navy)">{{ sem.acu_365_fmt }}</strong></span>
+          <span>Tope K: <strong>{{ sem.tope_k_fmt }}</strong></span>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">
+          Disponible hasta exclusión: <strong>{{ sem.disponible_k }}</strong>
+        </div>
+
+        {% if sem.estado_365 == 'rojo' %}
+        <div class="alerta-box" style="background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;margin-top:8px">
+          <i class="ti ti-alert-octagon" style="flex-shrink:0"></i>
+          <span><strong>Superó el tope de exclusión.</strong> Revisar urgente con el cliente.</span>
+        </div>
+        {% elif sem.estado_365 == 'amarillo' %}
+        <div class="alerta-box" style="background:#FEF9C3;border:1px solid #F59E0B;color:#854D0E;margin-top:8px">
+          <i class="ti ti-alert-triangle" style="flex-shrink:0"></i>
+          <span>Cerca del tope de exclusión. Monitorear la facturación.</span>
+        </div>
+        {% endif %}
       </div>
-      <div class="progress-track">
-        <div class="progress-fill" style="width:{{ pct_tope }}%;background:{% if pct_tope >= 90 %}var(--red){% elif pct_tope >= 75 %}var(--yellow){% else %}var(--green){% endif %}"></div>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin:0 0 16px">
+
+      {# ── CONTROL 2: Recategorización semestral ── #}
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+          <div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">Recategorización — {{ sem.periodo_label }}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:1px">Próxima: <strong>{{ sem.prox_recat }}</strong></div>
+          </div>
+          <div style="font-family:'Nunito',sans-serif;font-weight:800;font-size:20px;
+            color:{% if sem.estado_sem == 'rojo' %}var(--red){% elif sem.estado_sem == 'amarillo' %}var(--yellow){% else %}var(--green){% endif %}">
+            {{ sem.pct_sem }}%
+          </div>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" style="width:{{ sem.pct_sem }}%;background:{% if sem.estado_sem == 'rojo' %}var(--red){% elif sem.estado_sem == 'amarillo' %}var(--yellow){% else %}var(--green){% endif %}"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:4px">
+          <span>Acumulado: <strong style="color:var(--navy)">{{ sem.acu_sem_fmt }}</strong></span>
+          <span>Tope {% if sem.cat_siguiente %}Cat {{ sem.cat_siguiente }}{% else %}Cat {{ sem.categoria }}{% endif %}: <strong>{{ sem.tope_sem_fmt }}</strong></span>
+        </div>
+
+        {% if sem.cat_siguiente %}
+        <div class="alerta-box" style="background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;margin-top:8px">
+          <i class="ti ti-trending-up" style="flex-shrink:0"></i>
+          <span>Superó el tope de Categoría {{ sem.categoria }}.
+            Debería recategorizarse a <strong>Categoría {{ sem.cat_siguiente }}</strong> en {{ sem.prox_recat }}.</span>
+        </div>
+        {% elif sem.estado_sem == 'amarillo' %}
+        <div class="alerta-box" style="background:#FEF9C3;border:1px solid #F59E0B;color:#854D0E;margin-top:8px">
+          <i class="ti ti-alert-triangle" style="flex-shrink:0"></i>
+          <span>Acercándose al tope. Revisar si corresponde recategorizar en {{ sem.prox_recat }}.</span>
+        </div>
+        {% endif %}
       </div>
-      <div class="semaforo-montos">
-        <span>Acumulado: <strong>$ {{ acumulado | format_money }}</strong></span>
-        <span>Tope: <strong>$ {{ tope | format_money }}</strong></span>
-      </div>
-      {% if pct_tope >= 90 %}
-      <div class="alerta-box" style="background:#FEF2F2;border:1px solid #FECACA;color:#991B1B">
-        <i class="ti ti-alert-triangle" style="flex-shrink:0"></i>
-        <strong>Cerca del tope de exclusión.</strong> Revisar emisión con el cliente.
-      </div>
-      {% elif pct_tope >= 75 %}
-      <div class="alerta-box" style="background:#FEF9C3;border:1px solid #F59E0B;color:#854D0E">
-        <i class="ti ti-trending-up" style="flex-shrink:0"></i>
-        Acercándose al tope. Considerar recategorización próxima.
-      </div>
-      {% endif %}
+
     </div>
   </div>
 
