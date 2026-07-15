@@ -188,7 +188,17 @@
         </div>
         <div class="dato-item">
           <div class="dato-label">Punto de venta</div>
-          <div class="dato-val">{% if mono.afip_punto_venta %}PV {{ mono.afip_punto_venta }}{% else %}<span class="muted">Pendiente</span>{% endif %}</div>
+          <div class="dato-val">
+            {% if mono.afip_punto_venta %}
+              PV {{ mono.afip_punto_venta }}
+            {% else %}
+              <a href="/monotributistas/{{ mono.id }}/certificado"
+                 style="color:var(--coral);font-weight:700;font-size:13px;text-decoration:none">
+                <i class="ti ti-alert-triangle" style="font-size:12px"></i>
+                Cargar certificado →
+              </a>
+            {% endif %}
+          </div>
         </div>
         <div class="dato-item dato-full">
           <div class="dato-label">Razón social</div>
