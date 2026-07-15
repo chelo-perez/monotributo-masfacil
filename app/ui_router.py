@@ -301,6 +301,8 @@ async def confirmar_emision(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Dispara la emisión del lote y devuelve la página de resultado."""
+    from app.facturas.models import EstadoLote, EstadoFactura
+
     # Verificar que el lote pertenece al tenant
     result = await db.execute(
         select(LoteEmision).where(
