@@ -113,14 +113,11 @@ async def dashboard(
         elif f.afip_result == EstadoFactura.rechazada:
             facts_por_mono[f.monotributista_id]["rechazadas"] += 1
 
-    # Construir datos para la tabla (con semáforo simulado por ahora)
-    # TODO: integrar monotributo service real con AfipInvoiceHistory
-    TOPES_CATEGORIA = {
-        "A": 3_700_000, "B": 5_550_000, "C": 7_400_000,
-        "D": 9_250_000, "E": 11_100_000, "F": 13_500_000,
-        "G": 16_200_000, "H": 19_300_000, "I": 22_700_000,
-        "J": 26_500_000, "K": 30_000_000,
-    }
+    from app.monotributo.service import get_topes_db
+    from datetime import timedelta
+
+    topes = await get_topes_db(db)
+    tope_k = float(topes.get("K", 108357084))
 
     monos_data = []
     alertas = 0
@@ -128,16 +125,33 @@ async def dashboard(
 
     for m in monos:
         cat = m.categoria_actual.value if m.categoria_actual else "A"
-        tope = TOPES_CATEGORIA.get(cat, 3_700_000)
-        # Acumulado: suma de facturas aprobadas de este mono en los últimos 12 meses
-        acumulado = await _acumulado_mono(m.id, db)
-        pct = min((acumulado / tope * 100), 100) if tope else 0
 
-        if pct >= 90:
+        # Acumulado 365 días vs tope K (exclusión)
+        acumulado = await _acumulado_mono(m.id, db)
+        pct_k = round(min(float(acumulado) / tope_k * 100, 100), 1) if tope_k else 0
+
+        # Estado semáforo
+        if pct_k >= 90:
+            estado = "rojo"
             alertas += 1
+        elif pct_k >= 75:
+            estado = "amarillo"
+            alertas += 1
+        else:
+            estado = "verde"
 
         if not m.cert_encrypted:
             sin_certificado += 1
+
+        # Última factura emitida (historial + sistema)
+        from app.afip.history_models import AfipInvoiceHistory
+        ult_hist = await db.execute(
+            select(AfipInvoiceHistory.cbte_fecha).where(
+                AfipInvoiceHistory.mono_id == m.id,
+                AfipInvoiceHistory.cbte_tipo.in_([11, 1, 6]),
+            ).order_by(AfipInvoiceHistory.cbte_fecha.desc()).limit(1)
+        )
+        ultima_fecha = ult_hist.scalar_one_or_none()
 
         facts_m = facts_por_mono.get(m.id, {"aprobadas": 0, "rechazadas": 0})
 
@@ -146,12 +160,22 @@ async def dashboard(
             "razon_social": m.razon_social,
             "cuit": m.cuit,
             "categoria": cat,
-            "acumulado": acumulado,
-            "tope": tope,
-            "pct_tope": round(pct, 1),
+            "acumulado": float(acumulado),
+            "tope_k": tope_k,
+            "pct_k": pct_k,
+            "estado": estado,
+            "tiene_cert": bool(m.cert_encrypted),
+            "tiene_pv": bool(m.afip_punto_venta),
+            "ultima_fecha": ultima_fecha,
             "aprobadas_mes": facts_m["aprobadas"],
             "rechazadas_mes": facts_m["rechazadas"],
         })
+
+    # Alertas primero, luego verde ordenado por pct desc
+    monos_data.sort(key=lambda x: (
+        0 if x["estado"] == "rojo" else 1 if x["estado"] == "amarillo" else 2,
+        -x["pct_k"]
+    ))
 
     return templates.TemplateResponse("dashboard.html", {
         "request": request,

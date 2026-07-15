@@ -2,153 +2,216 @@
 {% block title %}Dashboard — Monotributo Más Fácil{% endblock %}
 
 {% block extra_styles %}
-.kpis {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 14px;
-  margin-bottom: 24px;
+/* KPIs */
+.kpi-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
+@media (min-width: 640px) { .kpi-row { grid-template-columns: repeat(4, 1fr); } }
+.kpi { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; }
+.kpi-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 4px; }
+.kpi-val { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 26px; color: var(--navy); line-height: 1; }
+.kpi-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+.kpi-val.alerta { color: var(--red); }
+.kpi-val.ok { color: #16a34a; }
+
+/* Tabla monotributistas */
+.dash-table-wrap { background: white; border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.dash-table-header { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.dash-table-title { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 15px; color: var(--navy); }
+
+.dt { width: 100%; border-collapse: collapse; }
+.dt thead th {
+  padding: 8px 14px; text-align: left;
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--muted);
+  border-bottom: 1px solid var(--border); background: #fafafa;
 }
-@media (min-width: 1024px) {
-  .kpis { grid-template-columns: repeat(4, 1fr); }
-}
-.kpi-card { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px; }
-.kpi-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 8px; }
-.kpi-value { font-family: 'Nunito', sans-serif; font-size: 26px; font-weight: 800; color: var(--navy); line-height: 1; }
-.kpi-value.coral { color: var(--coral); }
-.kpi-sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.dt thead th.r { text-align: right; }
+.dt tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+.dt tbody tr:last-child { border-bottom: none; }
+.dt tbody tr:hover { background: #fafafa; }
+.dt tbody tr.alerta-rojo { background: #fef2f2; }
+.dt tbody tr.alerta-amarillo { background: #fefce8; }
+.dt td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
+.dt td.r { text-align: right; }
 
-.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.section-title { font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 800; color: var(--navy); }
+/* Celda nombre */
+.mono-name { font-weight: 700; color: var(--navy); font-size: 13px; }
+.mono-cuit  { font-size: 11px; color: var(--muted); margin-top: 1px; font-family: monospace; }
+.mono-badges { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
 
-.table-card { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; min-width: 600px; }
-thead tr { border-bottom: 2px solid var(--border); }
-th { padding: 11px 14px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); white-space: nowrap; }
-th.right { text-align: right; }
-tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
-tbody tr:last-child { border-bottom: none; }
-tbody tr:hover { background: #fafafa; }
-td { padding: 13px 14px; font-size: 13px; vertical-align: middle; white-space: nowrap; }
-td.right { text-align: right; font-variant-numeric: tabular-nums; }
+/* Badges de alerta */
+.badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px; white-space: nowrap; }
+.badge-cat  { background: var(--navy); color: white; }
+.badge-rojo { background: #FEE2E2; color: #991B1B; }
+.badge-warn { background: #FEF9C3; color: #854D0E; }
+.badge-ok   { background: #DCFCE7; color: #166534; }
+.badge-gray { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
 
-.mono-name { font-weight: 700; color: var(--navy); display: block; margin-bottom: 2px; }
-.mono-cuit { font-size: 11px; color: var(--muted); }
+/* Barra de progreso */
+.prog-wrap { display: flex; align-items: center; gap: 8px; min-width: 160px; }
+.prog-track { flex: 1; background: var(--border); border-radius: 4px; height: 6px; overflow: hidden; }
+.prog-fill  { height: 100%; border-radius: 4px; transition: width .3s; }
+.prog-pct   { font-size: 12px; font-weight: 700; min-width: 38px; text-align: right; }
 
-.semaforo { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; }
-.semaforo.verde    { background: #DCFCE7; color: #166534; }
-.semaforo.amarillo { background: #FEF9C3; color: #854D0E; }
-.semaforo.rojo     { background: #FEE2E2; color: #991B1B; }
-.semaforo-dot { width: 6px; height: 6px; border-radius: 50%; }
-.verde .semaforo-dot    { background: var(--green); }
-.amarillo .semaforo-dot { background: var(--yellow); }
-.rojo .semaforo-dot     { background: var(--red); }
+/* Última factura */
+.td-fecha { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.td-fecha.nunca { color: #991B1B; font-weight: 600; }
 
-.facts-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; }
-.facts-badge .check { color: var(--green); font-weight: 700; }
-.facts-badge .warn  { color: var(--yellow); font-weight: 700; }
+/* Acción */
+.btn-ver { display: inline-flex; align-items: center; gap: 4px; padding: 5px 12px; border-radius: 6px; border: 1.5px solid var(--border); background: white; color: var(--navy); font-size: 12px; font-weight: 700; cursor: pointer; text-decoration: none; transition: all .15s; font-family: inherit; }
+.btn-ver:hover { border-color: var(--navy); }
+
+/* Separador de secciones */
+.section-sep { padding: 8px 14px; background: #f8f9fc; border-bottom: 1px solid var(--border); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+
+/* Empty */
+.dash-empty { text-align: center; padding: 48px 24px; color: var(--muted); }
+.dash-empty h3 { font-family: 'Nunito', sans-serif; font-weight: 800; color: var(--navy); margin: 10px 0 6px; }
 {% endblock %}
 
 {% block content %}
 <div class="page-header">
   <div>
     <div class="page-title">Dashboard</div>
-    <div class="page-subtitle">{{ mes_actual }} — {{ total_monotributistas }} monotributistas activos</div>
+    <div class="page-subtitle">{{ mes_actual }} — {{ total_monotributistas }} monotributista{{ 's' if total_monotributistas != 1 }}</div>
   </div>
   <a href="/emitir" class="btn btn-primary">
-    <i class="ti ti-upload"></i>
-    Subir Excel y emitir
+    <i class="ti ti-upload"></i> Subir Excel y emitir
   </a>
 </div>
 
 <!-- KPIs -->
-<div class="kpis">
-  <div class="kpi-card">
-    <div class="kpi-label">Monotributistas activos</div>
-    <div class="kpi-value">{{ total_monotributistas }}</div>
-    <div class="kpi-sub">{{ sin_certificado }} sin certificado</div>
+<div class="kpi-row">
+  <div class="kpi">
+    <div class="kpi-label">Monotributistas</div>
+    <div class="kpi-val">{{ total_monotributistas }}</div>
+    <div class="kpi-sub">{% if sin_certificado %}{{ sin_certificado }} sin certificado{% else %}todos con certificado{% endif %}</div>
   </div>
-  <div class="kpi-card">
+  <div class="kpi">
+    <div class="kpi-label">Alertas monotributo</div>
+    <div class="kpi-val {% if alertas > 0 %}alerta{% else %}ok{% endif %}">{{ alertas }}</div>
+    <div class="kpi-sub">{% if alertas %}cerca del tope de exclusión{% else %}todos bajo control{% endif %}</div>
+  </div>
+  <div class="kpi">
     <div class="kpi-label">Facturas este mes</div>
-    <div class="kpi-value coral">{{ facturas_mes }}</div>
-    <div class="kpi-sub">{{ facturas_rechazadas }} rechazadas</div>
+    <div class="kpi-val">{{ facturas_mes }}</div>
+    <div class="kpi-sub">{% if facturas_rechazadas %}{{ facturas_rechazadas }} rechazadas{% else %}0 rechazadas{% endif %}</div>
   </div>
-  <div class="kpi-card">
+  <div class="kpi">
     <div class="kpi-label">Total facturado</div>
-    <div class="kpi-value">$ {{ total_mes | format_money }}</div>
+    <div class="kpi-val" style="font-size:20px">$ {{ "{:,.0f}".format(total_mes).replace(",",".") }}</div>
     <div class="kpi-sub">en {{ mes_actual }}</div>
   </div>
-  <div class="kpi-card">
-    <div class="kpi-label">Alertas monotributo</div>
-    <div class="kpi-value" style="color: {% if alertas > 0 %}var(--red){% else %}var(--green){% endif %}">
-      {{ alertas }}
-    </div>
-    <div class="kpi-sub">{% if alertas > 0 %}cerca del tope{% else %}Todo en orden{% endif %}</div>
+</div>
+
+<!-- Tabla principal -->
+{% if monotributistas %}
+<div class="dash-table-wrap">
+  <div class="dash-table-header">
+    <div class="dash-table-title">Mis monotributistas</div>
+    <a href="/monotributistas/nuevo" style="font-size:13px;font-weight:700;color:var(--navy);text-decoration:none">
+      <i class="ti ti-plus"></i> Agregar
+    </a>
   </div>
-</div>
 
-<!-- Tabla -->
-<div class="section-header">
-  <div class="section-title">Mis monotributistas</div>
-  <a href="/monotributistas/nuevo" class="btn btn-ghost btn-sm">
-    <i class="ti ti-plus"></i> Agregar
-  </a>
-</div>
-
-<div class="table-card">
-  <table>
+  <table class="dt">
     <thead>
       <tr>
         <th>Monotributista</th>
-        <th>Cat.</th>
-        <th>Acumulado anual</th>
-        <th class="right">Tope</th>
-        <th>Estado</th>
-        <th class="right">Facts. {{ mes_actual }}</th>
+        <th>Exclusión 365d</th>
+        <th>Última factura</th>
+        <th class="r">Facts. {{ mes_actual }}</th>
         <th></th>
       </tr>
     </thead>
     <tbody>
+      {% set ns = namespace(prev_estado=None) %}
       {% for m in monotributistas %}
-      <tr>
+
+      {# Separador entre alertas y al día #}
+      {% if ns.prev_estado in ('rojo', 'amarillo') and m.estado == 'verde' and alertas > 0 %}
+      <tr><td colspan="5" style="padding:0">
+        <div class="section-sep"><i class="ti ti-circle-check" style="color:#16a34a"></i> Al día</div>
+      </td></tr>
+      {% elif loop.first and m.estado in ('rojo', 'amarillo') %}
+      <tr><td colspan="5" style="padding:0">
+        <div class="section-sep" style="color:#991B1B"><i class="ti ti-alert-triangle"></i> Requieren atención</div>
+      </td></tr>
+      {% endif %}
+      {% set ns.prev_estado = m.estado %}
+
+      <tr class="{% if m.estado == 'rojo' %}alerta-rojo{% elif m.estado == 'amarillo' %}alerta-amarillo{% endif %}">
+
+        {# Nombre + badges #}
         <td>
-          <span class="mono-name">{{ m.razon_social }}</span>
-          <span class="mono-cuit">{{ m.cuit }}</span>
-        </td>
-        <td><strong>{{ m.categoria }}</strong></td>
-        <td>
-          $ {{ m.acumulado | format_money }}
-          <div style="margin-top:5px; background:var(--border); border-radius:4px; height:4px; width:90px;">
-            <div style="height:4px; border-radius:4px; width:{{ m.pct_tope }}%;
-              background:{% if m.pct_tope >= 90 %}var(--red){% elif m.pct_tope >= 75 %}var(--yellow){% else %}var(--green){% endif %};"></div>
+          <div class="mono-name">{{ m.razon_social }}</div>
+          <div class="mono-cuit">{{ m.cuit }}</div>
+          <div class="mono-badges">
+            <span class="badge badge-cat">Cat. {{ m.categoria }}</span>
+            {% if not m.tiene_cert %}
+            <span class="badge badge-rojo"><i class="ti ti-certificate" style="font-size:9px"></i> Sin cert.</span>
+            {% elif not m.tiene_pv %}
+            <span class="badge badge-warn"><i class="ti ti-alert-triangle" style="font-size:9px"></i> Sin PV</span>
+            {% endif %}
           </div>
         </td>
-        <td class="right" style="font-size:12px; color:var(--muted);">$ {{ m.tope | format_money }}</td>
+
+        {# Barra exclusión 365d #}
         <td>
-          {% if m.pct_tope >= 90 %}
-          <span class="semaforo rojo"><span class="semaforo-dot"></span>{{ m.pct_tope | int }}%</span>
-          {% elif m.pct_tope >= 75 %}
-          <span class="semaforo amarillo"><span class="semaforo-dot"></span>{{ m.pct_tope | int }}%</span>
+          <div class="prog-wrap">
+            <div class="prog-track">
+              <div class="prog-fill" style="width:{{ m.pct_k }}%;background:{% if m.estado == 'rojo' %}var(--red){% elif m.estado == 'amarillo' %}var(--yellow){% else %}#22c55e{% endif %}"></div>
+            </div>
+            <div class="prog-pct" style="color:{% if m.estado == 'rojo' %}var(--red){% elif m.estado == 'amarillo' %}#b45309{% else %}var(--muted){% endif %}">
+              {{ m.pct_k }}%
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px">
+            $ {{ "{:,.0f}".format(m.acumulado).replace(",",".") }} / $ {{ "{:,.0f}".format(m.tope_k).replace(",",".") }}
+          </div>
+        </td>
+
+        {# Última factura #}
+        <td>
+          {% if m.ultima_fecha %}
+          <div class="td-fecha">{{ m.ultima_fecha.strftime('%d/%m/%Y') }}</div>
           {% else %}
-          <span class="semaforo verde"><span class="semaforo-dot"></span>{{ m.pct_tope | int }}%</span>
+          <div class="td-fecha nunca"><i class="ti ti-alert-triangle" style="font-size:10px"></i> Sin historial</div>
           {% endif %}
         </td>
-        <td class="right">
-          <span class="facts-badge">
-            {% if m.rechazadas_mes > 0 %}<span class="warn"><i class="ti ti-alert-triangle"></i> {{ m.rechazadas_mes }}</span>{% endif %}
-            <span class="check"><i class="ti ti-check"></i> {{ m.aprobadas_mes }}</span>
-          </span>
+
+        {# Facturas este mes #}
+        <td class="r">
+          {% if m.aprobadas_mes > 0 %}
+          <span style="font-family:'Nunito',sans-serif;font-weight:800;color:#16a34a">✓ {{ m.aprobadas_mes }}</span>
+          {% else %}
+          <span style="color:var(--muted)">0</span>
+          {% endif %}
+          {% if m.rechazadas_mes > 0 %}
+          <span style="color:var(--red);font-size:11px;margin-left:4px">✗{{ m.rechazadas_mes }}</span>
+          {% endif %}
         </td>
-        <td><a href="/monotributistas/{{ m.id }}" class="btn btn-ghost btn-sm">Ver</a></td>
-      </tr>
-      {% else %}
-      <tr>
-        <td colspan="7" style="text-align:center; padding:48px; color:var(--muted); font-size:14px;">
-          Aún no tenés monotributistas configurados.
-          <a href="/monotributistas/nuevo" style="color:var(--coral); font-weight:700;">Agregá el primero →</a>
+
+        {# Ver #}
+        <td class="r">
+          <a href="/monotributistas/{{ m.id }}" class="btn-ver">Ver →</a>
         </td>
+
       </tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
+
+{% else %}
+<div class="dash-table-wrap">
+  <div class="dash-empty">
+    <i class="ti ti-users" style="font-size:48px;color:#CBD5E1"></i>
+    <h3>Sin monotributistas todavía</h3>
+    <p>Agregá el primero para empezar a emitir facturas.</p>
+    <a href="/monotributistas/nuevo" class="btn btn-primary" style="margin-top:16px;display:inline-flex">
+      <i class="ti ti-plus"></i> Agregar monotributista
+    </a>
+  </div>
+</div>
+{% endif %}
 {% endblock %}
