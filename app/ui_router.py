@@ -572,6 +572,7 @@ async def detalle_monotributista(
     request: Request,
     current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    fecha_ref: str | None = None,
 ):
     result = await db.execute(
         select(Monotributista).where(
@@ -596,8 +597,17 @@ async def detalle_monotributista(
 
     # Semáforo completo (exclusión 365d + recategorización semestral)
     from app.monotributo.service import get_semaforo_mono
+    from datetime import date as _date
     cat = mono.categoria_actual.value if mono.categoria_actual else "A"
-    semaforo = await get_semaforo_mono(mono_id=mono_id, categoria_actual=cat, db=db)
+    fecha_ref_parsed = None
+    if fecha_ref:
+        try:
+            fecha_ref_parsed = _date.fromisoformat(fecha_ref)
+        except ValueError:
+            fecha_ref_parsed = None
+    semaforo = await get_semaforo_mono(
+        mono_id=mono_id, categoria_actual=cat, db=db, fecha_ref=fecha_ref_parsed
+    )
 
     return templates.TemplateResponse("monotributistas/detalle.html", {
         "request": request,
@@ -607,6 +617,7 @@ async def detalle_monotributista(
         "mono": mono,
         "facturas": facturas,
         "sem": semaforo,
+        "fecha_ref": fecha_ref or "",
     })
 
 

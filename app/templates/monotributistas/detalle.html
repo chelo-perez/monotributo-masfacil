@@ -68,7 +68,23 @@
   <div class="det-card">
     <div class="det-card-header">
       <div class="det-card-title"><i class="ti ti-chart-bar"></i> Control de monotributo</div>
-      <span style="font-size:11px;color:var(--muted)">Categoría {{ sem.categoria }}</span>
+      <span style="font-size:11px;color:var(--muted)">Cat. {{ sem.categoria }}</span>
+    </div>
+    <div style="padding:10px 16px;border-bottom:1px solid var(--border);background:#fafafa;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="font-size:12px;font-weight:700;color:var(--muted)">Fecha de referencia</span>
+      <input type="date" id="fecha-ref-input"
+             value="{{ fecha_ref }}"
+             max="{{ sem.hasta_365 }}"
+             style="border:1.5px solid var(--border);border-radius:7px;padding:5px 10px;font-size:13px;font-family:inherit;outline:none;cursor:pointer"
+             onchange="cambiarFecha(this.value)">
+      {% if fecha_ref %}
+      <a href="/monotributistas/{{ mono.id }}"
+         style="font-size:12px;color:var(--coral);font-weight:700;text-decoration:none">
+        <i class="ti ti-x" style="font-size:11px"></i> Hoy
+      </a>
+      {% else %}
+      <span style="font-size:11px;color:var(--muted)">— datos al día de hoy</span>
+      {% endif %}
     </div>
     <div class="det-card-body">
 
@@ -296,6 +312,46 @@
   </div>
 
 </div>
-{% endblock %}
+{% block extra_scripts %}
+<script>
+function cambiarFecha(fecha) {
+  if (!fecha) return;
+  const url = new URL(window.location.href);
+  url.searchParams.set('fecha_ref', fecha);
+  window.location.href = url.toString();
+}
 
-{# Link al historial — agregar antes del cierre de cards-stack #}
+// Atajos de fechas de corte comunes
+const hoy = new Date();
+const ATAJOS = [
+  { label: '30/06/' + hoy.getFullYear(), value: hoy.getFullYear() + '-06-30' },
+  { label: '31/12/' + (hoy.getFullYear() - 1), value: (hoy.getFullYear() - 1) + '-12-31' },
+  { label: '30/06/' + (hoy.getFullYear() - 1), value: (hoy.getFullYear() - 1) + '-06-30' },
+];
+
+document.addEventListener('DOMContentLoaded', () => {
+  const input = document.getElementById('fecha-ref-input');
+  if (!input) return;
+
+  const wrapper = input.parentElement;
+  const btnContainer = document.createElement('div');
+  btnContainer.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;';
+
+  ATAJOS.forEach(a => {
+    const btn = document.createElement('button');
+    btn.textContent = a.label;
+    btn.style.cssText = 'border:1.5px solid var(--border);background:white;border-radius:6px;padding:4px 9px;font-size:11px;font-weight:700;color:var(--navy);cursor:pointer;font-family:inherit';
+    btn.onclick = () => cambiarFecha(a.value);
+    if (input.value === a.value) {
+      btn.style.background = 'var(--navy)';
+      btn.style.color = 'white';
+      btn.style.borderColor = 'var(--navy)';
+    }
+    btnContainer.appendChild(btn);
+  });
+
+  // Insertar después del input
+  input.insertAdjacentElement('afterend', btnContainer);
+});
+</script>
+{% endblock %}
