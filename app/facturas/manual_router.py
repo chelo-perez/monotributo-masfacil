@@ -129,8 +129,19 @@ async def emitir_manual(
     cliente_email  = body.get("cliente_email", "")
     tipo_cbte_str  = body.get("tipo_cbte", "factura")
 
-    fecha     = date.fromisoformat(fecha_str)
+    fecha_original = date.fromisoformat(fecha_str)
     cbte_tipo = 13 if tipo_cbte_str == "nc" else 11
+
+    # Aplicar límite de 10 días de ARCA
+    from datetime import timedelta
+    hoy = date.today()
+    min_valida = hoy - timedelta(days=10)
+    fecha = max(fecha_original, min_valida)
+    if fecha != fecha_original:
+        import logging as _log
+        _log.getLogger(__name__).info(
+            f"Fecha ajustada: {fecha_original} → {fecha} (límite 10 días ARCA)"
+        )
 
     mono = await db.get(Monotributista, mono_id)
     if not mono or mono.tenant_id != current_user.tenant_id:

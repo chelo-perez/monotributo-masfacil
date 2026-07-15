@@ -199,7 +199,8 @@
         </div>
         <div>
           <label class="fm-label">Fecha de emisión</label>
-          <input type="date" id="fm-fecha" class="fm-input">
+          <input type="date" id="fm-fecha" class="fm-input" onchange="verificarFecha(this.value)">
+          <div id="aviso-fecha" style="display:none;margin-top:6px;padding:8px 12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;font-size:12px;color:#c2410c"></div>
         </div>
         <button onclick="emitirFactura()" id="btn-emitir" class="btn btn-primary" style="width:100%;padding:13px">
           <i class="ti ti-file-invoice"></i>
@@ -333,6 +334,21 @@ function setTipo(tipo) {
     btnF.className  = 'tipo-btn';
     aviso.style.display = 'block';
     label.textContent = 'Emitir nota de crédito';
+  }
+}
+
+function verificarFecha(fechaStr) {
+  if (!fechaStr) return;
+  const hoy = new Date();
+  const minValida = new Date(hoy); minValida.setDate(hoy.getDate() - 10);
+  const fecha = new Date(fechaStr + 'T12:00:00');
+  const aviso = document.getElementById('aviso-fecha');
+  if (fecha < minValida) {
+    const minStr = minValida.toLocaleDateString('es-AR');
+    aviso.style.display = 'block';
+    aviso.innerHTML = `⚠ ARCA solo acepta fechas de los últimos 10 días. Se va a emitir con fecha <strong>${minStr}</strong>.`;
+  } else {
+    aviso.style.display = 'none';
   }
 }
 
