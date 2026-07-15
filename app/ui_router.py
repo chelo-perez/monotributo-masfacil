@@ -1238,12 +1238,19 @@ async def perfil_page(
 ):
     from app.auth.models import Tenant
     tenant = await db.get(Tenant, current_user.tenant_id)
+    count_q = await db.execute(
+        select(func.count()).select_from(Monotributista).where(
+            Monotributista.tenant_id == current_user.tenant_id,
+            Monotributista.activo == True,
+        )
+    )
     return templates.TemplateResponse("perfil.html", {
         "request": request,
         "current_user": current_user,
         "active_page": "perfil",
         "tenant_nombre": current_user.tenant_nombre,
         "tenant": tenant,
+        "total_monotributistas": count_q.scalar() or 0,
     })
 
 
