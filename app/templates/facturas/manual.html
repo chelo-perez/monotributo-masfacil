@@ -1,0 +1,399 @@
+{% extends "base.html" %}
+{% block title %}Factura manual — Monotributo Más Fácil{% endblock %}
+
+{% block extra_styles %}
+.fm-wrap { max-width: 520px; }
+
+/* Stepper */
+.stepper { display: flex; align-items: center; gap: 0; margin-bottom: 24px; }
+.step-dot {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800; flex-shrink: 0;
+  font-family: 'Nunito', sans-serif;
+  background: var(--border); color: var(--muted);
+  transition: all .2s;
+}
+.step-dot.active { background: var(--coral); color: white; }
+.step-dot.done   { background: #16a34a; color: white; }
+.step-label { font-size: 11px; margin-left: 5px; color: var(--muted); transition: color .2s; }
+.step-label.active { color: var(--coral); font-weight: 700; }
+.step-label.done   { color: #16a34a; }
+.step-line  { flex: 1; height: 1px; background: var(--border); margin: 0 8px; }
+.step-panel { display: none; }
+.step-panel.visible { display: block; }
+
+/* Card */
+.fm-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 12px; }
+.fm-card-header { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.fm-card-title { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 15px; color: var(--navy); }
+.fm-card-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+
+/* Opciones de monotributista */
+.mono-option {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px; background: var(--bg);
+  border: 1.5px solid var(--border); border-radius: 10px;
+  cursor: pointer; text-align: left; width: 100%; transition: border-color .15s;
+  font-family: inherit;
+}
+.mono-option:hover { border-color: var(--navy); background: white; }
+.mono-avatar { width: 34px; height: 34px; border-radius: 8px; background: var(--navy); color: white; font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+/* Resumen */
+.fm-resumen { background: #EEF0FB; border-radius: 8px; padding: 10px 14px; display: flex; align-items: center; gap: 10px; }
+.fm-resumen-text { font-size: 13px; font-weight: 600; color: var(--navy); }
+.fm-resumen-sub  { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+/* Form elements */
+.fm-label { font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 4px; display: block; }
+.fm-input {
+  width: 100%; padding: 10px 12px; font-size: 14px; font-family: inherit;
+  border: 1.5px solid var(--border); border-radius: 8px; outline: none; transition: border-color .15s;
+}
+.fm-input:focus { border-color: var(--navy); }
+.fm-importe { font-size: 18px; font-weight: 700; padding-left: 28px; }
+
+/* Toggle tipo cbte */
+.tipo-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.tipo-btn {
+  padding: 10px; border-radius: 8px; font-size: 13px; font-weight: 700;
+  cursor: pointer; font-family: inherit; border: 2px solid var(--border);
+  background: var(--bg); color: var(--muted); transition: all .15s;
+}
+.tipo-btn.selected { background: var(--navy); color: white; border-color: var(--navy); }
+.tipo-btn.selected-nc { background: #b45309; color: white; border-color: #b45309; }
+
+/* Resultado */
+.resultado-ok { text-align: center; padding: 28px 20px; }
+.resultado-icon { width: 56px; height: 56px; border-radius: 50%; background: #e8f5e9; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; }
+.share-options { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+.share-btn-wa { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 14px; background: #25D366; color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; width: 100%; font-family: inherit; }
+.share-btn-dl { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; background: var(--bg); border: 1.5px solid var(--border); border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; width: 100%; font-family: inherit; color: var(--navy); }
+
+/* Buscar cliente */
+.cliente-result { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--bg); border: 1.5px solid var(--border); border-radius: 8px; }
+.or-divider { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
+.or-divider::before, .or-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Factura manual</div>
+    <div class="page-subtitle">Emitir un comprobante individual</div>
+  </div>
+</div>
+
+<div class="fm-wrap">
+
+  <!-- Stepper -->
+  <div class="stepper" id="stepper">
+    {% for label in ["Monotributista", "Cliente", "Factura", "Listo"] %}
+    <div style="display:flex;align-items:center;flex:1">
+      <div class="step-dot {% if loop.first %}active{% endif %}" id="dot-{{ loop.index }}">{{ loop.index }}</div>
+      <div class="step-label {% if loop.first %}active{% endif %}" id="lbl-{{ loop.index }}">{{ label }}</div>
+      {% if not loop.last %}<div class="step-line"></div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Paso 1: Monotributista -->
+  <div class="step-panel visible" id="step-1">
+    {% if not monos %}
+    <div class="fm-card">
+      <div class="fm-card-body" style="text-align:center;padding:32px">
+        <i class="ti ti-alert-triangle" style="font-size:36px;color:var(--yellow)"></i>
+        <div style="font-weight:700;color:var(--navy);margin:10px 0 4px">Sin monotributistas configurados</div>
+        <div style="font-size:13px;color:var(--muted)">Necesitás al menos un monotributista con certificado ARCA y punto de venta.</div>
+        <a href="/monotributistas" class="btn btn-primary" style="margin-top:16px;display:inline-flex">Ver monotributistas →</a>
+      </div>
+    </div>
+    {% else %}
+    <div class="fm-card">
+      <div class="fm-card-header"><div class="fm-card-title">¿Quién emite la factura?</div></div>
+      <div class="fm-card-body">
+        {% for m in monos %}
+        <button class="mono-option" onclick="seleccionarMono({{ m.id }}, '{{ m.razon_social }}', {{ m.afip_punto_venta }}, '{{ m.cuit }}')">
+          <div class="mono-avatar">{{ m.razon_social[:2].upper() }}</div>
+          <div style="flex:1;text-align:left">
+            <div style="font-weight:700;color:var(--navy);font-size:14px">{{ m.razon_social }}</div>
+            <div style="font-size:11px;color:var(--muted)">PV {{ "%04d"|format(m.afip_punto_venta) }} · {{ m.cuit }}</div>
+          </div>
+          <i class="ti ti-chevron-right" style="color:var(--muted)"></i>
+        </button>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Paso 2: Cliente -->
+  <div class="step-panel" id="step-2">
+    <div class="fm-resumen" style="margin-bottom:12px">
+      <i class="ti ti-building" style="color:var(--navy);font-size:18px"></i>
+      <div><div class="fm-resumen-text" id="resumen-mono">—</div></div>
+    </div>
+    <div class="fm-card">
+      <div class="fm-card-header"><div class="fm-card-title">¿A quién le facturás?</div></div>
+      <div class="fm-card-body">
+        <div style="position:relative">
+          <i class="ti ti-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:15px"></i>
+          <input type="text" id="cliente-search" class="fm-input" style="padding-left:34px"
+                 placeholder="Buscar por nombre o DNI..." oninput="buscarCliente(this.value)">
+        </div>
+        <div id="cliente-results"></div>
+        <div class="or-divider">o</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <label class="fm-label">Cliente nuevo</label>
+          <input type="text" id="nc-nombre" class="fm-input" placeholder="Nombre y apellido *">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <input type="text" id="nc-dni" class="fm-input" placeholder="DNI (opcional)" inputmode="numeric">
+            <input type="email" id="nc-email" class="fm-input" placeholder="Email (opcional)">
+          </div>
+          <button onclick="seleccionarNuevo()" class="btn btn-ghost" style="width:100%">Usar este cliente →</button>
+        </div>
+        <button onclick="seleccionarCF()" style="font-size:12px;color:var(--muted);background:none;border:none;cursor:pointer;text-align:center;padding:4px;font-family:inherit">
+          Facturar como Consumidor Final
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Paso 3: Datos de la factura -->
+  <div class="step-panel" id="step-3">
+    <div class="fm-resumen" style="margin-bottom:12px">
+      <i class="ti ti-user" style="color:var(--navy);font-size:18px"></i>
+      <div>
+        <div class="fm-resumen-text" id="resumen-mono2">—</div>
+        <div class="fm-resumen-sub" id="resumen-cliente">—</div>
+      </div>
+    </div>
+    <div class="fm-card">
+      <div class="fm-card-header"><div class="fm-card-title">Datos de la factura</div></div>
+      <div class="fm-card-body">
+        <div>
+          <label class="fm-label">Tipo de comprobante</label>
+          <div class="tipo-toggle">
+            <button type="button" class="tipo-btn selected" id="btn-factura" onclick="setTipo('factura')">
+              <i class="ti ti-file-invoice"></i> Factura C
+            </button>
+            <button type="button" class="tipo-btn" id="btn-nc" onclick="setTipo('nc')">
+              <i class="ti ti-file-minus"></i> Nota de Crédito C
+            </button>
+          </div>
+          <div id="aviso-nc" style="display:none;margin-top:8px;padding:8px 12px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;font-size:12px;color:#92400e">
+            <i class="ti ti-info-circle"></i> La NC cancela o reduce una factura previa y se descuenta del acumulado de monotributo.
+          </div>
+        </div>
+        <div>
+          <label class="fm-label">Concepto</label>
+          <input type="text" id="fm-concepto" class="fm-input" value="Honorarios">
+        </div>
+        <div>
+          <label class="fm-label">Importe</label>
+          <div style="position:relative">
+            <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-weight:700;color:var(--muted)">$</span>
+            <input type="number" id="fm-importe" class="fm-input fm-importe" placeholder="0" inputmode="numeric" min="1">
+          </div>
+        </div>
+        <div>
+          <label class="fm-label">Fecha de emisión</label>
+          <input type="date" id="fm-fecha" class="fm-input">
+        </div>
+        <button onclick="emitirFactura()" id="btn-emitir" class="btn btn-primary" style="width:100%;padding:13px">
+          <i class="ti ti-file-invoice"></i>
+          <span id="btn-label">Emitir factura</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Paso 4: Resultado -->
+  <div class="step-panel" id="step-4">
+    <div class="fm-card">
+      <div class="resultado-ok">
+        <div class="resultado-icon">
+          <i class="ti ti-circle-check" style="font-size:28px;color:#16a34a"></i>
+        </div>
+        <div style="font-family:'Nunito',sans-serif;font-weight:800;font-size:17px;color:var(--navy)" id="res-titulo">Factura emitida</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:4px" id="res-nro"></div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px;font-family:monospace" id="res-cae"></div>
+        <div class="share-options">
+          <button class="share-btn-wa" onclick="compartirWA()">
+            <i class="ti ti-brand-whatsapp" style="font-size:18px"></i> Compartir por WhatsApp
+          </button>
+          <button class="share-btn-dl" onclick="descargarPDF()">
+            <i class="ti ti-download"></i> Descargar PDF
+          </button>
+          <button onclick="nueva()" style="font-size:12px;color:var(--muted);background:none;border:none;cursor:pointer;padding:6px;font-family:inherit">
+            Emitir otra factura
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const fm = {
+  mono_id: null, mono_nombre: null, punto_venta: null, cuit: null,
+  cliente_nombre: null, cliente_dni: null, cliente_email: null,
+  tipo: 'factura',
+  pdf_b64: null, pdf_nombre: null, cae: null, cbte_nro: null,
+};
+
+// ── Stepper ──
+function goStep(n) {
+  document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('visible'));
+  document.getElementById('step-' + n).classList.add('visible');
+  for (let i = 1; i <= 4; i++) {
+    const dot = document.getElementById('dot-' + i);
+    const lbl = document.getElementById('lbl-' + i);
+    dot.className = 'step-dot' + (i === n ? ' active' : i < n ? ' done' : '');
+    lbl.className = 'step-label' + (i === n ? ' active' : i < n ? ' done' : '');
+  }
+}
+
+// ── Paso 1: Mono ──
+async function seleccionarMono(id, nombre, pv, cuit) {
+  fm.mono_id = id; fm.mono_nombre = nombre; fm.punto_venta = pv; fm.cuit = cuit;
+  document.getElementById('resumen-mono').textContent  = nombre;
+  document.getElementById('resumen-mono2').textContent = nombre;
+  goStep(2);
+  document.getElementById('cliente-search').focus();
+}
+
+// ── Paso 2: Cliente ──
+let _timer = null;
+function buscarCliente(q) {
+  clearTimeout(_timer);
+  const cont = document.getElementById('cliente-results');
+  if (q.length < 2) { cont.innerHTML = ''; return; }
+  _timer = setTimeout(async () => {
+    const r = await fetch(`/factura-manual/buscar-cliente?q=${encodeURIComponent(q)}&mono_id=${fm.mono_id}`);
+    const data = await r.json();
+    if (!data.length) { cont.innerHTML = '<div style="font-size:12px;color:var(--muted)">Sin resultados — completá los datos abajo</div>'; return; }
+    cont.innerHTML = data.map(c => `
+      <div class="cliente-result">
+        <i class="ti ti-user" style="color:var(--navy);font-size:15px;flex-shrink:0"></i>
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:13px;color:var(--navy)">${c.nombre}</div>
+          ${c.dni ? `<div style="font-size:11px;color:var(--muted)">DNI ${c.dni}</div>` : ''}
+        </div>
+        <button onclick="seleccionarCliente(${c.id}, '${c.nombre.replace(/'/g,"\\'")}', '${c.dni}', '${c.email}')"
+                style="background:var(--navy);color:white;border:none;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">
+          Elegir →
+        </button>
+      </div>
+    `).join('');
+  }, 300);
+}
+
+function seleccionarCliente(id, nombre, dni, email) {
+  fm.cliente_nombre = nombre; fm.cliente_dni = dni; fm.cliente_email = email;
+  irAPaso3();
+}
+function seleccionarNuevo() {
+  const n = document.getElementById('nc-nombre').value.trim();
+  if (!n) { alert('Ingresá el nombre'); return; }
+  fm.cliente_nombre = n;
+  fm.cliente_dni    = document.getElementById('nc-dni').value.trim();
+  fm.cliente_email  = document.getElementById('nc-email').value.trim();
+  irAPaso3();
+}
+function seleccionarCF() {
+  fm.cliente_nombre = 'Consumidor Final'; fm.cliente_dni = ''; fm.cliente_email = '';
+  irAPaso3();
+}
+function irAPaso3() {
+  document.getElementById('resumen-cliente').textContent = fm.cliente_nombre;
+  document.getElementById('fm-fecha').value = new Date().toISOString().split('T')[0];
+  goStep(3);
+  document.getElementById('fm-importe').focus();
+}
+
+// ── Paso 3: Tipo y emisión ──
+function setTipo(tipo) {
+  fm.tipo = tipo;
+  const btnF  = document.getElementById('btn-factura');
+  const btnNC = document.getElementById('btn-nc');
+  const aviso = document.getElementById('aviso-nc');
+  const label = document.getElementById('btn-label');
+  if (tipo === 'factura') {
+    btnF.className  = 'tipo-btn selected';
+    btnNC.className = 'tipo-btn';
+    aviso.style.display = 'none';
+    label.textContent = 'Emitir factura';
+  } else {
+    btnNC.className = 'tipo-btn selected-nc';
+    btnF.className  = 'tipo-btn';
+    aviso.style.display = 'block';
+    label.textContent = 'Emitir nota de crédito';
+  }
+}
+
+async function emitirFactura() {
+  const importe  = parseFloat(document.getElementById('fm-importe').value);
+  const fecha    = document.getElementById('fm-fecha').value;
+  const concepto = document.getElementById('fm-concepto').value;
+  if (!importe || importe <= 0) { alert('Ingresá el importe'); return; }
+  if (!fecha) { alert('Ingresá la fecha'); return; }
+
+  const btn = document.getElementById('btn-emitir');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin .7s linear infinite"></i> Emitiendo...';
+
+  try {
+    const res = await fetch('/factura-manual/emitir', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mono_id: fm.mono_id, importe, fecha, concepto,
+        cliente_nombre: fm.cliente_nombre,
+        cliente_dni:    fm.cliente_dni,
+        cliente_email:  fm.cliente_email,
+        tipo_cbte:      fm.tipo,
+      }),
+    });
+    const d = await res.json();
+    if (!d.ok) {
+      alert('Error: ' + d.error);
+      btn.disabled = false;
+      btn.innerHTML = `<i class="ti ti-file-invoice"></i> <span id="btn-label">${fm.tipo === 'nc' ? 'Emitir nota de crédito' : 'Emitir factura'}</span>`;
+      return;
+    }
+    fm.pdf_b64 = d.pdf_b64; fm.pdf_nombre = d.nombre_archivo;
+    fm.cae = d.cae; fm.cbte_nro = d.cbte_nro;
+
+    const esNC = fm.tipo === 'nc';
+    document.getElementById('res-titulo').textContent = esNC ? 'Nota de Crédito emitida' : 'Factura emitida';
+    document.getElementById('res-nro').textContent = `${esNC ? 'NC C' : 'Factura C'} ${String(fm.punto_venta).padStart(4,'0')}-${String(d.cbte_nro).padStart(8,'0')}`;
+    document.getElementById('res-cae').textContent = 'CAE: ' + d.cae;
+    goStep(4);
+  } catch(e) {
+    alert('Error de conexión: ' + e.message);
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-file-invoice"></i> <span id="btn-label">Emitir factura</span>';
+  }
+}
+
+// ── Paso 4: Compartir ──
+function descargarPDF() {
+  const a = document.createElement('a');
+  a.href = 'data:application/pdf;base64,' + fm.pdf_b64;
+  a.download = fm.pdf_nombre; a.click();
+}
+function compartirWA() {
+  const nro = String(fm.cbte_nro).padStart(8,'0');
+  const txt = encodeURIComponent(`Hola! Te comparto tu factura.\n\nFactura C N° ${nro}\nCAE: ${fm.cae}\n\nEmitida con Monotributo Más Fácil`);
+  descargarPDF();
+  setTimeout(() => window.open(`https://wa.me/?text=${txt}`, '_blank'), 600);
+}
+function nueva() { fm.mono_id = null; fm.pdf_b64 = null; goStep(1); }
+</script>
+<style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+{% endblock %}
