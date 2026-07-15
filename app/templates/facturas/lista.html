@@ -14,6 +14,11 @@ select.f-select {
 }
 
 .table-wrap { background: white; border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+@media (max-width: 640px) {
+  .col-hide-mobile { display: none; }
+  .fact-table td, .fact-table th { padding: 8px 8px; font-size: 12px; }
+}
 .fact-table { width: 100%; border-collapse: collapse; }
 .fact-table thead th {
   padding: 8px 12px; text-align: left;
@@ -110,12 +115,13 @@ select.f-select {
 {% set total_importe = facturas | sum(attribute='imp_total') %}
 
 <div class="table-wrap">
+  <div class="table-scroll">
   <table class="fact-table">
     <thead>
       <tr>
         <th>Monotributista</th>
         <th>Comprobante</th>
-        <th>Cliente</th>
+        <th class="col-hide-mobile">Cliente</th>
         <th>Fecha</th>
         <th class="r">Importe</th>
         <th></th>
@@ -141,7 +147,7 @@ select.f-select {
           <div class="td-sub">{{ f.cbte_tipo_label }} {{ "%04d"|format(f.punto_venta) }}-{{ "%08d"|format(f.cbte_nro) }}</div>
           {% if f.cae %}<div class="td-sub" style="margin-top:1px">{{ f.cae }}</div>{% endif %}
         </td>
-        <td class="td-cliente">{{ f.cliente_nombre }}</td>
+        <td class="td-cliente col-hide-mobile">{{ f.cliente_nombre }}</td>
         <td class="td-fecha">{{ f.cbte_fecha.strftime('%d/%m/%Y') if f.cbte_fecha else '—' }}</td>
         <td class="td-monto">$ {{ "{:,.0f}".format(f.imp_total).replace(",", ".") }}</td>
         <td style="white-space:nowrap">
@@ -162,6 +168,7 @@ select.f-select {
       {% endfor %}
     </tbody>
   </table>
+  </div><!-- /table-scroll -->
   <div class="table-footer">
     <span>{{ facturas | length }} comprobante{{ 's' if facturas|length != 1 }}</span>
     <strong>$ {{ "{:,.0f}".format(total_importe).replace(",", ".") }}</strong>

@@ -17,7 +17,11 @@
 .dash-table-header { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
 .dash-table-title { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 15px; color: var(--navy); }
 
-.dt { width: 100%; border-collapse: collapse; }
+.dt { width: 100%; border-collapse: collapse; min-width: 500px; }
+.dash-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+@media (max-width: 640px) {
+  .col-hide-mobile { display: none; }
+}
 .dt thead th {
   padding: 8px 14px; text-align: left;
   font-size: 11px; font-weight: 700; text-transform: uppercase;
@@ -108,13 +112,14 @@
     </a>
   </div>
 
+  <div class="dash-table-scroll">
   <table class="dt">
     <thead>
       <tr>
         <th>Monotributista</th>
         <th>Exclusión 365d</th>
         <th>Última factura</th>
-        <th class="r">Facts. {{ mes_actual }}</th>
+        <th class="r col-hide-mobile">Facts. {{ mes_actual }}</th>
         <th></th>
       </tr>
     </thead>
@@ -175,7 +180,7 @@
         </td>
 
         {# Facturas este mes #}
-        <td class="r">
+        <td class="r col-hide-mobile">
           {% if m.aprobadas_mes > 0 %}
           <span style="font-family:'Nunito',sans-serif;font-weight:800;color:#16a34a">✓ {{ m.aprobadas_mes }}</span>
           {% else %}
@@ -195,6 +200,7 @@
       {% endfor %}
     </tbody>
   </table>
+  </div><!-- /scroll -->
 </div>
 
 {% else %}
