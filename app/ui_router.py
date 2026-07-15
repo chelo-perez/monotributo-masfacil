@@ -829,6 +829,8 @@ async def guardar_certificado(
         if len(pvs_detectados) == 1:
             mono.afip_punto_venta = pvs_detectados[0]
     except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"Error detectando PV para mono {mono_id}: {e}")
         error_pv = str(e)
 
     await db.commit()
@@ -841,6 +843,17 @@ async def guardar_certificado(
             "tenant_nombre": current_user.tenant_nombre,
             "mono": mono,
             "pvs": pvs_detectados,
+        })
+
+    # Si la detección falló → mostrar formulario para ingresar PV manualmente
+    if error_pv or not pvs_detectados:
+        return templates.TemplateResponse("monotributistas/seleccionar_pv.html", {
+            "request": request,
+            "current_user": current_user,
+            "tenant_nombre": current_user.tenant_nombre,
+            "mono": mono,
+            "pvs": [],
+            "error_deteccion": error_pv or "No se encontraron puntos de venta.",
         })
 
     return RedirectResponse(f"/monotributistas/{mono_id}", status_code=303)

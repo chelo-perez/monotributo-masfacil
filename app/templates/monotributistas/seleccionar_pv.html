@@ -1,48 +1,81 @@
 {% extends "base.html" %}
-{% block title %}Seleccionar punto de venta — {{ mono.razon_social }}{% endblock %}
+{% block title %}Punto de venta — {{ mono.razon_social }}{% endblock %}
+
+{% block extra_styles %}
+.pv-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px; max-width: 480px; }
+.pv-title { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 16px; color: var(--navy); margin-bottom: 6px; }
+.pv-sub { font-size: 13px; color: var(--muted); margin-bottom: 20px; line-height: 1.6; }
+.pv-options { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+.pv-option {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; border: 2px solid var(--border); border-radius: 10px;
+  cursor: pointer; transition: all .15s;
+}
+.pv-option:hover { border-color: var(--coral); background: #fff8f6; }
+.pv-option input[type=radio] { accent-color: var(--coral); width: 18px; height: 18px; }
+.pv-option-label { font-weight: 700; color: var(--navy); font-size: 15px; }
+.pv-manual { border: 1.5px solid var(--border); border-radius: 8px; padding: 10px 14px; font-size: 15px; font-family: 'Nunito', sans-serif; font-weight: 700; width: 100%; outline: none; }
+.pv-manual:focus { border-color: var(--navy); }
+.warn-box { background: #FEF9C3; border: 1px solid #F59E0B; border-radius: 8px; padding: 12px 14px; font-size: 13px; color: #854D0E; margin-bottom: 16px; display: flex; gap: 8px; }
+{% endblock %}
 
 {% block content %}
 <div class="page-header">
   <div>
-    <div class="page-title">Seleccionar punto de venta</div>
-    <div class="page-subtitle">{{ mono.razon_social }} — {{ mono.cuit }}</div>
+    <div class="page-title">Punto de venta</div>
+    <div class="page-subtitle">
+      <a href="/monotributistas/{{ mono.id }}" style="color:var(--coral);font-weight:700;text-decoration:none">
+        ← {{ mono.razon_social }}
+      </a>
+    </div>
   </div>
 </div>
 
-<div style="background:white;border-radius:var(--radius);box-shadow:var(--shadow);padding:28px;max-width:480px">
-  <div style="background:#DCFCE7;border:1px solid #86EFAC;border-radius:8px;padding:12px 16px;
-              font-size:13px;color:#166534;margin-bottom:20px">
-    ✓ Certificado cargado correctamente. Se detectaron <strong>{{ pvs|length }} puntos de venta</strong> activos en ARCA.
-  </div>
+<div class="pv-card">
 
-  <p style="font-size:14px;color:var(--muted);margin-bottom:20px">
-    Seleccioná cuál usar para emitir las facturas de <strong>{{ mono.razon_social }}</strong>:
-  </p>
+  {% if error_deteccion %}
+  <div class="warn-box">
+    <i class="ti ti-alert-triangle" style="flex-shrink:0;margin-top:1px"></i>
+    <div>
+      <strong>No pudimos detectar el punto de venta automáticamente.</strong><br>
+      Ingresalo manualmente. Lo encontrás en ARCA → Datos Registrales → Puntos de Venta.
+      <br><small style="opacity:.7">{{ error_deteccion }}</small>
+    </div>
+  </div>
+  {% endif %}
 
   <form action="/monotributistas/{{ mono.id }}/set-pv" method="post">
-    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+
+    {% if pvs and pvs | length > 1 %}
+    <div class="pv-title">Seleccioná el punto de venta</div>
+    <div class="pv-sub">
+      Encontramos {{ pvs | length }} puntos de venta para este CUIT.
+      Elegí el que usa para emitir facturas.
+    </div>
+    <div class="pv-options">
       {% for pv in pvs %}
-      <label style="display:flex;align-items:center;gap:12px;padding:14px 16px;
-                    border:1.5px solid var(--border);border-radius:8px;cursor:pointer;
-                    transition:border-color .15s"
-             onmouseover="this.style.borderColor='var(--navy)'"
-             onmouseout="this.style.borderColor='var(--border)'">
-        <input type="radio" name="punto_venta" value="{{ pv }}"
-               {% if loop.first %}checked{% endif %}
-               style="width:18px;height:18px;accent-color:var(--navy)">
-        <div>
-          <div style="font-family:'Nunito',sans-serif;font-weight:800;font-size:16px;color:var(--navy)">
-            Punto de Venta {{ pv }}
-          </div>
-          <div style="font-size:12px;color:var(--muted)">PV {{ "%04d"|format(pv) }} — activo en ARCA</div>
-        </div>
+      <label class="pv-option">
+        <input type="radio" name="punto_venta" value="{{ pv }}" {% if loop.first %}checked{% endif %}>
+        <div class="pv-option-label">Punto de Venta {{ "%04d" | format(pv) }}</div>
       </label>
       {% endfor %}
     </div>
+    {% else %}
+    <div class="pv-title">Ingresá el número de punto de venta</div>
+    <div class="pv-sub">
+      Es el número que creaste en ARCA → Datos Registrales → Puntos de Venta → tipo "Web Services".
+    </div>
+    <div style="margin-bottom:20px">
+      <input type="number" name="punto_venta" class="pv-manual"
+             value="{{ mono.afip_punto_venta or 1 }}" min="1" max="9999"
+             placeholder="Ej: 3">
+    </div>
+    {% endif %}
 
-    <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center">
-      Confirmar punto de venta →
-    </button>
+    <div style="display:flex;gap:10px">
+      <a href="/monotributistas/{{ mono.id }}" class="btn btn-ghost">Cancelar</a>
+      <button type="submit" class="btn btn-primary">Guardar →</button>
+    </div>
   </form>
 </div>
 {% endblock %}
