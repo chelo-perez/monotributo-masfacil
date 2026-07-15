@@ -205,19 +205,13 @@
 <body>
 
 <aside class="sidebar">
-  <a href="/perfil" class="sidebar-logo" style="text-decoration:none">
-    {% if current_user and current_user.tenant_logo %}
-    <div class="sidebar-logo-mark" style="background:rgba(255,255,255,.15);overflow:hidden">
-      <img src="data:image/png;base64,{{ current_user.tenant_logo }}" style="width:100%;height:100%;object-fit:contain">
-    </div>
-    {% else %}
-    <div class="sidebar-logo-mark">{{ tenant_nombre[0].upper() if tenant_nombre else 'M' }}</div>
-    {% endif %}
+  <div class="sidebar-logo">
+    <img src="/static/logo-sidebar.png" alt="Más Fácil" style="width:24px;height:auto;flex-shrink:0">
     <div>
-      <div class="sidebar-logo-name">{{ tenant_nombre or 'Mi estudio' }}</div>
-      <div class="sidebar-logo-sub">Monotributo Más Fácil</div>
+      <div class="sidebar-logo-name">Monotributo Más Fácil</div>
+      <div class="sidebar-logo-sub">Gestión para Contadores</div>
     </div>
-  </a>
+  </div>
 
   <nav class="sidebar-nav">
     <div class="nav-section">Principal</div>
@@ -258,13 +252,20 @@
   </nav>
 
   <div class="sidebar-bottom">
-    <div class="sidebar-user">
-      <div class="sidebar-avatar">{{ (current_user.nombre or current_user.email or '?')[0].upper() }}</div>
-      <div>
-        <div class="sidebar-user-name">{{ current_user.nombre or current_user.email }}</div>
-        <div class="sidebar-user-role">{{ current_user.plan | title }}</div>
+    <a href="/perfil" class="sidebar-user" style="text-decoration:none">
+      {% if current_user and current_user.tenant_logo %}
+      <div class="sidebar-avatar" style="background:rgba(255,255,255,.15);overflow:hidden;padding:0">
+        <img src="data:image/png;base64,{{ current_user.tenant_logo }}"
+             style="width:100%;height:100%;object-fit:contain">
       </div>
-    </div>
+      {% else %}
+      <div class="sidebar-avatar">{{ (tenant_nombre or current_user.email or '?')[0].upper() }}</div>
+      {% endif %}
+      <div>
+        <div class="sidebar-user-name">{{ tenant_nombre or current_user.email }}</div>
+        <div class="sidebar-user-role">{{ current_user.plan.value if current_user.plan else 'básico' }}</div>
+      </div>
+    </a>
     <a href="/auth/logout" class="sidebar-logout">
       <i class="ti ti-logout" style="font-size:15px"></i>
       Salir
