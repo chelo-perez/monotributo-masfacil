@@ -29,7 +29,22 @@ from app.facturas.models import Factura, EstadoFactura
 # Fuente: ARCA — se actualiza semestralmente por IPC
 # ─────────────────────────────────────────────
 
-# Vigentes desde 01/02/2026 al 31/07/2026 (RG ARCA 5/2026)
+# Vigentes desde 01/08/2025 al 31/01/2026
+TOPES_AGO_2025 = {
+    "A":  Decimal("8992597"),
+    "B":  Decimal("13175201"),
+    "C":  Decimal("17566935"),
+    "D":  Decimal("21824384"),
+    "E":  Decimal("25683982"),
+    "F":  Decimal("32176855"),
+    "G":  Decimal("38508474"),
+    "H":  Decimal("58453432"),
+    "I":  Decimal("65462413"),
+    "J":  Decimal("74925499"),
+    "K":  Decimal("90264073"),
+}
+
+# Vigentes desde 01/02/2026 — tabla actual (RG ARCA 5/2026)
 TOPES_FEB_2026 = {
     "A":  Decimal("10277988"),
     "B":  Decimal("15058448"),
@@ -66,7 +81,9 @@ def _get_topes(fecha_ref=None) -> dict:
     ref = fecha_ref or _date.today()
     if ref >= _date(2026, 8, 1):
         return TOPES_AGO_2026
-    return TOPES_FEB_2026
+    if ref >= _date(2026, 2, 1):
+        return TOPES_FEB_2026
+    return TOPES_AGO_2025
 
 
 async def get_topes_db(db, fecha_ref=None) -> dict:
