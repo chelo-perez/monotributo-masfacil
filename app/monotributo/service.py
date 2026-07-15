@@ -25,32 +25,64 @@ from app.afip.history_models import AfipInvoiceHistory
 from app.facturas.models import Factura, EstadoFactura
 
 # ─────────────────────────────────────────────
-# Tablas vigentes de categorías (julio 2025)
+# Tablas de topes por período
+# Fuente: ARCA — se actualiza semestralmente por IPC
 # ─────────────────────────────────────────────
-TOPES = {
-    "A":  Decimal("3700000"),
-    "B":  Decimal("5550000"),
-    "C":  Decimal("7400000"),
-    "D":  Decimal("9250000"),
-    "E":  Decimal("11100000"),
-    "F":  Decimal("13500000"),
-    "G":  Decimal("16200000"),
-    "H":  Decimal("19300000"),
-    "I":  Decimal("22700000"),
-    "J":  Decimal("26500000"),
-    "K":  Decimal("30000000"),
+
+# Vigentes desde 01/02/2026 al 31/07/2026 (RG ARCA 5/2026)
+TOPES_FEB_2026 = {
+    "A":  Decimal("10277988"),
+    "B":  Decimal("15058448"),
+    "C":  Decimal("20078547"),
+    "D":  Decimal("25098147"),
+    "E":  Decimal("30117746"),
+    "F":  Decimal("36641455"),
+    "G":  Decimal("43974109"),
+    "H":  Decimal("52366038"),
+    "I":  Decimal("61577243"),
+    "J":  Decimal("71898540"),
+    "K":  Decimal("108357084"),
 }
+
+# Vigentes desde 01/08/2026 (estimados +16.8% — confirmar cuando ARCA publique)
+# Fuente: La Nacion 14/07/2026, Infobae 14/07/2026
+TOPES_AGO_2026 = {
+    "A":  Decimal("12004690"),
+    "B":  Decimal("17588267"),
+    "C":  Decimal("23451783"),
+    "D":  Decimal("29314699"),
+    "E":  Decimal("35177616"),
+    "F":  Decimal("42797400"),
+    "G":  Decimal("51381771"),
+    "H":  Decimal("61203692"),
+    "I":  Decimal("71942530"),
+    "J":  Decimal("83978295"),
+    "K":  Decimal("126561074"),
+}
+
+def _get_topes(fecha_ref=None) -> dict:
+    """Retorna la tabla de topes vigente para la fecha dada."""
+    from datetime import date as _date
+    ref = fecha_ref or _date.today()
+    if ref >= _date(2026, 8, 1):
+        return TOPES_AGO_2026
+    return TOPES_FEB_2026
+
+# Alias para compatibilidad — usa la tabla vigente hoy
+TOPES = _get_topes()
 
 LETRAS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K"]
 
 
-def _tope(cat: str) -> Decimal:
-    return TOPES.get(cat, TOPES["A"])
+def _tope(cat: str, topes: dict | None = None) -> Decimal:
+    t = topes or TOPES
+    return t.get(cat, t["A"])
 
 
-def _categoria_para_monto(monto: Decimal) -> str:
+def _categoria_para_monto(monto: Decimal, topes: dict | None = None) -> str:
+    t = topes or TOPES
     for letra in LETRAS:
-        if monto <= TOPES[letra]:
+        if monto <= t[letra]:
             return letra
     return "K"
 
@@ -181,12 +213,13 @@ async def get_semaforo_mono(
     Retorna un dict listo para pasar al template.
     """
     ref = fecha_ref or date.today()
+    topes = _get_topes(ref)
 
     # ── Control 1: Exclusión — 365 días corridos ──
     desde_365 = ref - timedelta(days=365)
     acu_365   = await acumulado_periodo(mono_id, db, desde_365, ref)
-    tope_k    = TOPES["K"]
-    tope_cat  = _tope(categoria_actual)
+    tope_k    = topes["K"]
+    tope_cat  = _tope(categoria_actual, topes)
     pct_365   = _pct(acu_365, tope_k)          # respecto a K (exclusión)
     pct_cat   = _pct(acu_365, tope_cat)         # respecto a su categoría
     estado_365 = _estado(pct_365)
@@ -199,8 +232,8 @@ async def get_semaforo_mono(
     tope_sem = tope_cat
     cat_siguiente = None
     if acu_sem > tope_cat:
-        cat_siguiente = _categoria_para_monto(acu_sem)
-        tope_sem = _tope(cat_siguiente)
+        cat_siguiente = _categoria_para_monto(acu_sem, topes)
+        tope_sem = _tope(cat_siguiente, topes)
 
     pct_sem    = _pct(acu_sem, tope_sem)
     estado_sem = _estado(pct_sem)
@@ -209,9 +242,9 @@ async def get_semaforo_mono(
     cat_markers = [
         {
             "letra": letra,
-            "pct": round(float(TOPES[letra] / tope_k * 100), 1),
+            "pct": round(float(topes[letra] / tope_k * 100), 1),
             "activa": letra == categoria_actual,
-            "tope_fmt": _fmt(TOPES[letra]),
+            "tope_fmt": _fmt(topes[letra]),
         }
         for letra in LETRAS[:-1]  # excluir K (es el 100%)
     ]
