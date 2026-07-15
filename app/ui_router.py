@@ -632,28 +632,15 @@ async def lista_facturas(
     db: Annotated[AsyncSession, Depends(get_db)],
     mono_id: int = None,
     estado: str = None,
+    fuente: str = None,   # "sistema" | "historial" | None (todas)
     page: int = 1,
 ):
+    from app.afip.history_models import AfipInvoiceHistory
+
     limit = 50
     offset = (page - 1) * limit
 
-    q = select(Factura).options(
-        selectinload(Factura.monotributista),
-        selectinload(Factura.cliente),
-    ).where(
-        Factura.tenant_id == current_user.tenant_id,
-        Factura.anulada == False,
-    )
-    if mono_id:
-        q = q.where(Factura.monotributista_id == mono_id)
-    if estado:
-        q = q.where(Factura.afip_result == EstadoFactura(estado))
-
-    q = q.order_by(Factura.cbte_fecha.desc()).limit(limit).offset(offset)
-    result = await db.execute(q)
-    facturas = result.scalars().all()
-
-    # Lista de monotributistas para el filtro
+    # Lista de monotributistas para el filtro y para resolver nombres
     result_monos = await db.execute(
         select(Monotributista).where(
             Monotributista.tenant_id == current_user.tenant_id,
@@ -661,17 +648,108 @@ async def lista_facturas(
         ).order_by(Monotributista.razon_social)
     )
     monos = result_monos.scalars().all()
+    mono_by_id = {m.id: m for m in monos}
+
+    TIPOS_LABEL = {11: "C", 6: "B", 1: "A", 13: "NC C", 8: "NC B"}
+
+    rows = []  # lista unificada de dicts para el template
+
+    # ── Fuente 1: Facturas emitidas por el sistema ──
+    if fuente in (None, "sistema"):
+        q = select(Factura).options(
+            selectinload(Factura.monotributista),
+            selectinload(Factura.cliente),
+        ).where(
+            Factura.tenant_id == current_user.tenant_id,
+            Factura.anulada == False,
+        )
+        if mono_id:
+            q = q.where(Factura.monotributista_id == mono_id)
+        if estado == "aprobada":
+            q = q.where(Factura.afip_result == EstadoFactura.aprobada)
+        elif estado == "rechazada":
+            q = q.where(Factura.afip_result == EstadoFactura.rechazada)
+
+        result = await db.execute(q)
+        for f in result.scalars().all():
+            rows.append({
+                "id": f.id,
+                "fuente": "sistema",
+                "mono": f.monotributista,
+                "mono_id": f.monotributista_id,
+                "cliente_nombre": f.cliente.nombre if f.cliente else "Consumidor Final",
+                "cliente_email": f.cliente.email if f.cliente else None,
+                "cbte_fecha": f.cbte_fecha,
+                "cbte_tipo_label": TIPOS_LABEL.get(f.cbte_tipo, str(f.cbte_tipo)),
+                "punto_venta": f.punto_venta or 1,
+                "cbte_nro": f.cbte_nro or 0,
+                "imp_total": float(f.imp_total),
+                "cae": f.cae,
+                "estado": f.afip_result.value if f.afip_result else "aprobada",
+                "factura_id": f.id,
+            })
+
+    # ── Fuente 2: Historial importado de ARCA ──
+    if fuente in (None, "historial"):
+        hq = select(AfipInvoiceHistory).where(
+            AfipInvoiceHistory.tenant_id == current_user.tenant_id,
+        )
+        if mono_id:
+            hq = hq.where(AfipInvoiceHistory.mono_id == mono_id)
+
+        # Excluir los que ya están en el sistema (mismo cbte_nro + punto_venta + tipo)
+        if fuente is None:
+            from sqlalchemy import exists as _exists
+            hq = hq.where(
+                ~_exists(
+                    select(Factura.id).where(
+                        Factura.monotributista_id == AfipInvoiceHistory.mono_id,
+                        Factura.cbte_nro == AfipInvoiceHistory.cbte_nro,
+                        Factura.punto_venta == AfipInvoiceHistory.punto_venta,
+                        Factura.cbte_tipo == AfipInvoiceHistory.cbte_tipo,
+                    ).correlate(AfipInvoiceHistory)
+                )
+            )
+
+        result_h = await db.execute(hq)
+        for h in result_h.scalars().all():
+            if estado == "rechazada":
+                continue  # historial solo tiene aprobadas
+            mono = mono_by_id.get(h.mono_id)
+            rows.append({
+                "id": None,
+                "fuente": "historial",
+                "mono": mono,
+                "mono_id": h.mono_id,
+                "cliente_nombre": "—",
+                "cliente_email": None,
+                "cbte_fecha": h.cbte_fecha,
+                "cbte_tipo_label": TIPOS_LABEL.get(h.cbte_tipo, str(h.cbte_tipo)),
+                "punto_venta": h.punto_venta,
+                "cbte_nro": h.cbte_nro,
+                "imp_total": float(h.imp_total),
+                "cae": h.cae,
+                "estado": "aprobada",
+                "factura_id": None,
+            })
+
+    # Ordenar por fecha desc y paginar
+    rows.sort(key=lambda r: r["cbte_fecha"] or date(2000, 1, 1), reverse=True)
+    total = len(rows)
+    rows = rows[offset: offset + limit]
 
     return templates.TemplateResponse("facturas/lista.html", {
         "request": request,
         "current_user": current_user,
         "tenant_nombre": current_user.tenant_nombre,
         "active_page": "facturas",
-        "facturas": facturas,
+        "facturas": rows,
         "monotributistas": monos,
         "page": page,
+        "total": total,
         "mono_id": mono_id,
         "estado_filtro": estado,
+        "fuente_filtro": fuente,
     })
 
 

@@ -10,20 +10,12 @@
 select.f-select {
   border: 1.5px solid var(--border); border-radius: 8px;
   padding: 8px 10px; font-size: 13px; font-family: inherit;
-  background: white; outline: none; color: var(--text);
+  background: white; outline: none;
 }
 
-.fact-list { display: flex; flex-direction: column; gap: 8px; }
-.fact-card {
-  background: white; border-radius: var(--radius); box-shadow: var(--shadow);
-  padding: 14px 16px;
-}
+.fact-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; margin-bottom: 8px; }
 .fact-top { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
-.fact-avatar {
-  width: 36px; height: 36px; border-radius: 9px; background: var(--navy);
-  color: white; font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 13px;
-  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-}
+.fact-avatar { width: 36px; height: 36px; border-radius: 9px; background: var(--navy); color: white; font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .fact-info { flex: 1; min-width: 0; }
 .fact-mono { font-weight: 700; color: var(--navy); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fact-cliente { font-size: 12px; color: var(--muted); }
@@ -31,48 +23,43 @@ select.f-select {
 .fact-monto { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 16px; color: var(--navy); }
 .fact-nro { font-size: 11px; color: var(--muted); margin-top: 2px; }
 .fact-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
-.badge-aprobada { background: #DCFCE7; color: #166534; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
-.badge-rechazada { background: #FEE2E2; color: #991B1B; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+.badge-apr { background: #DCFCE7; color: #166534; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+.badge-rec { background: #FEE2E2; color: #991B1B; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+.badge-hist { background: #F0F4FF; color: #3730A3; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
 .fact-fecha { font-size: 12px; color: var(--muted); }
 .fact-cae { font-family: monospace; font-size: 11px; color: var(--muted); }
 .fact-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.btn-action {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 6px 12px; border-radius: 7px; font-size: 12px; font-weight: 700;
-  cursor: pointer; border: 1.5px solid var(--border); background: white;
-  color: var(--navy); font-family: inherit; text-decoration: none;
-  transition: all .15s;
-}
+.btn-action { display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 7px; font-size: 12px; font-weight: 700; cursor: pointer; border: 1.5px solid var(--border); background: white; color: var(--navy); font-family: inherit; text-decoration: none; transition: all .15s; }
 .btn-action:hover { border-color: var(--navy); }
 .btn-action.wa { border-color: #25D366; color: #25D366; }
-.btn-action.wa:hover { background: #f0fff4; }
 .btn-action.mail { border-color: var(--coral); color: var(--coral); }
-.btn-action.mail:hover { background: #fff8f6; }
 .mail-result { font-size: 12px; margin-top: 6px; }
-
+.pagination { display: flex; justify-content: center; gap: 8px; margin-top: 20px; }
+.page-btn { padding: 7px 14px; border-radius: 8px; border: 1.5px solid var(--border); background: white; font-size: 13px; font-weight: 700; color: var(--muted); text-decoration: none; }
+.page-btn.active { background: var(--navy); color: white; border-color: var(--navy); }
 .empty-state { text-align: center; padding: 56px 24px; color: var(--muted); }
 .empty-state h3 { font-family: 'Nunito', sans-serif; font-weight: 800; color: var(--navy); margin: 12px 0 6px; font-size: 18px; }
-
-.pagination { display: flex; justify-content: center; gap: 8px; margin-top: 20px; }
-.page-btn { padding: 7px 14px; border-radius: 8px; border: 1.5px solid var(--border); background: white; font-size: 13px; font-weight: 700; color: var(--muted); cursor: pointer; text-decoration: none; }
-.page-btn.active { background: var(--navy); color: white; border-color: var(--navy); }
 {% endblock %}
 
 {% block content %}
 <div class="page-header">
   <div>
     <div class="page-title">Facturas emitidas</div>
-    <div class="page-subtitle">{{ facturas | length }} comprobante(s)</div>
+    <div class="page-subtitle">{{ total }} comprobante(s)</div>
   </div>
 </div>
 
-<!-- Filtros -->
 <div class="filters">
   <select class="f-select" onchange="filtrar()" id="f-mono">
     <option value="">Todos los monotributistas</option>
     {% for m in monotributistas %}
     <option value="{{ m.id }}" {% if mono_id == m.id %}selected{% endif %}>{{ m.razon_social }}</option>
     {% endfor %}
+  </select>
+  <select class="f-select" onchange="filtrar()" id="f-fuente">
+    <option value="" {% if not fuente_filtro %}selected{% endif %}>Todas las fuentes</option>
+    <option value="sistema" {% if fuente_filtro == 'sistema' %}selected{% endif %}>Emitidas por el sistema</option>
+    <option value="historial" {% if fuente_filtro == 'historial' %}selected{% endif %}>Importadas de ARCA</option>
   </select>
   <select class="f-select" onchange="filtrar()" id="f-estado">
     <option value="">Todos los estados</option>
@@ -82,73 +69,80 @@ select.f-select {
 </div>
 
 {% if facturas %}
-<div class="fact-list">
-  {% for f in facturas %}
-  <div class="fact-card">
-    <div class="fact-top">
-      <div class="fact-avatar">
-        {{ f.monotributista.razon_social[:2].upper() if f.monotributista else '?' }}
-      </div>
-      <div class="fact-info">
-        <div class="fact-mono">{{ f.monotributista.razon_social if f.monotributista else '—' }}</div>
-        <div class="fact-cliente">→ {{ f.cliente.nombre if f.cliente else 'Consumidor Final' }}</div>
-      </div>
-      <div class="fact-right">
-        <div class="fact-monto">$ {{ f.imp_total | format_money }}</div>
-        <div class="fact-nro">
-          C {{ "%04d"|format(f.punto_venta or 1) }}-{{ "%08d"|format(f.cbte_nro or 0) }}
-        </div>
+{% for f in facturas %}
+<div class="fact-card">
+  <div class="fact-top">
+    <div class="fact-avatar">{{ f.mono.razon_social[:2].upper() if f.mono else '?' }}</div>
+    <div class="fact-info">
+      <div class="fact-mono">{{ f.mono.razon_social if f.mono else '—' }}</div>
+      <div class="fact-cliente">→ {{ f.cliente_nombre }}</div>
+    </div>
+    <div class="fact-right">
+      <div class="fact-monto">$ {{ "{:,.0f}".format(f.imp_total).replace(",", ".") }}</div>
+      <div class="fact-nro">
+        {{ f.cbte_tipo_label }} {{ "%04d"|format(f.punto_venta) }}-{{ "%08d"|format(f.cbte_nro) }}
       </div>
     </div>
+  </div>
 
-    <div class="fact-meta">
-      {% if f.afip_result.value == 'aprobada' %}
-      <span class="badge-aprobada"><i class="ti ti-check" style="font-size:10px"></i> Aprobada</span>
-      {% else %}
-      <span class="badge-rechazada"><i class="ti ti-x" style="font-size:10px"></i> Rechazada</span>
-      {% endif %}
-      <span class="fact-fecha">{{ f.cbte_fecha.strftime('%d/%m/%Y') if f.cbte_fecha else '—' }}</span>
-      {% if f.cae %}
-      <span class="fact-cae">CAE {{ f.cae }}</span>
-      {% endif %}
-    </div>
+  <div class="fact-meta">
+    {% if f.estado == 'aprobada' %}
+    <span class="badge-apr"><i class="ti ti-check" style="font-size:10px"></i> Aprobada</span>
+    {% else %}
+    <span class="badge-rec"><i class="ti ti-x" style="font-size:10px"></i> Rechazada</span>
+    {% endif %}
+    {% if f.fuente == 'historial' %}
+    <span class="badge-hist"><i class="ti ti-cloud-download" style="font-size:10px"></i> ARCA</span>
+    {% endif %}
+    <span class="fact-fecha">{{ f.cbte_fecha.strftime('%d/%m/%Y') if f.cbte_fecha else '—' }}</span>
+    {% if f.cae %}<span class="fact-cae">CAE {{ f.cae }}</span>{% endif %}
+  </div>
 
-    {% if f.afip_result.value == 'aprobada' %}
-    <div class="fact-actions">
-      <a href="/facturas/{{ f.id }}/pdf" class="btn-action" download>
-        <i class="ti ti-download" style="font-size:13px"></i> PDF
-      </a>
-      {% if f.cliente and f.cliente.email %}
-      <button class="btn-action mail"
-              hx-post="/facturas/{{ f.id }}/enviar-mail"
-              hx-target="#mail-result-{{ f.id }}"
-              hx-swap="innerHTML"
-              onclick="this.disabled=true;this.textContent='Enviando...'">
-        <i class="ti ti-mail" style="font-size:13px"></i> Mail
-      </button>
-      {% else %}
-      <span class="btn-action" style="opacity:.4;cursor:not-allowed" title="El cliente no tiene email">
-        <i class="ti ti-mail" style="font-size:13px"></i> Sin mail
-      </span>
-      {% endif %}
-      <button class="btn-action wa" onclick="abrirWA({{ f.id }})">
-        <i class="ti ti-brand-whatsapp" style="font-size:13px"></i> WhatsApp
-      </button>
-    </div>
-    <div id="mail-result-{{ f.id }}" class="mail-result"></div>
+  {% if f.estado == 'aprobada' %}
+  <div class="fact-actions">
+    {% if f.fuente == 'sistema' and f.factura_id %}
+    <a href="/facturas/{{ f.factura_id }}/pdf" class="btn-action" download>
+      <i class="ti ti-download" style="font-size:13px"></i> PDF
+    </a>
+    {% if f.cliente_email %}
+    <button class="btn-action mail"
+            hx-post="/facturas/{{ f.factura_id }}/enviar-mail"
+            hx-target="#mail-result-{{ f.factura_id }}"
+            hx-swap="innerHTML"
+            onclick="this.disabled=true;this.innerHTML='<i class=\'ti ti-loader\' style=\'font-size:12px\'></i> Enviando...'">
+      <i class="ti ti-mail" style="font-size:13px"></i> Mail
+    </button>
+    {% else %}
+    <span class="btn-action" style="opacity:.4;cursor:not-allowed" title="Sin email">
+      <i class="ti ti-mail" style="font-size:13px"></i> Sin mail
+    </span>
+    {% endif %}
+    <button class="btn-action wa" onclick="abrirWA({{ f.factura_id }})">
+      <i class="ti ti-brand-whatsapp" style="font-size:13px"></i> WhatsApp
+    </button>
+    {% else %}
+    {# Historial importado — sin PDF ni mail propios #}
+    <span style="font-size:12px;color:var(--muted)">
+      <i class="ti ti-info-circle" style="font-size:12px"></i>
+      Importada de ARCA — PDF disponible en Mis Comprobantes de ARCA
+    </span>
     {% endif %}
   </div>
-  {% endfor %}
+  {% if f.factura_id %}
+  <div id="mail-result-{{ f.factura_id }}" class="mail-result"></div>
+  {% endif %}
+  {% endif %}
 </div>
+{% endfor %}
 
-{% if page > 1 or facturas | length == 50 %}
+{% if page > 1 or total > 50 %}
 <div class="pagination">
   {% if page > 1 %}
-  <a href="?page={{ page - 1 }}{% if mono_id %}&mono_id={{ mono_id }}{% endif %}" class="page-btn">← Anterior</a>
+  <a href="?page={{ page - 1 }}{% if mono_id %}&mono_id={{ mono_id }}{% endif %}{% if fuente_filtro %}&fuente={{ fuente_filtro }}{% endif %}" class="page-btn">← Anterior</a>
   {% endif %}
   <span class="page-btn active">{{ page }}</span>
-  {% if facturas | length == 50 %}
-  <a href="?page={{ page + 1 }}{% if mono_id %}&mono_id={{ mono_id }}{% endif %}" class="page-btn">Siguiente →</a>
+  {% if total > page * 50 %}
+  <a href="?page={{ page + 1 }}{% if mono_id %}&mono_id={{ mono_id }}{% endif %}{% if fuente_filtro %}&fuente={{ fuente_filtro }}{% endif %}" class="page-btn">Siguiente →</a>
   {% endif %}
 </div>
 {% endif %}
@@ -156,8 +150,8 @@ select.f-select {
 {% else %}
 <div class="empty-state">
   <i class="ti ti-receipt" style="font-size:52px;color:#CBD5E1"></i>
-  <h3>No hay facturas emitidas</h3>
-  <p>Las facturas aparecerán acá una vez que emitas el primer lote.</p>
+  <h3>No hay facturas</h3>
+  <p>{% if fuente_filtro == 'historial' %}Importá el historial desde la página de cada monotributista.{% else %}Las facturas aparecerán acá una vez que emitas el primer lote.{% endif %}</p>
   <a href="/emitir" class="btn btn-primary" style="margin-top:20px;display:inline-flex">
     <i class="ti ti-upload"></i> Emitir facturas
   </a>
@@ -169,9 +163,11 @@ select.f-select {
 <script>
 function filtrar() {
   const mono = document.getElementById('f-mono').value;
+  const fuente = document.getElementById('f-fuente').value;
   const estado = document.getElementById('f-estado').value;
   let url = '/facturas?page=1';
   if (mono) url += '&mono_id=' + mono;
+  if (fuente) url += '&fuente=' + fuente;
   if (estado) url += '&estado=' + estado;
   window.location.href = url;
 }
