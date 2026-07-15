@@ -18,9 +18,45 @@ from app.auth.models import Monotributista, Tenant
 from app.database import get_db
 from app.excel.importer import importar_excel
 from app.facturas.models import LoteEmision, FilaExcel, Factura, EstadoLote, EstadoFactura
+from app.afip.history_models import AfipInvoiceHistory
 from app.templates_config import templates
 
 router = APIRouter()
+
+async def _acumulado_mono(mono_id: int, db) -> float:
+    """
+    Acumulado 365 días corridos combinando:
+    1. AfipInvoiceHistory — historial importado de ARCA
+    2. Factura — emitidas por el sistema sin duplicar con el historial
+    """
+    from datetime import timedelta
+    corte = hoy_ar() - timedelta(days=365)
+
+    # Fuente 1: historial ARCA
+    r1 = await db.execute(
+        select(func.coalesce(func.sum(AfipInvoiceHistory.imp_total), 0)).where(
+            AfipInvoiceHistory.mono_id == mono_id,
+            AfipInvoiceHistory.cbte_fecha >= corte,
+        )
+    )
+    total_hist = float(r1.scalar() or 0)
+
+    # Fuente 2: facturas del sistema no presentes en el historial (por cbte_nro)
+    hist_nros = select(AfipInvoiceHistory.cbte_nro).where(
+        AfipInvoiceHistory.mono_id == mono_id
+    )
+    r2 = await db.execute(
+        select(func.coalesce(func.sum(Factura.imp_total), 0)).where(
+            Factura.monotributista_id == mono_id,
+            Factura.afip_result == EstadoFactura.aprobada,
+            Factura.anulada == False,
+            Factura.cbte_fecha >= corte,
+            ~Factura.cbte_nro.in_(hist_nros),
+        )
+    )
+    total_sys = float(r2.scalar() or 0)
+    return total_hist + total_sys
+
 
 
 # ---------------------------------------------------------------------------
@@ -94,15 +130,7 @@ async def dashboard(
         cat = m.categoria_actual.value if m.categoria_actual else "A"
         tope = TOPES_CATEGORIA.get(cat, 3_700_000)
         # Acumulado: suma de facturas aprobadas de este mono en los últimos 12 meses
-        result_ac = await db.execute(
-            select(func.coalesce(func.sum(Factura.imp_total), 0)).where(
-                Factura.monotributista_id == m.id,
-                Factura.afip_result == EstadoFactura.aprobada,
-                Factura.anulada == False,
-                Factura.fch_serv_desde >= date(hoy.year - 1, hoy.month, 1),
-            )
-        )
-        acumulado = float(result_ac.scalar() or 0)
+        acumulado = await _acumulado_mono(m.id, db)
         pct = min((acumulado / tope * 100), 100) if tope else 0
 
         if pct >= 90:
@@ -566,17 +594,9 @@ async def detalle_monotributista(
     )
     facturas = result_facts.scalars().all()
 
-    # Acumulado anual
+    # Acumulado 365 días — dual source (historial ARCA + facturas sistema)
     hoy = hoy_ar()
-    result_ac = await db.execute(
-        select(func.coalesce(func.sum(Factura.imp_total), 0)).where(
-            Factura.monotributista_id == mono_id,
-            Factura.afip_result == EstadoFactura.aprobada,
-            Factura.anulada == False,
-            Factura.fch_serv_desde >= date(hoy.year - 1, hoy.month, 1),
-        )
-    )
-    acumulado = float(result_ac.scalar() or 0)
+    acumulado = await _acumulado_mono(mono_id, db)
 
     TOPES = {
         "A": 3_700_000, "B": 5_550_000, "C": 7_400_000,
