@@ -39,25 +39,28 @@ async def _generar_pdf_factura(
     """Genera el PDF de la factura usando el generador de Facturo Más Fácil."""
     from app.facturas.pdf_generator import generar_factura_pdf
 
+    import calendar as _cal
+    fecha = factura.cbte_fecha or hoy_ar()
+    ult = _cal.monthrange(fecha.year, fecha.month)[1]
     return generar_factura_pdf(
         razon_social=_nombre_emisor(mono),
         cuit_emisor=mono.cuit,
         punto_venta=factura.punto_venta or mono.afip_punto_venta or 1,
         cbte_nro=factura.cbte_nro or 0,
         cbte_tipo=factura.cbte_tipo or 11,
-        cbte_fecha=factura.cbte_fecha or hoy_ar(),
-        imp_total=float(factura.imp_total),
+        fecha=fecha,
+        fch_serv_desde=factura.fch_serv_desde or fecha.replace(day=1),
+        fch_serv_hasta=factura.fch_serv_hasta or fecha.replace(day=ult),
+        concepto=factura.concepto or "Honorarios",
+        importe=float(factura.imp_total),
         cae=factura.cae or "",
         cae_vto=factura.cae_vto,
-        concepto=factura.concepto or "Servicios",
-        domicilio_emisor=mono.domicilio or "",
-        ingresos_brutos=None,
-        logo_base64=getattr(mono, "logo_base64", None),
         cliente_nombre=cliente.nombre if cliente else "Consumidor Final",
         cliente_dni=cliente.dni if cliente else None,
         cliente_cuit=cliente.cuit if cliente else None,
-        fch_serv_desde=factura.fch_serv_desde,
-        fch_serv_hasta=factura.fch_serv_hasta,
+        logo_base64=getattr(mono, "logo_base64", None),
+        domicilio_emisor=mono.domicilio or "",
+        ingresos_brutos=None,
     )
 
 
