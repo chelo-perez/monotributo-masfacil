@@ -139,13 +139,18 @@ async def get_token_sign(
   </soap:Body>
 </soap:Envelope>"""
 
+    import logging as _log
     url = WSAA_URLS.get(environment, WSAA_URLS["production"])
     async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.post(
             url, content=soap.encode(),
             headers={"Content-Type": "text/xml; charset=utf-8", "SOAPAction": ""},
         )
-        resp.raise_for_status()
+        if resp.status_code != 200:
+            _log.getLogger(__name__).error(
+                f"WSAA error {resp.status_code} para {environment}: {resp.text[:1000]}"
+            )
+            resp.raise_for_status()
 
     root = ET.fromstring(resp.text)
     ns = {"tns": "http://wsaa.view.sua.dvadac.desein.afip.gov"}
