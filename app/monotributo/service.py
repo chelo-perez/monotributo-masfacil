@@ -169,25 +169,25 @@ def _periodo_recategorizacion(ref: date) -> tuple[date, date, str, str]:
     """
     anio = ref.year
 
-    # ARCA tiene dos ventanas de recategorización al año:
+    # ARCA recategoriza en julio y enero evaluando el período que YA CERRÓ:
     #
-    #   Julio (evalúa Jul año-ant – Jun año-act):
-    #     Si ref >= 01/07 → ya cerró Jun, se puede evaluar ese período
-    #     Si ref == 30/06 → es el cierre exacto del período Jul-Jun
+    #   Recategorización Julio → evalúa Jul(año ant) – Jun(año act)
+    #     El período cierra el 30/06. El 30/06 ya está en este período.
+    #     Corte: ref >= 30/06 (inclusive)
     #
-    #   Enero (evalúa Ene–Dic año-ant):
-    #     Si ref >= 01/01 y < 01/07 → ya cerró Dic del año anterior
-    #
-    # Usamos >= 01/07 como corte para el período Jul-Jun del año.
+    #   Recategorización Enero → evalúa Ene–Dic(año ant)
+    #     El período cierra el 31/12. A partir del 01/01 ya se puede evaluar.
+    #     Corte: ref < 30/06
 
-    if ref.month >= 7:
-        # Período Jul(año ant) – Jun(año act) → recategoriza enero siguiente
+    if ref >= date(anio, 6, 30):
+        # Período Jul(año ant) – Jun(año act)
         desde = date(anio - 1, 7, 1)
         hasta = date(anio, 6, 30)
         label = f"Jul {anio - 1} – Jun {anio}"
-        prox  = f"Enero {anio + 1}"
+        # Próxima: julio si todavía no llegó, enero del año siguiente si ya pasó julio
+        prox  = f"Enero {anio + 1}" if ref.month >= 7 else f"Julio {anio}"
     else:
-        # Período Ene–Dic(año ant) → recategoriza julio de este año
+        # Período Ene–Dic(año ant) → próxima recategorización es julio de este año
         desde = date(anio - 1, 1, 1)
         hasta = date(anio - 1, 12, 31)
         label = f"Ene – Dic {anio - 1}"
