@@ -13,6 +13,7 @@ select.f-select {
   background: white; outline: none; color: var(--text);
 }
 
+.table-wrap { background: white; border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
 .fact-table { width: 100%; border-collapse: collapse; }
 .fact-table thead th {
   padding: 8px 12px; text-align: left;
@@ -20,47 +21,59 @@ select.f-select {
   letter-spacing: .05em; color: var(--muted);
   border-bottom: 2px solid var(--border);
   background: white;
-  position: sticky; top: 0;
 }
-.fact-table thead th:last-child { text-align: right; }
-.fact-table tbody tr {
-  border-bottom: 1px solid var(--border);
-  transition: background .1s;
-}
+.fact-table thead th.r { text-align: right; }
+.fact-table tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
 .fact-table tbody tr:last-child { border-bottom: none; }
 .fact-table tbody tr:hover { background: #fafafa; }
 .fact-table td { padding: 9px 12px; font-size: 13px; vertical-align: middle; }
-.fact-table td:last-child { text-align: right; }
 
-.td-mono { font-weight: 700; color: var(--navy); white-space: nowrap; }
-.td-nro  { font-family: monospace; font-size: 12px; color: var(--muted); white-space: nowrap; }
-.td-cliente { color: var(--muted); font-size: 12px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.td-mono { font-weight: 700; color: var(--navy); }
+.td-sub  { font-size: 11px; color: var(--muted); margin-top: 2px; font-family: monospace; }
+.td-cliente { color: #374151; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .td-fecha { font-size: 12px; color: var(--muted); white-space: nowrap; }
-.td-monto { font-family: 'Nunito', sans-serif; font-weight: 800; color: var(--navy); white-space: nowrap; }
-.td-actions { display: flex; gap: 4px; justify-content: flex-end; align-items: center; }
+.td-monto { font-family: 'Nunito', sans-serif; font-weight: 800; color: var(--navy); white-space: nowrap; text-align: right; }
 
-.badge-apr  { background:#DCFCE7; color:#166534; font-size:10px; font-weight:700; padding:2px 7px; border-radius:20px; white-space:nowrap; }
-.badge-rec  { background:#FEE2E2; color:#991B1B; font-size:10px; font-weight:700; padding:2px 7px; border-radius:20px; }
+.badge-apr  { background:#DCFCE7; color:#166534; font-size:10px; font-weight:700; padding:2px 6px; border-radius:20px; }
+.badge-rec  { background:#FEE2E2; color:#991B1B; font-size:10px; font-weight:700; padding:2px 6px; border-radius:20px; }
 .badge-hist { background:#EEF2FF; color:#3730A3; font-size:10px; font-weight:700; padding:2px 6px; border-radius:20px; }
 
-.act-btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 28px; height: 28px; border-radius: 6px;
+/* Botón compartir */
+.share-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 10px; border-radius: 6px;
   border: 1.5px solid var(--border); background: white;
-  color: var(--navy); cursor: pointer; font-size: 14px;
-  text-decoration: none; transition: all .15s;
-  font-family: inherit;
+  color: var(--navy); font-size: 12px; font-weight: 700;
+  cursor: pointer; font-family: inherit; transition: all .15s;
 }
-.act-btn:hover { border-color: var(--navy); background: var(--bg); }
-.act-btn.wa:hover { border-color: #25D366; color: #25D366; }
-.act-btn.mail:hover { border-color: var(--coral); color: var(--coral); }
-.act-btn[disabled] { opacity: .35; cursor: not-allowed; }
+.share-btn:hover { border-color: var(--navy); }
 
-.table-wrap { background: white; border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+/* Dropdown share menu */
+.share-menu {
+  position: fixed; z-index: 999;
+  background: white; border: 1px solid var(--border);
+  border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.12);
+  min-width: 180px; overflow: hidden;
+}
+.share-item {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 11px 14px;
+  border: none; background: none; cursor: pointer;
+  font-size: 13px; font-weight: 600; color: #374151;
+  font-family: inherit; text-align: left; transition: background .1s;
+}
+.share-item:hover { background: var(--bg); }
+.share-item i { font-size: 16px; color: var(--muted); }
+.share-item.wa i { color: #25D366; }
+.share-item.mail i { color: var(--navy); }
+.share-item + .share-item { border-top: 1px solid var(--border); }
+
+/* Total footer */
+.table-footer { padding: 10px 14px; border-top: 1px solid var(--border); background: var(--bg); font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; align-items: center; }
+.table-footer strong { color: var(--navy); font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 14px; }
 
 .empty-state { text-align: center; padding: 56px 24px; color: var(--muted); background: white; border-radius: var(--radius); }
 .empty-state h3 { font-family: 'Nunito', sans-serif; font-weight: 800; color: var(--navy); margin: 12px 0 6px; }
-
 .pagination { display: flex; justify-content: center; gap: 8px; margin-top: 14px; }
 .page-btn { padding: 6px 14px; border-radius: 8px; border: 1.5px solid var(--border); background: white; font-size: 13px; font-weight: 700; color: var(--muted); text-decoration: none; }
 .page-btn.active { background: var(--navy); color: white; border-color: var(--navy); }
@@ -94,6 +107,8 @@ select.f-select {
 </div>
 
 {% if facturas %}
+{% set total_importe = facturas | sum(attribute='imp_total') %}
+
 <div class="table-wrap">
   <table class="fact-table">
     <thead>
@@ -102,8 +117,8 @@ select.f-select {
         <th>Comprobante</th>
         <th>Cliente</th>
         <th>Fecha</th>
-        <th style="text-align:right">Importe</th>
-        <th style="text-align:right"></th>
+        <th class="r">Importe</th>
+        <th></th>
       </tr>
     </thead>
     <tbody>
@@ -123,51 +138,44 @@ select.f-select {
           </div>
         </td>
         <td>
-          <div class="td-nro">{{ f.cbte_tipo_label }} {{ "%04d"|format(f.punto_venta) }}-{{ "%08d"|format(f.cbte_nro) }}</div>
-          {% if f.cae %}<div style="font-size:10px;color:var(--muted);margin-top:1px">{{ f.cae }}</div>{% endif %}
+          <div class="td-sub">{{ f.cbte_tipo_label }} {{ "%04d"|format(f.punto_venta) }}-{{ "%08d"|format(f.cbte_nro) }}</div>
+          {% if f.cae %}<div class="td-sub" style="margin-top:1px">{{ f.cae }}</div>{% endif %}
         </td>
         <td class="td-cliente">{{ f.cliente_nombre }}</td>
         <td class="td-fecha">{{ f.cbte_fecha.strftime('%d/%m/%Y') if f.cbte_fecha else '—' }}</td>
         <td class="td-monto">$ {{ "{:,.0f}".format(f.imp_total).replace(",", ".") }}</td>
-        <td>
-          <div class="td-actions">
+        <td style="white-space:nowrap">
+          {% if f.estado == 'aprobada' %}
             {% if f.fuente == 'sistema' and f.factura_id %}
-            <a href="/facturas/{{ f.factura_id }}/pdf" class="act-btn" download title="Descargar PDF">
-              <i class="ti ti-download"></i>
-            </a>
-            {% if f.cliente_email %}
-            <button class="act-btn mail" title="Enviar por mail"
-                    hx-post="/facturas/{{ f.factura_id }}/enviar-mail"
-                    hx-target="#mr-{{ f.factura_id }}" hx-swap="innerHTML"
-                    onclick="this.disabled=true">
-              <i class="ti ti-mail"></i>
+            <button class="share-btn"
+                    onclick="abrirShare(this, {{ f.factura_id }}, '{{ f.cbte_nro }}', '{{ f.cliente_nombre|replace("'","") }}', '{{ f.cliente_email or "" }}')">
+              <i class="ti ti-share" style="font-size:13px"></i> Compartir
             </button>
             {% else %}
-            <button class="act-btn" disabled title="Sin email registrado">
-              <i class="ti ti-mail"></i>
-            </button>
+            <span style="font-size:11px;color:var(--muted)">PDF en ARCA</span>
             {% endif %}
-            <button class="act-btn wa" title="WhatsApp" onclick="abrirWA({{ f.factura_id }})">
-              <i class="ti ti-brand-whatsapp"></i>
-            </button>
-            {% endif %}
-          </div>
-          {% if f.factura_id %}<div id="mr-{{ f.factura_id }}" style="font-size:11px;text-align:right;margin-top:3px"></div>{% endif %}
+          {% elif f.estado == 'rechazada' %}
+            <span style="font-size:11px;color:#991B1B">Rechazada</span>
+          {% endif %}
         </td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
+  <div class="table-footer">
+    <span>{{ facturas | length }} comprobante{{ 's' if facturas|length != 1 }}</span>
+    <strong>$ {{ "{:,.0f}".format(total_importe).replace(",", ".") }}</strong>
+  </div>
 </div>
 
 {% if page > 1 or total > 50 %}
 <div class="pagination">
   {% if page > 1 %}
-  <a href="?page={{ page - 1 }}{% if mono_id %}&mono_id={{ mono_id }}{% endif %}{% if fuente_filtro %}&fuente={{ fuente_filtro }}{% endif %}" class="page-btn">←</a>
+  <a href="?page={{ page - 1 }}{% if mono_id %}&mono_id={{ mono_id }}{% endif %}{% if fuente_filtro %}&fuente={{ fuente_filtro }}{% endif %}" class="page-btn">← Anterior</a>
   {% endif %}
   <span class="page-btn active">{{ page }}</span>
   {% if total > page * 50 %}
-  <a href="?page={{ page + 1 }}{% if mono_id %}&mono_id={{ mono_id }}{% endif %}{% if fuente_filtro %}&fuente={{ fuente_filtro }}{% endif %}" class="page-btn">→</a>
+  <a href="?page={{ page + 1 }}{% if mono_id %}&mono_id={{ mono_id }}{% endif %}{% if fuente_filtro %}&fuente={{ fuente_filtro }}{% endif %}" class="page-btn">Siguiente →</a>
   {% endif %}
 </div>
 {% endif %}
@@ -183,8 +191,9 @@ select.f-select {
 
 {% block extra_scripts %}
 <script>
+// ── Filtros ──
 function filtrar() {
-  const mono = document.getElementById('f-mono').value;
+  const mono   = document.getElementById('f-mono').value;
   const fuente = document.getElementById('f-fuente').value;
   const estado = document.getElementById('f-estado').value;
   let url = '/facturas?page=1';
@@ -193,9 +202,82 @@ function filtrar() {
   if (estado) url += '&estado=' + estado;
   window.location.href = url;
 }
-async function abrirWA(id) {
-  const r = await fetch('/facturas/' + id + '/whatsapp');
-  window.open((await r.json()).url, '_blank');
+
+// ── Share menu (igual que Facturo Más Fácil) ──
+let _activeMenu = null;
+
+function abrirShare(btn, facturaId, cbteNro, clienteNombre, clienteEmail) {
+  if (_activeMenu) { _activeMenu.remove(); _activeMenu = null; return; }
+
+  const nro    = String(cbteNro).padStart(8, '0');
+  const nombre = clienteNombre || 'Cliente';
+
+  const menu = document.createElement('div');
+  menu.className = 'share-menu';
+  menu.innerHTML = `
+    <button class="share-item" onclick="descargarPDF(${facturaId}); cerrarMenu()">
+      <i class="ti ti-download"></i> Descargar PDF
+    </button>
+    <button class="share-item wa" onclick="compartirWA(${facturaId}, '${nro}', '${nombre.replace(/'/g, '')}'); cerrarMenu()">
+      <i class="ti ti-brand-whatsapp"></i> WhatsApp
+    </button>
+    <button class="share-item mail" onclick="enviarMail(${facturaId}, '${nombre.replace(/'/g, '')}', '${clienteEmail}'); cerrarMenu()">
+      <i class="ti ti-mail"></i> Email
+    </button>
+  `;
+
+  document.body.appendChild(menu);
+  _activeMenu = menu;
+
+  // Posicionar relativo al botón
+  const r = btn.getBoundingClientRect();
+  const spaceBelow = window.innerHeight - r.bottom;
+  menu.style.top  = (spaceBelow > 150 ? r.bottom + 4 : r.top - 8 - 120) + 'px';
+  menu.style.left = Math.min(r.left, window.innerWidth - 200) + 'px';
+
+  setTimeout(() => document.addEventListener('click', cerrarMenu, { once: true }), 0);
+}
+
+function cerrarMenu() {
+  if (_activeMenu) { _activeMenu.remove(); _activeMenu = null; }
+}
+
+// ── Acciones ──
+function descargarPDF(id) {
+  window.open('/facturas/' + id + '/pdf', '_blank');
+}
+
+async function compartirWA(id, nro, nombre) {
+  const res  = await fetch('/facturas/' + id + '/whatsapp');
+  const data = await res.json();
+  window.open(data.url, '_blank');
+}
+
+async function enviarMail(id, nombre, emailActual) {
+  let email = emailActual;
+  if (!email) {
+    email = prompt('Email de ' + nombre + ':', '');
+    if (!email || !email.includes('@')) return;
+  } else {
+    if (!confirm('Enviar factura a ' + nombre + ' (' + email + ')?')) return;
+  }
+  const btn = document.querySelector(`[onclick*="enviarMail(${id},"]`);
+  const res = await fetch('/facturas/' + id + '/enviar-mail', { method: 'POST' });
+  const html = await res.text();
+  // Mostrar resultado cerca del botón de la fila
+  const row = document.querySelector(`[onclick*="abrirShare(this, ${id},"]`)?.closest('tr');
+  if (row) {
+    let resultDiv = row.querySelector('.mail-result');
+    if (!resultDiv) {
+      const td = document.createElement('td');
+      td.colSpan = 6;
+      td.innerHTML = '<div class="mail-result" style="padding:4px 12px;font-size:12px"></div>';
+      row.insertAdjacentElement('afterend', document.createElement('tr')).appendChild(td);
+      resultDiv = td.querySelector('.mail-result');
+    }
+    resultDiv.innerHTML = html;
+    setTimeout(() => resultDiv.closest('tr')?.remove(), 4000);
+  }
 }
 </script>
 {% endblock %}
