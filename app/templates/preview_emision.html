@@ -6,7 +6,7 @@
   <title>Preview de emisión — Monotributo Más Fácil</title>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&family=Nunito+Sans:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
-  <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
+
   <style>
     :root { --navy:#2C3178; --coral:#F07B5A; --bg:#F5F6FA; --border:#E5E7EB; --muted:#6B7280; --green:#22C55E; --red:#EF4444; --yellow:#F59E0B; --radius:12px; }
     *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; font-family:'Nunito Sans',sans-serif; }
@@ -149,12 +149,11 @@
     <strong>{{ filas_validas }} facturas</strong> para {{ grupos | length }} monotributistas
   </div>
   <a href="/emitir" class="btn btn-ghost">Cancelar</a>
-  <button class="btn btn-primary"
-          hx-post="/lotes/{{ lote_id }}/emitir"
-          hx-target="body" hx-swap="outerHTML"
+  <button class="btn btn-primary" id="btn-emitir"
+          onclick="emitirLote()"
           {% if filas_validas == 0 %}disabled{% endif %}>
-    <div class="spinner"></div>
-    <span class="btn-label">Emitir {{ filas_validas }} →</span>
+    <div class="spinner" id="spinner" style="display:none;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite"></div>
+    <span id="btn-label">Emitir {{ filas_validas }} →</span>
   </button>
 </div>
 
@@ -171,5 +170,36 @@ document.addEventListener('DOMContentLoaded', () => {
   if (first) { first.classList.add('open'); document.getElementById('chevron-' + first.id).style.transform = 'rotate(180deg)'; }
 });
 </script>
+<script>
+async function emitirLote() {
+  const btn = document.getElementById('btn-emitir');
+  const label = document.getElementById('btn-label');
+  const spinner = document.getElementById('spinner');
+  btn.disabled = true;
+  label.textContent = 'Emitiendo...';
+  spinner.style.display = 'inline-block';
+  try {
+    const res = await fetch('/lotes/{{ lote_id }}/emitir', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (res.ok) {
+      const html = await res.text();
+      document.open(); document.write(html); document.close();
+    } else {
+      alert('Error al emitir. Código: ' + res.status);
+      btn.disabled = false;
+      label.textContent = 'Emitir {{ filas_validas }} →';
+      spinner.style.display = 'none';
+    }
+  } catch(e) {
+    alert('Error de conexión: ' + e.message);
+    btn.disabled = false;
+    label.textContent = 'Emitir {{ filas_validas }} →';
+    spinner.style.display = 'none';
+  }
+}
+</script>
+<style>@keyframes spin { to { transform: rotate(360deg); } }</style>
 </body>
 </html>
