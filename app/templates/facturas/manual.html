@@ -114,12 +114,11 @@
       <div class="fm-card-header"><div class="fm-card-title">¿Quién emite la factura?</div></div>
       <div class="fm-card-body">
         {% for m in monos %}
-        <button class="mono-option"
+        <button class="mono-option js-mono-btn"
           data-id="{{ m.id }}"
-          data-nombre="{{ m.razon_social | replace('"', '&quot;') }}"
+          data-nombre="{{ m.razon_social | e }}"
           data-pv="{{ m.afip_punto_venta or 0 }}"
-          data-cuit="{{ m.cuit }}"
-          onclick="seleccionarMonoBtn(this)">
+          data-cuit="{{ m.cuit }}">
           <div class="mono-avatar">{{ m.razon_social[:2].upper() }}</div>
           <div style="flex:1;text-align:left">
             <div style="font-weight:700;color:var(--navy);font-size:14px">{{ m.razon_social }}</div>
@@ -256,6 +255,19 @@ const fm = {
   pdf_b64: null, pdf_nombre: null, cae: null, cbte_nro: null,
 };
 
+// ── Selección de monotributista via event delegation ──
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.js-mono-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id     = parseInt(btn.dataset.id);
+      const nombre = btn.dataset.nombre;
+      const pv     = parseInt(btn.dataset.pv) || 0;
+      const cuit   = btn.dataset.cuit;
+      seleccionarMono(id, nombre, pv, cuit);
+    });
+  });
+});
+
 // ── Stepper ──
 function goStep(n) {
   document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('visible'));
@@ -269,14 +281,6 @@ function goStep(n) {
 }
 
 // ── Paso 1: Mono ──
-function seleccionarMonoBtn(btn) {
-  const id     = parseInt(btn.dataset.id);
-  const nombre = btn.dataset.nombre;
-  const pv     = parseInt(btn.dataset.pv) || 0;
-  const cuit   = btn.dataset.cuit;
-  seleccionarMono(id, nombre, pv, cuit);
-}
-
 async function seleccionarMono(id, nombre, pv, cuit) {
   fm.mono_id = id; fm.mono_nombre = nombre; fm.punto_venta = pv; fm.cuit = cuit;
   document.getElementById('resumen-mono').textContent  = nombre;
