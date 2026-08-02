@@ -149,8 +149,12 @@
           <input type="text" id="nc-nombre" class="fm-input" placeholder="Nombre y apellido *">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
             <input type="text" id="nc-dni" class="fm-input" placeholder="DNI (opcional)" inputmode="numeric">
-            <input type="email" id="nc-email" class="fm-input" placeholder="Email (opcional)">
+            <div>
+              <input type="text" id="nc-cuit" class="fm-input" placeholder="CUIT (opcional)" inputmode="numeric" maxlength="11" oninput="consultarCuit(this.value)">
+              <div id="cuit-resultado" style="font-size:11px;margin-top:3px;min-height:14px"></div>
+            </div>
           </div>
+          <input type="email" id="nc-email" class="fm-input" placeholder="Email (opcional)">
           <button onclick="seleccionarNuevo()" class="btn btn-ghost" style="width:100%">Usar este cliente →</button>
         </div>
         <button onclick="seleccionarCF()" style="font-size:12px;color:var(--muted);background:none;border:none;cursor:pointer;text-align:center;padding:4px;font-family:inherit">
@@ -412,6 +416,23 @@ function compartirWA() {
   setTimeout(() => window.open(`https://wa.me/?text=${txt}`, '_blank'), 600);
 }
 function nueva() { fm.mono_id = null; fm.pdf_b64 = null; goStep(1); }
+
+async function consultarCuit(val) {
+  const cuit = val.replace(/[^0-9]/g, '');
+  const res = document.getElementById('cuit-resultado');
+  if (cuit.length !== 11) { if (res) res.textContent = ''; return; }
+  if (res) res.innerHTML = '<span style="color:var(--muted)">Consultando ARCA...</span>';
+  try {
+    const r = await fetch(`/factura-manual/consultar-cuit?cuit=${cuit}&mono_id=${fm.mono_id}`);
+    const d = await r.json();
+    if (d.error) { if (res) res.innerHTML = `<span style="color:#991B1B">${d.error}</span>`; return; }
+    if (res) res.innerHTML = `<span style="color:#166534;font-weight:700">✓ ${d.razon_social}</span>`;
+    const nc = document.getElementById('nc-nombre');
+    if (nc && !nc.value.trim()) nc.value = d.razon_social;
+  } catch(e) {
+    if (res) res.innerHTML = '<span style="color:#991B1B">Error consultando ARCA</span>';
+  }
+}
 </script>
 <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
 {% endblock %}

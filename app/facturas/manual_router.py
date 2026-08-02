@@ -290,3 +290,47 @@ async def emitir_manual(
         log.error(f"Error emitiendo factura manual: {e}", exc_info=True)
         await db.rollback()
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
+# ── GET /factura-manual/consultar-cuit ────────────────────────
+@router.get("/consultar-cuit", response_class=JSONResponse)
+async def consultar_cuit_arca(
+    cuit: str,
+    mono_id: int,
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Consulta el padrón ARCA para un CUIT y devuelve razón social y domicilio."""
+    mono = await db.get(Monotributista, mono_id)
+    if not mono or mono.tenant_id != current_user.tenant_id:
+        return JSONResponse({"error": "No encontrado"}, status_code=404)
+    if not mono.cert_encrypted:
+        return JSONResponse({"error": "Sin certificado"}, status_code=400)
+
+    cuit_limpio = cuit.replace("-", "").replace(" ", "").strip()
+    if not cuit_limpio.isdigit() or len(cuit_limpio) != 11:
+        return JSONResponse({"error": "CUIT inválido"}, status_code=400)
+
+    try:
+        from app.wsfe import load_credentials
+        from app.config import FERNET_KEY
+        from app.afip.padron import consultar_constancia
+        cert_pem, key_pem = load_credentials(mono, FERNET_KEY)
+        cuit_rep = mono.cuit.replace("-", "")
+        resultado = await consultar_constancia(
+            cuit_consulta=cuit_limpio,
+            cert_pem=cert_pem,
+            key_pem=key_pem,
+            cuit_representada=cuit_rep,
+            environment=mono.afip_environment or "production",
+        )
+        if resultado.error:
+            return JSONResponse({"error": resultado.error})
+        return JSONResponse({
+            "razon_social": resultado.razon_social,
+            "domicilio": str(resultado.domicilio_fiscal),
+            "tipo_persona": resultado.tipo_persona,
+            "estado_clave": resultado.estado_clave,
+        })
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
