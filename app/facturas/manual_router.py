@@ -101,12 +101,19 @@ async def buscar_cliente(
             or_(
                 ClienteFinal.nombre.ilike(f"%{q}%"),
                 ClienteFinal.dni.ilike(f"%{q}%"),
+                ClienteFinal.cuit.ilike(f"%{q}%"),
             )
         ).order_by(ClienteFinal.nombre).limit(8)
     )
     clientes = results.scalars().all()
     return JSONResponse([
-        {"id": c.id, "nombre": c.nombre, "dni": c.dni or "", "email": c.email or ""}
+        {
+            "id": c.id,
+            "nombre": c.nombre,
+            "dni": c.dni or "",
+            "cuit": c.cuit or "",
+            "email": c.email or "",
+        }
         for c in clientes
     ])
 
@@ -126,6 +133,7 @@ async def emitir_manual(
     fecha_str      = body["fecha"]
     cliente_nombre = body.get("cliente_nombre", "Consumidor Final")
     cliente_dni    = body.get("cliente_dni", "")
+    cliente_cuit   = body.get("cliente_cuit", "")
     cliente_email  = body.get("cliente_email", "")
     tipo_cbte_str  = body.get("tipo_cbte", "factura")
 
@@ -165,8 +173,17 @@ async def emitir_manual(
                                environment=mono.afip_environment or "production")
         cbte_nro = ultimo + 1
 
-        doc_tipo = 96 if (cliente_dni and cliente_dni.isdigit()) else 99
-        doc_nro  = cliente_dni if (cliente_dni and cliente_dni.isdigit()) else "0"
+        # Determinar DocTipo/DocNro según datos disponibles
+        cuit_limpio = cliente_cuit.replace("-", "").replace(" ", "") if cliente_cuit else ""
+        if cuit_limpio and cuit_limpio.isdigit() and len(cuit_limpio) == 11:
+            doc_tipo = 80  # CUIT
+            doc_nro  = cuit_limpio
+        elif cliente_dni and cliente_dni.isdigit():
+            doc_tipo = 96  # DNI
+            doc_nro  = cliente_dni
+        else:
+            doc_tipo = 99  # Consumidor Final
+            doc_nro  = "0"
 
         last_day = calendar.monthrange(fecha.year, fecha.month)[1]
         fch_desde = fecha.replace(day=1)
@@ -229,7 +246,7 @@ async def emitir_manual(
             logo_base64=getattr(mono, "logo_base64", None),
             cliente_nombre=cliente_nombre,
             cliente_dni=cliente_dni or None,
-            cliente_cuit=None,
+            cliente_cuit=cliente_cuit or None,
         )
 
         tipo_label = "NC_C" if cbte_tipo == 13 else "Factura_C"

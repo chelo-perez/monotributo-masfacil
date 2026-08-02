@@ -140,7 +140,7 @@
         <div style="position:relative">
           <i class="ti ti-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:15px"></i>
           <input type="text" id="cliente-search" class="fm-input" style="padding-left:34px"
-                 placeholder="Buscar por nombre o DNI..." oninput="buscarCliente(this.value)">
+                 placeholder="Buscar por nombre, DNI o CUIT..." oninput="buscarCliente(this.value)">
         </div>
         <div id="cliente-results"></div>
         <div class="or-divider">o</div>
@@ -242,7 +242,7 @@
 <script>
 const fm = {
   mono_id: null, mono_nombre: null, punto_venta: null, cuit: null,
-  cliente_nombre: null, cliente_dni: null, cliente_email: null,
+  cliente_nombre: null, cliente_dni: null, cliente_cuit: null, cliente_email: null,
   tipo: 'factura',
   pdf_b64: null, pdf_nombre: null, cae: null, cbte_nro: null,
 };
@@ -283,9 +283,9 @@ function buscarCliente(q) {
         <i class="ti ti-user" style="color:var(--navy);font-size:15px;flex-shrink:0"></i>
         <div style="flex:1">
           <div style="font-weight:700;font-size:13px;color:var(--navy)">${c.nombre}</div>
-          ${c.dni ? `<div style="font-size:11px;color:var(--muted)">DNI ${c.dni}</div>` : ''}
+          ${c.cuit ? `<div style="font-size:11px;color:var(--muted)">CUIT ${c.cuit}</div>` : c.dni ? `<div style="font-size:11px;color:var(--muted)">DNI ${c.dni}</div>` : ''}
         </div>
-        <button onclick="seleccionarCliente(${c.id}, '${c.nombre.replace(/'/g,"\\'")}', '${c.dni}', '${c.email}')"
+        <button onclick="seleccionarCliente(${c.id}, '${c.nombre.replace(/'/g,"\\'")}', '${c.dni}', '${c.cuit}', '${c.email}')"
                 style="background:var(--navy);color:white;border:none;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">
           Elegir →
         </button>
@@ -294,8 +294,8 @@ function buscarCliente(q) {
   }, 300);
 }
 
-function seleccionarCliente(id, nombre, dni, email) {
-  fm.cliente_nombre = nombre; fm.cliente_dni = dni; fm.cliente_email = email;
+function seleccionarCliente(id, nombre, dni, cuit, email) {
+  fm.cliente_nombre = nombre; fm.cliente_dni = dni; fm.cliente_cuit = cuit; fm.cliente_email = email;
   irAPaso3();
 }
 function seleccionarNuevo() {
@@ -303,11 +303,12 @@ function seleccionarNuevo() {
   if (!n) { alert('Ingresá el nombre'); return; }
   fm.cliente_nombre = n;
   fm.cliente_dni    = document.getElementById('nc-dni').value.trim();
+  fm.cliente_cuit   = document.getElementById('nc-cuit') ? document.getElementById('nc-cuit').value.trim() : '';
   fm.cliente_email  = document.getElementById('nc-email').value.trim();
   irAPaso3();
 }
 function seleccionarCF() {
-  fm.cliente_nombre = 'Consumidor Final'; fm.cliente_dni = ''; fm.cliente_email = '';
+  fm.cliente_nombre = 'Consumidor Final'; fm.cliente_dni = ''; fm.cliente_cuit = ''; fm.cliente_email = '';
   irAPaso3();
 }
 function irAPaso3() {
@@ -371,6 +372,7 @@ async function emitirFactura() {
         mono_id: fm.mono_id, importe, fecha, concepto,
         cliente_nombre: fm.cliente_nombre,
         cliente_dni:    fm.cliente_dni,
+        cliente_cuit:   fm.cliente_cuit || '',
         cliente_email:  fm.cliente_email,
         tipo_cbte:      fm.tipo,
       }),
