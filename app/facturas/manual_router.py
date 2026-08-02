@@ -209,6 +209,34 @@ async def emitir_manual(
             obs = "; ".join(obs_list) if obs_list else "ARCA rechazó la factura"
             return JSONResponse({"ok": False, "error": obs})
 
+        # Guardar cliente nuevo si no es CF y no existía en BD
+        if cliente_nombre and cliente_nombre != "Consumidor Final":
+            from app.auth.models import ClienteFinal
+            from sqlalchemy import or_
+            existe = None
+            if cliente_cuit or cliente_dni:
+                filtros = []
+                if cliente_cuit:
+                    filtros.append(ClienteFinal.cuit == cliente_cuit)
+                if cliente_dni:
+                    filtros.append(ClienteFinal.dni == cliente_dni)
+                q_existe = await db.execute(
+                    select(ClienteFinal).where(
+                        ClienteFinal.monotributista_id == mono_id,
+                        or_(*filtros)
+                    )
+                )
+                existe = q_existe.scalar_one_or_none()
+            if not existe:
+                db.add(ClienteFinal(
+                    monotributista_id=mono_id,
+                    tenant_id=current_user.tenant_id,
+                    nombre=cliente_nombre,
+                    dni=cliente_dni or None,
+                    cuit=cliente_cuit or None,
+                    email=cliente_email or None,
+                ))
+
         # Guardar en AfipInvoiceHistory
         from app.afip.history_models import AfipInvoiceHistory
         db.add(AfipInvoiceHistory(
