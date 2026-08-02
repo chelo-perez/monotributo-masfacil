@@ -83,8 +83,77 @@ class SituacionTributaria:
 # ── Helpers internos ──────────────────────────────────────────
 
 async def _get_ticket_padron(cert_pem: str, key_pem: str, ws_id: str, environment: str = "production"):
-    """Obtiene ticket WSAA para el servicio de padrón indicado."""
-    return await get_token_sign(cert_pem, key_pem, environment=environment, service=ws_id)
+    """Obtiene ticket WSAA para el servicio de padrón indicado — sin caché compartida."""
+    # Usamos la función directamente sin caché para evitar colisiones con wsfe
+    import base64
+    import time
+    import xml.etree.ElementTree as _ET
+    from datetime import datetime, timezone, timedelta
+    from cryptography.x509 import load_pem_x509_certificate
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.serialization import pkcs7 as _pkcs7, Encoding
+    from cryptography.hazmat.backends import default_backend
+    from app.wsfe import WSAA_URLS, _afip_http_client
+
+    now      = datetime.now(timezone.utc)
+    gen_time = (now - timedelta(minutes=10)).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+    exp_time = (now + timedelta(hours=10)).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+    unique_id = str(int(time.time()))[-10:]
+
+    tra_xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<loginTicketRequest version="1.0">
+  <header>
+    <uniqueId>{unique_id}</uniqueId>
+    <generationTime>{gen_time}</generationTime>
+    <expirationTime>{exp_time}</expirationTime>
+  </header>
+  <service>{ws_id}</service>
+</loginTicketRequest>"""
+
+    cert = load_pem_x509_certificate(cert_pem.encode(), default_backend())
+    key  = serialization.load_pem_private_key(cert_pem.encode() if False else key_pem.encode(), password=None, backend=default_backend())
+
+    builder = _pkcs7.PKCS7SignatureBuilder()
+    builder = builder.set_data(tra_xml.encode())
+    builder = builder.add_signer(cert, key, hashes.SHA256())
+    signed  = builder.sign(Encoding.DER, [])
+    cms     = base64.b64encode(signed).decode()
+
+    soap = f"""<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                  xmlns:wsaa="http://wsaa.view.sua.dvadac.desein.afip.gov.ar">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <wsaa:loginCms>
+      <wsaa:in0>{cms}</wsaa:in0>
+    </wsaa:loginCms>
+  </soapenv:Body>
+</soapenv:Envelope>"""
+
+    url = WSAA_URLS.get(environment, WSAA_URLS["production"])
+    async with _afip_http_client(30) as client:
+        resp = await client.post(
+            url, content=soap.encode(),
+            headers={"Content-Type": "text/xml; charset=UTF-8", "SOAPAction": ""},
+        )
+        if resp.status_code != 200:
+            raise ValueError(f"WSAA error {resp.status_code}: {resp.text[:500]}")
+
+    root = _ET.fromstring(resp.text)
+    result_text = None
+    for elem in root.iter():
+        if "loginCmsReturn" in elem.tag:
+            result_text = elem.text
+            break
+    if not result_text:
+        raise ValueError("WSAA: no loginCmsReturn")
+
+    ta = _ET.fromstring(result_text)
+    token = ta.findtext(".//token") or ""
+    sign  = ta.findtext(".//sign")  or ""
+    if not token or not sign:
+        raise ValueError("WSAA: token/sign vacíos")
+    return token, sign
 
 
 def _texto(elem, tag: str, default: str = "") -> str:
