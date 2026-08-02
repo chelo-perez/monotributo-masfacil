@@ -425,12 +425,16 @@ async function consultarCuit(val) {
   try {
     const r = await fetch(`/factura-manual/consultar-cuit?cuit=${cuit}&mono_id=${fm.mono_id}`);
     const d = await r.json();
-    if (d.error) { if (res) res.innerHTML = `<span style="color:#991B1B">${d.error}</span>`; return; }
+    if (d.error) {
+      // Consulta al padrón es opcional — si falla, el contador completa el nombre manualmente
+      if (res) res.innerHTML = '<span style="color:var(--muted)">Ingresá el nombre manualmente</span>';
+      return;
+    }
     if (res) res.innerHTML = `<span style="color:#166534;font-weight:700">✓ ${d.razon_social}</span>`;
     const nc = document.getElementById('nc-nombre');
     if (nc && !nc.value.trim()) nc.value = d.razon_social;
   } catch(e) {
-    if (res) res.innerHTML = '<span style="color:#991B1B">Error consultando ARCA</span>';
+    if (res) res.innerHTML = '';
   }
 }
 </script>

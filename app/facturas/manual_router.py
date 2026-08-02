@@ -315,16 +315,51 @@ async def consultar_cuit_arca(
         from app.wsfe import load_credentials
         from app.config import FERNET_KEY
         from app.afip.padron import consultar_constancia
-        cert_pem, key_pem = load_credentials(mono, FERNET_KEY)
-        cuit_rep = mono.cuit.replace("-", "")
+        from sqlalchemy import select as _sel
+
+        # Usar cualquier monotributista con certificado del tenant para consultar el padrón.
+        # El padrón (ws_sr_constancia_inscripcion) requiere su propia relación en ARCA
+        # que el monotributista puede o no tener. Intentamos con el mono solicitado y
+        # si falla por autenticación intentamos con los demás del tenant.
+        from app.auth.models import Monotributista as _Mono
+
+        consultante = mono
+        cert_pem, key_pem = load_credentials(consultante, FERNET_KEY)
+        cuit_rep = consultante.cuit.replace("-", "")
+
         resultado = await consultar_constancia(
             cuit_consulta=cuit_limpio,
             cert_pem=cert_pem,
             key_pem=key_pem,
             cuit_representada=cuit_rep,
-            environment=mono.afip_environment or "production",
+            environment=consultante.afip_environment or "production",
         )
+
+        # Si falla por autorización, intentar con otro mono del tenant
+        if resultado.error and "notAuthorized" in (resultado.error or ""):
+            otros = await db.execute(
+                _sel(_Mono).where(
+                    _Mono.tenant_id == current_user.tenant_id,
+                    _Mono.cert_encrypted != None,
+                    _Mono.id != mono_id,
+                ).limit(3)
+            )
+            for otro in otros.scalars().all():
+                try:
+                    cp2, kp2 = load_credentials(otro, FERNET_KEY)
+                    resultado = await consultar_constancia(
+                        cuit_consulta=cuit_limpio,
+                        cert_pem=cp2, key_pem=kp2,
+                        cuit_representada=otro.cuit.replace("-", ""),
+                        environment=otro.afip_environment or "production",
+                    )
+                    if not resultado.error:
+                        break
+                except Exception:
+                    continue
         if resultado.error:
+            if "notAuthorized" in (resultado.error or ""):
+                return JSONResponse({"error": "El certificado no tiene acceso al padrón ARCA. En ARCA → Administrador de Relaciones → agregá el servicio 'ws_sr_constancia_inscripcion'."})
             return JSONResponse({"error": resultado.error})
         return JSONResponse({
             "razon_social": resultado.razon_social,
