@@ -430,3 +430,40 @@ async def consultar_situacion_tributaria(
         categoria_monotributo=categoria_mono,
         impuestos_inscripto=impuestos,
     )
+
+
+async def consultar_cuit_publico(cuit: str) -> dict:
+    """
+    Consulta datos básicos de un CUIT via el endpoint público de ARCA
+    (sin autenticación). Solo devuelve razón social.
+    URL: https://api.arca.gob.ar/informacion-fiscal/v1/persona-con-domicilio/{cuit}
+    """
+    import httpx
+    cuit_limpio = cuit.replace("-", "").replace(" ", "")
+    
+    # Intentar API REST pública de ARCA
+    urls = [
+        f"https://api.arca.gob.ar/informacion-fiscal/v1/persona-con-domicilio/{cuit_limpio}",
+        f"https://api.afip.gov.ar/sr-padron/v2/persona/{cuit_limpio}",
+    ]
+    
+    async with httpx.AsyncClient(timeout=10) as client:
+        for url in urls:
+            try:
+                resp = await client.get(url, headers={"Accept": "application/json"})
+                if resp.status_code == 200:
+                    data = resp.json()
+                    # Intentar extraer razón social de diferentes estructuras
+                    razon = (
+                        data.get("razonSocial") or
+                        data.get("denominacion") or
+                        (data.get("persona", {}) or {}).get("razonSocial") or
+                        (data.get("datosGenerales", {}) or {}).get("razonSocial") or
+                        ""
+                    )
+                    if razon:
+                        return {"razon_social": razon, "cuit": cuit_limpio}
+            except Exception:
+                continue
+    
+    return {"error": "No se pudo obtener el nombre. Ingresalo manualmente."}

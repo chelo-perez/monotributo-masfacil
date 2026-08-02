@@ -346,9 +346,17 @@ async def consultar_cuit_arca(
             environment="production",
         )
         if resultado.error:
-            if "notAuthorized" in (resultado.error or ""):
-                return JSONResponse({"error": "El certificado no tiene acceso al padrón ARCA. En ARCA → Administrador de Relaciones → agregá el servicio 'ws_sr_constancia_inscripcion'."})
-            return JSONResponse({"error": resultado.error})
+            # Fallback: intentar API pública de ARCA sin autenticación
+            from app.afip.padron import consultar_cuit_publico
+            pub = await consultar_cuit_publico(cuit_limpio)
+            if not pub.get("error"):
+                return JSONResponse({
+                    "razon_social": pub["razon_social"],
+                    "domicilio": "",
+                    "tipo_persona": "",
+                    "estado_clave": "",
+                })
+            return JSONResponse({"error": pub.get("error", resultado.error)})
         return JSONResponse({
             "razon_social": resultado.razon_social,
             "domicilio": str(resultado.domicilio_fiscal),
