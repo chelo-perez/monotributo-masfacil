@@ -311,7 +311,7 @@ function buscarCliente(q) {
               <div style="font-weight:700;font-size:13px;color:var(--navy)">${d.razon_social}</div>
               <div style="font-size:11px;color:var(--muted)">CUIT ${soloNum}</div>
             </div>
-            <button onclick="seleccionarCliente(0, '${d.razon_social.replace(/'/g,\"\\'\")}', '', '${soloNum}', '')"
+        btn.onclick = () => seleccionarCliente(0, d.razon_social, '', soloNum, '');
                     style="background:var(--navy);color:white;border:none;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">
               Elegir →
             </button>
@@ -331,7 +331,7 @@ function buscarCliente(q) {
           <div style="font-weight:700;font-size:13px;color:var(--navy)">${c.nombre}</div>
           ${c.cuit ? `<div style="font-size:11px;color:var(--muted)">CUIT ${c.cuit}</div>` : c.dni ? `<div style="font-size:11px;color:var(--muted)">DNI ${c.dni}</div>` : ''}
         </div>
-        <button onclick="seleccionarCliente(${c.id}, '${c.nombre.replace(/'/g,"\\'")}', '${c.dni}', '${c.cuit}', '${c.email}')"
+      btn.onclick = () => seleccionarCliente(c.id, c.nombre, c.dni, c.cuit, c.email);
                 style="background:var(--navy);color:white;border:none;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">
           Elegir →
         </button>
