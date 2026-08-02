@@ -38,7 +38,6 @@ async def page_factura_manual(
             Monotributista.tenant_id == current_user.tenant_id,
             Monotributista.activo == True,
             Monotributista.cert_encrypted != None,
-            Monotributista.afip_punto_venta != None,
         ).order_by(Monotributista.razon_social)
     )
     monos = result.scalars().all()
