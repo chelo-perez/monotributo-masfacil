@@ -317,11 +317,13 @@ function buscarCliente(q) {
               <div style="font-weight:700;font-size:13px;color:var(--navy)">${d.razon_social}</div>
               <div style="font-size:11px;color:var(--muted)">CUIT ${soloNum}</div>
             </div>
-            <button onclick="seleccionarCliente(0, ${JSON.stringify(d.razon_social)}, '', '${soloNum}', '')"
+            <button id="btn-elegir-padron"
                     style="background:var(--navy);color:white;border:none;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">
               Elegir →
             </button>
           </div>`;
+        const _bp = document.getElementById("btn-elegir-padron");
+        if (_bp) _bp.addEventListener("click", () => seleccionarCliente(0, d.razon_social, "", soloNum, ""));
       })
       .catch(() => { cont.innerHTML = '<div style="font-size:12px;color:#991B1B;padding:4px">Error consultando ARCA</div>'; });
     return;
@@ -330,19 +332,25 @@ function buscarCliente(q) {
     const r = await fetch(`/factura-manual/buscar-cliente?q=${encodeURIComponent(q)}&mono_id=${fm.mono_id}`);
     const data = await r.json();
     if (!data.length) { cont.innerHTML = '<div style="font-size:12px;color:var(--muted)">Sin resultados — completá los datos abajo</div>'; return; }
-    cont.innerHTML = data.map(c => `
+    cont.innerHTML = data.map((c, i) => `
       <div class="cliente-result">
         <i class="ti ti-user" style="color:var(--navy);font-size:15px;flex-shrink:0"></i>
         <div style="flex:1">
           <div style="font-weight:700;font-size:13px;color:var(--navy)">${c.nombre}</div>
           ${c.cuit ? `<div style="font-size:11px;color:var(--muted)">CUIT ${c.cuit}</div>` : c.dni ? `<div style="font-size:11px;color:var(--muted)">DNI ${c.dni}</div>` : ''}
         </div>
-        <button onclick="seleccionarCliente('${c.id}', ${JSON.stringify(c.nombre)}, '${c.dni || ''}', '${c.cuit || ''}', '${c.email || ''}')"
+        <button class="btn-elegir-cliente" data-idx="${i}"
                 style="background:var(--navy);color:white;border:none;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">
           Elegir →
         </button>
       </div>
     `).join('');
+    cont.querySelectorAll('.btn-elegir-cliente').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const c = data[parseInt(btn.getAttribute('data-idx'), 10)];
+        seleccionarCliente(c.id, c.nombre, c.dni || '', c.cuit || '', c.email || '');
+      });
+    });
   }, 300);
 }
 
