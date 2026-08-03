@@ -238,6 +238,9 @@
           <button class="share-btn-wa" onclick="compartirWA()">
             <i class="ti ti-brand-whatsapp" style="font-size:18px"></i> Compartir por WhatsApp
           </button>
+          <button class="share-btn-dl" onclick="compartirEmail()" style="border:0.5px solid var(--navy);color:var(--navy)">
+            <i class="ti ti-mail"></i> Enviar por email
+          </button>
           <button class="share-btn-dl" onclick="descargarPDF()">
             <i class="ti ti-download"></i> Descargar PDF
           </button>
@@ -475,6 +478,51 @@ function compartirWA() {
   descargarPDF();
   setTimeout(() => window.open(`https://wa.me/?text=${txt}`, '_blank'), 600);
 }
+
+async function compartirEmail() {
+  // Caso 1: ya tenemos el email del cliente → confirmamos/permitimos editar.
+  // Caso 2/3: no lo tenemos → lo pedimos (y queda guardado al enviar).
+  const emailActual = (fm.cliente_email || '').trim();
+  const email = prompt(
+    emailActual
+      ? 'Enviar el comprobante a este email (podés cambiarlo):'
+      : 'Ingresá el email para enviar el comprobante:',
+    emailActual
+  );
+  if (email === null) return;              // canceló
+  const dest = email.trim();
+  if (!dest) { alert('Ingresá un email.'); return; }
+
+  const nro = String(fm.cbte_nro).padStart(8,'0');
+  const comprobante = (fm.tipo === 'nc' ? 'Nota de Crédito C' : 'Factura C') +
+    ' ' + String(fm.punto_venta).padStart(4,'0') + '-' + nro;
+  try {
+    const r = await fetch('/factura-manual/enviar-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: dest,
+        mono_id: fm.mono_id,
+        pdf_b64: fm.pdf_b64,
+        nombre_archivo: fm.pdf_nombre,
+        comprobante: comprobante,
+        cliente_nombre: fm.cliente_nombre,
+        cliente_dni: fm.cliente_dni,
+        cliente_cuit: fm.cliente_cuit,
+      }),
+    });
+    const d = await r.json();
+    if (d.ok) {
+      fm.cliente_email = dest;   // recordar para esta sesión
+      alert('✓ ' + (d.mensaje || 'Comprobante enviado'));
+    } else {
+      alert(d.error || 'No se pudo enviar el email.');
+    }
+  } catch (e) {
+    alert('Error de conexión al enviar el email.');
+  }
+}
+
 function nueva() { fm.mono_id = null; fm.pdf_b64 = null; goStep(1); }
 
 let _docTipo = 'dni';

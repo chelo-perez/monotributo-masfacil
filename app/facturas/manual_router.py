@@ -117,6 +117,73 @@ async def buscar_cliente(
     ])
 
 
+# ── POST /factura-manual/enviar-email ───────────────────────────────
+@router.post("/enviar-email", response_class=JSONResponse)
+async def enviar_factura_email(
+    request: Request,
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """
+    Envía una factura ya emitida por email (PDF adjunto) y guarda/actualiza el
+    email en el cliente para la próxima vez.
+    """
+    from app.auth.models import ClienteFinal
+    from sqlalchemy import or_ as _or
+    body = await request.json()
+    email = (body.get("email") or "").strip()
+    mono_id = body.get("mono_id")
+    pdf_b64 = body.get("pdf_b64") or ""
+    nombre_archivo = body.get("nombre_archivo") or "comprobante.pdf"
+    comprobante = body.get("comprobante") or "Factura C"
+    cliente_nombre = body.get("cliente_nombre") or ""
+    cliente_dni = (body.get("cliente_dni") or "").strip()
+    cliente_cuit = (body.get("cliente_cuit") or "").strip()
+
+    # Validación mínima de email
+    if "@" not in email or "." not in email.split("@")[-1]:
+        return JSONResponse({"ok": False, "error": "Ingresá un email válido"}, status_code=400)
+    if not pdf_b64:
+        return JSONResponse({"ok": False, "error": "No hay comprobante para enviar"}, status_code=400)
+
+    mono = await db.get(Monotributista, mono_id) if mono_id else None
+    razon_emisor = mono.razon_social if mono else ""
+
+    # Enviar
+    from app.email import enviar_factura_pdf
+    ok, err = await enviar_factura_pdf(
+        to=email, nombre_cliente=cliente_nombre, comprobante=comprobante,
+        pdf_b64=pdf_b64, nombre_archivo=nombre_archivo,
+        razon_social_emisor=razon_emisor,
+    )
+    if not ok:
+        return JSONResponse({"ok": False, "error": err or "No se pudo enviar"}, status_code=200)
+
+    # Guardar/actualizar el email en el cliente (si lo podemos identificar)
+    try:
+        if mono_id and (cliente_dni or cliente_cuit or cliente_nombre):
+            filtros = []
+            if cliente_cuit:
+                filtros.append(ClienteFinal.cuit == cliente_cuit)
+            if cliente_dni:
+                filtros.append(ClienteFinal.dni == cliente_dni)
+            if not filtros and cliente_nombre:
+                filtros.append(ClienteFinal.nombre == cliente_nombre)
+            if filtros:
+                q = await db.execute(select(ClienteFinal).where(
+                    ClienteFinal.monotributista_id == mono_id,
+                    _or(*filtros),
+                ).limit(1))
+                cli = q.scalar_one_or_none()
+                if cli and cli.email != email:
+                    cli.email = email
+                    await db.commit()
+    except Exception:
+        await db.rollback()  # guardar el email es best-effort; el envío ya se hizo
+
+    return JSONResponse({"ok": True, "mensaje": f"Comprobante enviado a {email}"})
+
+
 # ── POST /factura-manual/emitir ─────────────────────────────────────
 @router.post("/emitir", response_class=JSONResponse)
 async def emitir_manual(

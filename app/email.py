@@ -25,6 +25,47 @@ async def _send(to: str, subject: str, html: str) -> bool:
         return False
 
 
+async def enviar_factura_pdf(
+    to: str, nombre_cliente: str, comprobante: str,
+    pdf_b64: str, nombre_archivo: str, razon_social_emisor: str = "",
+) -> tuple[bool, str]:
+    """
+    Envía una factura con el PDF adjunto vía Resend.
+    Devuelve (ok, mensaje_error).
+    """
+    if not RESEND_API_KEY:
+        return False, "El envío de emails no está configurado."
+    saludo = nombre_cliente.split()[0] if nombre_cliente and nombre_cliente != "Consumidor Final" else "Hola"
+    emisor = f" de {razon_social_emisor}" if razon_social_emisor else ""
+    html = _base_html(
+        f"<p>Hola {saludo},</p>"
+        f"<p>Te adjuntamos tu comprobante <strong>{comprobante}</strong>{emisor}.</p>"
+        f"<p>Cualquier duda, quedamos a disposición.</p>"
+    )
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            resp = await client.post(
+                "https://api.resend.com/emails",
+                headers={"Authorization": f"Bearer {RESEND_API_KEY}", "Content-Type": "application/json"},
+                json={
+                    "from": EMAIL_FROM,
+                    "to": [to],
+                    "subject": f"Tu comprobante {comprobante}",
+                    "html": html,
+                    "attachments": [{
+                        "filename": nombre_archivo,
+                        "content": pdf_b64,  # base64 — Resend lo acepta así
+                    }],
+                },
+            )
+            if resp.status_code >= 400:
+                return False, f"El servidor de email rechazó el envío ({resp.status_code})."
+            return True, ""
+    except Exception as e:
+        print(f"[email] Error al enviar factura a {to}: {e}")
+        return False, "No se pudo enviar el email. Reintentá en un momento."
+
+
 def _base_html(contenido: str) -> str:
     return f"""<!DOCTYPE html>
 <html lang="es">
