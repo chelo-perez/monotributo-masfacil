@@ -85,29 +85,37 @@ async def superadmin_panel(
     if not isinstance(current_user, CurrentUser):
         return current_user
 
-    rows = await _get_tenants_data(db)
-    now = datetime.now(timezone.utc)
+    try:
+        rows = await _get_tenants_data(db)
+        now = datetime.now(timezone.utc)
 
-    mrr = sum(
-        PLAN_PRICES.get(r["tenant"].plan, 0)
-        for r in rows if r["estado"] == "activo"
-    )
-    mes_inicio = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    nuevos_mes = sum(1 for r in rows if r["tenant"].created_at >= mes_inicio)
+        mrr = sum(
+            PLAN_PRICES.get(r["tenant"].plan, 0)
+            for r in rows if r["estado"] == "activo"
+        )
+        mes_inicio = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        nuevos_mes = sum(1 for r in rows if r["tenant"].created_at >= mes_inicio)
 
-    return templates.TemplateResponse("superadmin/panel.html", {
-        "request": request,
-        "current_user": current_user,
-        "rows": rows,
-        "secret": SECRET_PATH,
-        "now": now,
-        "kpis": {
-            "mrr": mrr,
-            "total": len(rows),
-            "activos": sum(1 for r in rows if r["estado"] == "activo"),
-            "nuevos_mes": nuevos_mes,
-        },
-    })
+        return templates.TemplateResponse("superadmin/panel.html", {
+            "request": request,
+            "current_user": current_user,
+            "rows": rows,
+            "secret": SECRET_PATH,
+            "now": now,
+            "kpis": {
+                "mrr": mrr,
+                "total": len(rows),
+                "activos": sum(1 for r in rows if r["estado"] == "activo"),
+                "nuevos_mes": nuevos_mes,
+            },
+        })
+    except Exception:
+        import traceback, html as _html
+        _tb = traceback.format_exc()
+        import logging; logging.getLogger(__name__).error(f"PANEL ADMIN 500: {_tb}")
+        return HTMLResponse(
+            "<pre style='font-size:11px;white-space:pre-wrap;padding:12px'>"
+            + _html.escape(_tb[-2000:]) + "</pre>", status_code=200)
 
 
 # ---------------------------------------------------------------------------
