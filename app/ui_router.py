@@ -1298,3 +1298,181 @@ async def perfil_guardar(
 
     # Recargar current_user.tenant_logo para que el sidebar lo muestre
     return RedirectResponse("/perfil?ok=1", status_code=303)
+
+
+# ---------------------------------------------------------------------------
+# Recategorización
+# ---------------------------------------------------------------------------
+
+@router.get("/recategorizacion", response_class=HTMLResponse)
+async def page_recategorizacion(
+    request: Request,
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Sección Recategorización: estado de todos los monotributistas con su sugerencia."""
+    from app.monotributo.service import get_topes_db, acumulado_periodo, _periodo_recategorizacion
+    from datetime import date as _date, timedelta
+
+    hoy = hoy_ar()
+    desde, hasta, periodo_label, _ = _periodo_recategorizacion(hoy)
+
+    # Ventana de recategorización: julio (hasta ~05/08) o enero (hasta ~05/02)
+    if hoy.month <= 7:
+        cierre_recat = hoy.replace(month=8, day=5)
+        vigencia     = hoy.replace(month=8, day=1)
+        ventana_label = "julio"
+    else:
+        cierre_recat = _date(hoy.year + 1, 2, 5)
+        vigencia     = _date(hoy.year + 1, 2, 1)
+        ventana_label = "enero"
+
+    dias_para_cierre = (cierre_recat - hoy).days
+    en_ventana = 0 <= dias_para_cierre <= 40
+
+    # Topes vigentes para el período evaluado
+    topes = await get_topes_db(db, hasta)
+    ORDEN = ["A","B","C","D","E","F","G","H","I","J","K"]
+
+    def cat_corresponde(acum):
+        from decimal import Decimal
+        for letra in ORDEN:
+            if acum <= topes.get(letra, Decimal("0")):
+                return letra
+        return None  # supera K
+
+    # Recategorizaciones ya confirmadas este período
+    from sqlalchemy import text as _txt
+    confirmadas = set()
+    try:
+        _h = await db.execute(_txt("""
+            SELECT DISTINCT mono_id FROM recategorizacion_historial_mono
+            WHERE tenant_id = :tid AND periodo_desde = :pd AND periodo_hasta = :ph
+        """), {"tid": current_user.tenant_id, "pd": desde, "ph": hasta})
+        confirmadas = {r.mono_id for r in _h.fetchall()}
+    except Exception:
+        confirmadas = set()
+
+    result = await db.execute(
+        select(Monotributista).where(
+            Monotributista.tenant_id == current_user.tenant_id,
+            Monotributista.activo == True,
+        ).order_by(Monotributista.razon_social)
+    )
+    monos = result.scalars().all()
+
+    items = []
+    for m in monos:
+        cat_actual = m.categoria_actual.value if m.categoria_actual else "A"
+        acum = await acumulado_periodo(m.id, db, desde, hasta)
+        sugerida = cat_corresponde(acum)
+        excede_k = sugerida is None
+        ya_confirmada = m.id in confirmadas
+
+        if excede_k:
+            estado = "exclusion"
+        elif ya_confirmada:
+            estado = "confirmada"
+        elif sugerida == cat_actual:
+            estado = "sin_cambio"
+        elif ORDEN.index(sugerida) > ORDEN.index(cat_actual):
+            estado = "sube"
+        else:
+            estado = "baja"
+
+        items.append({
+            "mono_id":    m.id,
+            "nombre":     m.razon_social,
+            "cuit":       m.cuit,
+            "acumulado":  float(acum),
+            "cat_actual": cat_actual,
+            "sugerida":   sugerida,
+            "tope_sug":   float(topes.get(sugerida, 0)) if sugerida else 0,
+            "estado":     estado,
+        })
+
+    resp = templates.TemplateResponse("recategorizacion.html", {
+        "request": request,
+        "current_user": current_user,
+        "tenant_nombre": current_user.tenant_nombre,
+        "active_page": "recategorizacion",
+        "items": items,
+        "periodo_label": periodo_label,
+        "ventana_label": ventana_label,
+        "cierre_recat": cierre_recat.strftime("%d/%m/%Y"),
+        "dias_para_cierre": dias_para_cierre,
+        "en_ventana": en_ventana,
+        "vigencia": vigencia.strftime("%d/%m/%Y"),
+    })
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
+@router.post("/recategorizacion/{mono_id}/confirmar", response_class=HTMLResponse)
+async def confirmar_recategorizacion(
+    mono_id: int,
+    request: Request,
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Confirma la recategorización de un monotributista y actualiza su categoría."""
+    from app.monotributo.service import get_topes_db, acumulado_periodo, _periodo_recategorizacion
+    from sqlalchemy import text as _txt
+
+    mono = await db.get(Monotributista, mono_id)
+    if not mono or mono.tenant_id != current_user.tenant_id:
+        raise HTTPException(status_code=404)
+
+    hoy = hoy_ar()
+    desde, hasta, _, _ = _periodo_recategorizacion(hoy)
+    topes = await get_topes_db(db, hasta)
+    ORDEN = ["A","B","C","D","E","F","G","H","I","J","K"]
+
+    acum = await acumulado_periodo(mono_id, db, desde, hasta)
+    sugerida = None
+    from decimal import Decimal as _Dec
+    for letra in ORDEN:
+        if acum <= topes.get(letra, _Dec("0")):
+            sugerida = letra
+            break
+
+    if sugerida:
+        # Actualizar categoría del monotributista
+        from app.auth.models import CategoriaMono
+        try:
+            mono.categoria_actual = CategoriaMono(sugerida)
+        except Exception:
+            pass
+        await db.commit()
+
+        # Registrar en historial
+        try:
+            await db.execute(_txt("""
+                CREATE TABLE IF NOT EXISTS recategorizacion_historial_mono (
+                    id SERIAL PRIMARY KEY,
+                    tenant_id INTEGER NOT NULL,
+                    mono_id INTEGER NOT NULL,
+                    periodo_desde DATE NOT NULL,
+                    periodo_hasta DATE NOT NULL,
+                    cat_anterior VARCHAR(2),
+                    cat_nueva VARCHAR(2),
+                    acumulado NUMERIC(14,2),
+                    created_at TIMESTAMPTZ DEFAULT NOW()
+                )
+            """))
+            await db.execute(_txt("""
+                INSERT INTO recategorizacion_historial_mono
+                (tenant_id, mono_id, periodo_desde, periodo_hasta, cat_anterior, cat_nueva, acumulado)
+                VALUES (:tid, :mid, :pd, :ph, :ca, :cn, :acu)
+                ON CONFLICT DO NOTHING
+            """), {
+                "tid": current_user.tenant_id, "mid": mono_id,
+                "pd": desde, "ph": hasta,
+                "ca": mono.categoria_actual.value if mono.categoria_actual else None,
+                "cn": sugerida, "acu": float(acum),
+            })
+            await db.commit()
+        except Exception:
+            pass
+
+    return RedirectResponse("/recategorizacion", status_code=303)

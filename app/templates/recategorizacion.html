@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}Recategorización — Monotributo Más Fácil{% endblock %}
+
+{% block extra_styles %}
+.recat-header {
+  border-radius: var(--radius); padding: 18px 20px; margin-bottom: 16px; color: white;
+}
+.recat-header.en-ventana { background: linear-gradient(135deg, #2C3178, #3d4499); }
+.recat-header.fuera { background: white; border: 1px solid var(--border); color: var(--navy); }
+
+.item-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 10px; overflow: hidden; display: flex; }
+.item-franja { width: 5px; flex-shrink: 0; }
+.item-body { flex: 1; padding: 14px 16px; }
+.item-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.item-nombre { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 14px; color: var(--navy); }
+.item-cuit { font-size: 11px; color: var(--muted); }
+.cat-badge { font-family: 'Nunito', sans-serif; font-weight: 900; font-size: 28px; line-height: 1; }
+.cat-label { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; font-weight: 700; }
+.item-acum { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Recategorización</div>
+    <div class="page-subtitle">Mantené las categorías al día con ARCA</div>
+  </div>
+</div>
+
+{# Banner estado ventana #}
+{% if en_ventana %}
+<div class="recat-header en-ventana">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+    <i class="ti ti-calendar-check" style="font-size:20px"></i>
+    <span style="font-family:'Nunito',sans-serif;font-weight:800;font-size:16px">Estás en período de recategorización</span>
+  </div>
+  <div style="font-size:13px;opacity:.92;line-height:1.5">
+    Tenés tiempo hasta el <strong>{{ cierre_recat }}</strong>
+    ({{ dias_para_cierre }} día{{ 's' if dias_para_cierre != 1 }} restante{{ 's' if dias_para_cierre != 1 }}).
+    Revisamos la facturación del período <strong>{{ periodo_label }}</strong>.
+    La nueva categoría rige desde el <strong>{{ vigencia }}</strong>.
+  </div>
+</div>
+{% else %}
+<div class="recat-header fuera" style="color:var(--navy)">
+  <div style="font-family:'Nunito',sans-serif;font-weight:800;font-size:15px;margin-bottom:4px">
+    Próxima recategorización: {{ ventana_label | capitalize }} {{ vigencia[-4:] }}
+  </div>
+  <div style="font-size:13px;color:var(--muted);line-height:1.5">
+    Evalúa la facturación del período <strong>{{ periodo_label }}</strong>.
+    Acá vas a poder revisar y confirmar la categoría de cada monotributista cuando se abra la ventana.
+  </div>
+</div>
+
+<div style="display:flex;gap:10px;padding:12px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;margin-bottom:16px;font-size:12px;color:#1e3a5f;line-height:1.5">
+  <i class="ti ti-info-circle" style="font-size:16px;color:#2563eb;flex-shrink:0;margin-top:1px"></i>
+  Dos veces al año (agosto y enero) ARCA revisa la facturación de los últimos 12 meses.
+  Si el monotributista superó el tope de su categoría, tiene que recategorizarse para no quedar excluido del régimen simplificado.
+</div>
+{% endif %}
+
+{# Lista de monotributistas #}
+{% if items %}
+<div>
+  {% for s in items %}
+  {% set col = '#dc2626' if s.estado == 'exclusion' else ('#16a34a' if s.estado in ['sin_cambio','confirmada'] else ('#d97706' if s.estado == 'sube' else '#2563eb')) %}
+  <div class="item-card">
+    <div class="item-franja" style="background:{{ col }}"></div>
+    <div class="item-body">
+      <div class="item-top">
+        <div>
+          <div class="item-nombre">{{ s.nombre }}</div>
+          <div class="item-cuit">{{ s.cuit }}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="text-align:center">
+            <div class="cat-label" style="color:var(--muted)">Actual</div>
+            <div class="cat-badge" style="color:var(--muted)">{{ s.cat_actual or '—' }}</div>
+          </div>
+          {% if s.estado not in ['sin_cambio','exclusion','confirmada'] %}
+          <i class="ti ti-arrow-right" style="font-size:18px;color:{{ col }}"></i>
+          <div style="text-align:center">
+            <div class="cat-label" style="color:{{ col }}">Corresponde</div>
+            <div class="cat-badge" style="color:{{ col }}">{{ s.sugerida }}</div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="item-acum">
+        Facturado {{ periodo_label }}: <strong style="color:var(--navy)">$ {{ "{:,.0f}".format(s.acumulado).replace(",",".") }}</strong>
+        {% if s.tope_sug %} · Tope Cat. {{ s.sugerida }}: $ {{ "{:,.0f}".format(s.tope_sug).replace(",",".") }}{% endif %}
+      </div>
+
+      {% if s.estado == 'exclusion' %}
+      <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#b91c1c;font-weight:700">
+        <i class="ti ti-alert-triangle"></i> Supera el tope K — evaluar exclusión del régimen
+      </span>
+
+      {% elif s.estado == 'confirmada' %}
+      <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#15803d;font-weight:700;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:6px 12px">
+        <i class="ti ti-circle-check-filled"></i> Recategorización confirmada — Categoría {{ s.cat_actual }}
+      </span>
+
+      {% elif s.estado == 'sin_cambio' %}
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:12px;color:#15803d;font-weight:600;display:inline-flex;align-items:center;gap:4px">
+          <i class="ti ti-check"></i> Mantiene la Categoría {{ s.cat_actual }}
+        </span>
+        {% if en_ventana %}
+        <form action="/recategorizacion/{{ s.mono_id }}/confirmar" method="post" style="display:inline">
+          <button type="submit" class="btn btn-ghost" style="font-size:12px;padding:5px 12px">
+            Confirmar en ARCA →
+          </button>
+        </form>
+        {% endif %}
+      </div>
+
+      {% else %}
+      {% if en_ventana %}
+      <form action="/recategorizacion/{{ s.mono_id }}/confirmar" method="post" style="display:inline">
+        <button type="submit" class="btn btn-primary" style="font-size:12px;padding:7px 14px;background:{{ col }};border:none">
+          {% if s.estado == 'sube' %}Recategorizar a {{ s.sugerida }} →{% else %}Bajar a {{ s.sugerida }} →{% endif %}
+        </button>
+      </form>
+      {% else %}
+      <span style="font-size:12px;color:{{ col }};font-weight:700">
+        {% if s.estado == 'sube' %}Debería subir a Cat. {{ s.sugerida }} en {{ ventana_label }}{% else %}Podría bajar a Cat. {{ s.sugerida }} en {{ ventana_label }}{% endif %}
+      </span>
+      {% endif %}
+      {% endif %}
+
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div style="font-size:12px;color:var(--muted);margin-top:14px;padding:12px 14px;background:white;border-radius:10px;box-shadow:var(--shadow);line-height:1.5">
+  <strong>Cómo lo calculamos:</strong> sumamos la facturación de cada monotributista en el período {{ periodo_label }}
+  (los mismos meses que evalúa ARCA) y buscamos la categoría cuyo tope de ingresos corresponde.
+  Recategorizá primero en ARCA y después confirmá acá para mantener todo sincronizado.
+</div>
+
+{% else %}
+<div style="text-align:center;padding:48px 20px;color:var(--muted)">
+  <i class="ti ti-users" style="font-size:40px;opacity:.4"></i>
+  <div style="margin-top:10px;font-size:14px">No hay monotributistas configurados.</div>
+</div>
+{% endif %}
+{% endblock %}
