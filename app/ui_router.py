@@ -88,7 +88,7 @@ async def dashboard(
     )
     monos = result.scalars().all()
 
-    # Facturas del mes actual
+    # Facturas del mes actual — tabla Factura (lote Excel)
     result_facts = await db.execute(
         select(Factura).where(
             Factura.tenant_id == current_user.tenant_id,
@@ -102,6 +102,21 @@ async def dashboard(
     aprobadas_mes = [f for f in facturas_mes if f.afip_result == EstadoFactura.aprobada]
     rechazadas_mes = [f for f in facturas_mes if f.afip_result == EstadoFactura.rechazada]
     total_mes = sum(f.imp_total for f in aprobadas_mes)
+
+    # Sumar también manuales y de historial del mes actual (AfipInvoiceHistory)
+    from app.afip.history_models import AfipInvoiceHistory
+    result_hist_mes = await db.execute(
+        select(func.count(), func.coalesce(func.sum(AfipInvoiceHistory.imp_total), 0)).where(
+            AfipInvoiceHistory.tenant_id == current_user.tenant_id,
+            AfipInvoiceHistory.cbte_tipo.in_([11, 1, 6]),
+            func.extract("month", AfipInvoiceHistory.cbte_fecha) == hoy.month,
+            func.extract("year", AfipInvoiceHistory.cbte_fecha) == hoy.year,
+            AfipInvoiceHistory.source.in_(["manual", "wsfe"]),
+        )
+    )
+    hist_count, hist_total = result_hist_mes.one()
+    aprobadas_mes_total = len(aprobadas_mes) + int(hist_count or 0)
+    total_mes = float(total_mes) + float(hist_total or 0)
 
     # Facturas por monotributista este mes (para la columna de la tabla)
     facts_por_mono: dict[int, dict] = {}
@@ -185,7 +200,7 @@ async def dashboard(
         "mes_actual": mes_actual,
         "total_monotributistas": len(monos),
         "sin_certificado": sin_certificado,
-        "facturas_mes": len(aprobadas_mes),
+        "facturas_mes": aprobadas_mes_total,
         "facturas_rechazadas": len(rechazadas_mes),
         "total_mes": total_mes,
         "alertas": alertas,
