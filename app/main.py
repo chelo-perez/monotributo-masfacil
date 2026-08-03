@@ -45,6 +45,16 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE facturas ADD COLUMN IF NOT EXISTS pdf_path VARCHAR(500)",
             "ALTER TABLE facturas ADD COLUMN IF NOT EXISTS afip_obs TEXT",
             "ALTER TABLE filas_excel ADD COLUMN IF NOT EXISTS email_cliente_raw VARCHAR(200)",
+            """CREATE TABLE IF NOT EXISTS padron_config (
+                id SERIAL PRIMARY KEY,
+                cert_encrypted TEXT NOT NULL,
+                key_encrypted TEXT NOT NULL,
+                cuit VARCHAR(13) NOT NULL,
+                razon_social VARCHAR(200),
+                environment VARCHAR(20) DEFAULT 'production',
+                activo BOOLEAN DEFAULT TRUE,
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            )""",
             """CREATE TABLE IF NOT EXISTS tablas_categorias (
                 id SERIAL PRIMARY KEY,
                 vigente_desde DATE NOT NULL UNIQUE,

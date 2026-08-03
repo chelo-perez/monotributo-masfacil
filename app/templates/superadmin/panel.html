@@ -30,6 +30,71 @@
   </div>
 </div>
 
+<!-- Configuración del padrón (Más Fácil SAS) -->
+<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#6B7280;margin:16px 0 8px">Consulta de padrón ARCA</div>
+<div style="background:#fff;border:0.5px solid #e5e7eb;border-radius:12px;padding:16px;margin-bottom:16px">
+  <div id="padron-estado" style="font-size:.82rem;margin-bottom:12px;color:#6B7280">Verificando estado...</div>
+  <div style="font-size:.78rem;color:#6B7280;margin-bottom:12px;line-height:1.5">
+    Cargá el certificado de <strong>Más Fácil SAS</strong> con el servicio de constancia de inscripción habilitado. Se usa para consultar el padrón de todos los clientes — así ningún monotributista necesita configurarlo por su cuenta.
+  </div>
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <input type="text" id="pc-cuit" placeholder="CUIT de Más Fácil SAS (11 dígitos)" inputmode="numeric"
+           style="padding:9px 12px;border:0.5px solid #e5e7eb;border-radius:8px;font-size:.85rem">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <label style="font-size:.75rem;color:#6B7280">Certificado (.crt)
+        <input type="file" id="pc-cert" accept=".crt,.pem" style="display:block;margin-top:4px;font-size:.75rem">
+      </label>
+      <label style="font-size:.75rem;color:#6B7280">Clave privada (.key)
+        <input type="file" id="pc-key" accept=".key,.pem" style="display:block;margin-top:4px;font-size:.75rem">
+      </label>
+    </div>
+    <button onclick="guardarPadron()" id="pc-btn"
+            style="background:#2C3178;color:#fff;border:none;border-radius:8px;padding:10px;font-size:.85rem;font-weight:600;cursor:pointer">
+      Guardar certificado de padrón
+    </button>
+    <div id="pc-msg" style="font-size:.8rem;min-height:16px"></div>
+  </div>
+</div>
+<script>
+async function cargarEstadoPadron() {
+  const el = document.getElementById("padron-estado");
+  try {
+    const r = await fetch("/admin/{{ secret }}/padron-estado");
+    const d = await r.json();
+    if (d.configurado) {
+      el.innerHTML = '<span style="color:#166534;font-weight:600">✓ Configurado</span> · CUIT ' + d.cuit + ' (' + (d.razon_social || 'Más Fácil SAS') + ')';
+    } else {
+      el.innerHTML = '<span style="color:#b45309;font-weight:600">⚠ Sin configurar</span> — la consulta de CUIT no funciona hasta cargar el certificado.';
+    }
+  } catch (e) { el.textContent = "No se pudo verificar el estado."; }
+}
+async function guardarPadron() {
+  const cuit = document.getElementById("pc-cuit").value.trim();
+  const cert = document.getElementById("pc-cert").files[0];
+  const key = document.getElementById("pc-key").files[0];
+  const msg = document.getElementById("pc-msg");
+  const btn = document.getElementById("pc-btn");
+  if (!cuit || !cert || !key) { msg.innerHTML = '<span style="color:#b91c1c">Completá CUIT, certificado y clave.</span>'; return; }
+  btn.disabled = true; btn.textContent = "Guardando...";
+  const fd = new FormData();
+  fd.append("cuit", cuit); fd.append("cert_file", cert); fd.append("key_file", key);
+  try {
+    const r = await fetch("/admin/{{ secret }}/padron-config", { method: "POST", body: fd });
+    const d = await r.json();
+    if (d.ok) {
+      msg.innerHTML = '<span style="color:#166534">✓ ' + d.mensaje + '</span>';
+      cargarEstadoPadron();
+    } else {
+      msg.innerHTML = '<span style="color:#b91c1c">' + (d.error || "Error al guardar") + '</span>';
+    }
+  } catch (e) {
+    msg.innerHTML = '<span style="color:#b91c1c">Error de conexión.</span>';
+  }
+  btn.disabled = false; btn.textContent = "Guardar certificado de padrón";
+}
+cargarEstadoPadron();
+</script>
+
 <!-- Acción principal -->
 <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#6B7280;margin-bottom:8px">Acciones</div>
 

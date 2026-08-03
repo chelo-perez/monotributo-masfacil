@@ -301,33 +301,49 @@ async def consultar_cuit_arca(
 ):
     """
     Consulta el padrón de ARCA por CUIT y devuelve razón social, condición IVA
-    y domicilio. Usa el certificado del monotributista emisor como representante
-    (mismo enfoque que Facturo Más Fácil: el que emite consulta el padrón).
+    y domicilio.
+
+    Usa el certificado ÚNICO de Más Fácil SAS (tabla padron_config) como
+    consultante para TODOS los clientes. Así ningún monotributista necesita
+    habilitar el web service de constancia en su propio ARCA — la fricción se
+    resuelve una sola vez a nivel plataforma.
     """
+    # Validar que el mono pertenece al tenant (seguridad), pero NO usamos su cert
     mono = await db.get(Monotributista, mono_id)
     if not mono or mono.tenant_id != current_user.tenant_id:
         return JSONResponse({"error": "No encontrado"}, status_code=404)
-    if not mono.cert_encrypted or not mono.key_encrypted:
-        return JSONResponse({"error": "La cuenta no tiene certificado de ARCA cargado"}, status_code=400)
 
     cuit_limpio = "".join(ch for ch in (cuit or "") if ch.isdigit())
     if len(cuit_limpio) != 11:
         return JSONResponse({"error": "El CUIT debe tener 11 dígitos"}, status_code=400)
 
+    # Cargar el certificado de Más Fácil SAS desde padron_config
+    from sqlalchemy import text as _txt
+    _pc = await db.execute(_txt(
+        "SELECT cert_encrypted, key_encrypted, cuit, environment "
+        "FROM padron_config WHERE activo = TRUE ORDER BY updated_at DESC LIMIT 1"
+    ))
+    _row = _pc.fetchone()
+    if not _row:
+        return JSONResponse(
+            {"error": "La consulta al padrón no está configurada todavía."},
+            status_code=200)
+
     try:
-        from app.wsfe import load_credentials
         from app.config import FERNET_KEY
         from app.afip.padron import consultar_constancia
-
-        cert_pem, key_pem = load_credentials(mono, FERNET_KEY)
-        cuit_rep = mono.cuit.replace("-", "").replace(" ", "")
+        from cryptography.fernet import Fernet
+        _f = Fernet(FERNET_KEY)
+        cert_pem = _f.decrypt(_row.cert_encrypted.encode()).decode()
+        key_pem  = _f.decrypt(_row.key_encrypted.encode()).decode()
+        cuit_rep = (_row.cuit or "").replace("-", "").replace(" ", "")
 
         r = await consultar_constancia(
             cuit_consulta=cuit_limpio,
             cert_pem=cert_pem,
             key_pem=key_pem,
             cuit_representada=cuit_rep,
-            environment=getattr(mono, "afip_environment", "production") or "production",
+            environment=_row.environment or "production",
         )
     except Exception as e:
         import logging
@@ -342,7 +358,6 @@ async def consultar_cuit_arca(
             status_code=200)
 
     _es_mono = getattr(r, "es_monotributo", False)
-    # ConstanciaInscripcion no trae condicion_iva como texto: lo derivamos.
     _cond_txt = getattr(r, "condicion_iva", "") or (
         "Responsable Monotributo" if _es_mono else "Responsable Inscripto")
     return JSONResponse({

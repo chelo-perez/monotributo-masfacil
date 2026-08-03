@@ -7,7 +7,7 @@ Adaptado de Facturo Más Fácil.
 from typing import Annotated
 from datetime import datetime, timezone, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Form, Request
+from fastapi import APIRouter, Depends, HTTPException, Form, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, text
@@ -107,6 +107,80 @@ async def superadmin_panel(
             "activos": sum(1 for r in rows if r["estado"] == "activo"),
             "nuevos_mes": nuevos_mes,
         },
+    })
+
+
+# ---------------------------------------------------------------------------
+# Configuración del certificado de padrón (Más Fácil SAS)
+# ---------------------------------------------------------------------------
+
+@router.post(f"/{SECRET_PATH}/padron-config", response_class=JSONResponse)
+async def guardar_padron_config(
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    cuit: Annotated[str, Form()],
+    razon_social: Annotated[str, Form()] = "Más Fácil SAS",
+    environment: Annotated[str, Form()] = "production",
+    cert_file: UploadFile = File(...),
+    key_file: UploadFile = File(...),
+):
+    """Carga el certificado único de Más Fácil SAS para consultar el padrón."""
+    current_user = await _require_superadmin(request, db)
+    if not isinstance(current_user, CurrentUser):
+        return current_user
+
+    cert_pem = (await cert_file.read()).decode("utf-8", errors="ignore").strip()
+    key_pem = (await key_file.read()).decode("utf-8", errors="ignore").strip()
+    if "BEGIN CERTIFICATE" not in cert_pem:
+        return JSONResponse({"error": "El archivo de certificado no parece un .crt/.pem válido"}, status_code=400)
+    if "BEGIN" not in key_pem or "PRIVATE KEY" not in key_pem:
+        return JSONResponse({"error": "El archivo de clave privada no parece válido"}, status_code=400)
+
+    cuit_limpio = "".join(ch for ch in cuit if ch.isdigit())
+    if len(cuit_limpio) != 11:
+        return JSONResponse({"error": "El CUIT debe tener 11 dígitos"}, status_code=400)
+
+    try:
+        from app.config import FERNET_KEY
+        from cryptography.fernet import Fernet
+        _f = Fernet(FERNET_KEY)
+        cert_enc = _f.encrypt(cert_pem.encode()).decode()
+        key_enc = _f.encrypt(key_pem.encode()).decode()
+    except Exception as e:
+        return JSONResponse({"error": f"No se pudo encriptar: {str(e)[:100]}"}, status_code=500)
+
+    # Desactivar configs anteriores e insertar la nueva (mantiene historial)
+    await db.execute(text("UPDATE padron_config SET activo = FALSE WHERE activo = TRUE"))
+    await db.execute(text("""
+        INSERT INTO padron_config (cert_encrypted, key_encrypted, cuit, razon_social, environment, activo)
+        VALUES (:c, :k, :cuit, :rs, :env, TRUE)
+    """), {"c": cert_enc, "k": key_enc, "cuit": cuit_limpio,
+           "rs": razon_social, "env": environment})
+    await db.commit()
+    return JSONResponse({"ok": True, "mensaje": f"Certificado de padrón cargado (CUIT {cuit_limpio})"})
+
+
+@router.get(f"/{SECRET_PATH}/padron-estado", response_class=JSONResponse)
+async def estado_padron_config(
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Estado actual del certificado de padrón + prueba de consulta opcional."""
+    current_user = await _require_superadmin(request, db)
+    if not isinstance(current_user, CurrentUser):
+        return current_user
+    _r = await db.execute(text(
+        "SELECT cuit, razon_social, environment, updated_at "
+        "FROM padron_config WHERE activo = TRUE ORDER BY updated_at DESC LIMIT 1"))
+    row = _r.fetchone()
+    if not row:
+        return JSONResponse({"configurado": False})
+    return JSONResponse({
+        "configurado": True,
+        "cuit": row.cuit,
+        "razon_social": row.razon_social,
+        "environment": row.environment,
+        "actualizado": row.updated_at.isoformat() if row.updated_at else None,
     })
 
 
