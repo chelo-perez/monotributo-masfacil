@@ -1319,8 +1319,8 @@ async def page_recategorizacion(
 
     # Ventana de recategorización: julio (hasta ~05/08) o enero (hasta ~05/02)
     if hoy.month <= 7:
-        cierre_recat = hoy.replace(month=8, day=5)
-        vigencia     = hoy.replace(month=8, day=1)
+        cierre_recat = _date(hoy.year, 8, 5)
+        vigencia     = _date(hoy.year, 8, 1)
         ventana_label = "julio"
     else:
         cierre_recat = _date(hoy.year + 1, 2, 5)
@@ -1438,9 +1438,9 @@ async def confirmar_recategorizacion(
 
     if sugerida:
         # Actualizar categoría del monotributista
-        from app.auth.models import CategoriaMono
+        from app.auth.models import CategoriaMonotributo
         try:
-            mono.categoria_actual = CategoriaMono(sugerida)
+            mono.categoria_actual = CategoriaMonotributo(sugerida)
         except Exception:
             pass
         await db.commit()
