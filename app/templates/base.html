@@ -175,8 +175,22 @@
 
     /* ── Responsive ── */
     @media (max-width: 768px) {
-      .sidebar { display: none; }
+      .sidebar {
+        display: flex; flex-direction: column;
+        position: fixed; top: 0; left: 0; height: 100vh;
+        z-index: 300; overflow-y: auto;
+        transform: translateX(-100%);
+        transition: transform .25s ease;
+      }
+      .sidebar.open { transform: translateX(0); }
+      .mobile-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 299; }
+      .mobile-overlay.open { display: block; }
       .main { margin-left: 0; padding: 16px; padding-bottom: 80px; }
+      .hamburger-btn { display: flex !important; }
+    }
+    .hamburger-btn {
+      display: none; background: none; border: none; cursor: pointer;
+      padding: 4px 0 10px; color: var(--navy); align-items: center;
     }
 
     /* Nav inferior mobile */
@@ -204,6 +218,7 @@
 </head>
 <body>
 
+<div class="mobile-overlay" id="mobile-overlay" onclick="closeSidebar()"></div>
 <aside class="sidebar">
   <div class="sidebar-logo">
     <img src="/static/logo-sidebar.png" alt="Más Fácil" style="width:24px;height:auto;flex-shrink:0">
@@ -279,6 +294,13 @@
 </aside>
 
 <main class="main">
+  <button class="hamburger-btn" onclick="openSidebar()" aria-label="Menú">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+      <line x1="3" y1="6" x2="21" y2="6"/>
+      <line x1="3" y1="12" x2="21" y2="12"/>
+      <line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+  </button>
   {% block content %}{% endblock %}
 </main>
 
@@ -308,5 +330,22 @@
 
 <script src="/static/app.js"></script>
 {% block extra_scripts %}{% endblock %}
+<script>
+function openSidebar() {
+  document.querySelector('.sidebar').classList.add('open');
+  document.getElementById('mobile-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeSidebar() {
+  document.querySelector('.sidebar').classList.remove('open');
+  document.getElementById('mobile-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+(function() {
+  let sx = 0;
+  document.addEventListener('touchstart', e => { sx = e.touches[0].clientX; }, {passive:true});
+  document.addEventListener('touchend', e => { if (e.changedTouches[0].clientX - sx < -60) closeSidebar(); }, {passive:true});
+})();
+</script>
 </body>
 </html>
