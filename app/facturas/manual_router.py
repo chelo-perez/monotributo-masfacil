@@ -299,69 +299,56 @@ async def consultar_cuit_arca(
     current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Consulta el padrón ARCA para un CUIT y devuelve razón social y domicilio."""
+    """
+    Consulta el padrón de ARCA por CUIT y devuelve razón social, condición IVA
+    y domicilio. Usa el certificado del monotributista emisor como representante
+    (mismo enfoque que Facturo Más Fácil: el que emite consulta el padrón).
+    """
     mono = await db.get(Monotributista, mono_id)
     if not mono or mono.tenant_id != current_user.tenant_id:
         return JSONResponse({"error": "No encontrado"}, status_code=404)
-    if not mono.cert_encrypted:
-        return JSONResponse({"error": "Sin certificado"}, status_code=400)
+    if not mono.cert_encrypted or not mono.key_encrypted:
+        return JSONResponse({"error": "La cuenta no tiene certificado de ARCA cargado"}, status_code=400)
 
-    cuit_limpio = cuit.replace("-", "").replace(" ", "").strip()
-    if not cuit_limpio.isdigit() or len(cuit_limpio) != 11:
-        return JSONResponse({"error": "CUIT inválido"}, status_code=400)
+    cuit_limpio = "".join(ch for ch in (cuit or "") if ch.isdigit())
+    if len(cuit_limpio) != 11:
+        return JSONResponse({"error": "El CUIT debe tener 11 dígitos"}, status_code=400)
 
     try:
         from app.wsfe import load_credentials
         from app.config import FERNET_KEY
         from app.afip.padron import consultar_constancia
-        from sqlalchemy import select as _sel
 
-        # Usamos el certificado consultante de Facturo MF (Toulouse Cañitas)
-        # que tiene ws_sr_constancia_inscripcion habilitado en ARCA.
-        #
-        # TODO: reemplazar por certificado propio de Más Fácil SAS cuando esté disponible
-        #       (variable PADRON_CERT_PEM y PADRON_KEY_PEM en Railway)
-        import os as _os
-        from cryptography.fernet import Fernet as _Fernet
+        cert_pem, key_pem = load_credentials(mono, FERNET_KEY)
+        cuit_rep = mono.cuit.replace("-", "").replace(" ", "")
 
-        padron_cert = _os.environ.get("PADRON_CERT_PEM", "")
-        padron_key  = _os.environ.get("PADRON_KEY_PEM", "")
-        padron_cuit = _os.environ.get("PADRON_CUIT", "27391467116")  # Toulouse Cañitas
-
-        if padron_cert and padron_key:
-            # Certificado dedicado al padrón configurado en Railway
-            cert_pem = padron_cert
-            key_pem  = padron_key
-            cuit_rep = padron_cuit
-        else:
-            # Fallback: usar certificado del mono actual
-            cert_pem, key_pem = load_credentials(mono, FERNET_KEY)
-            cuit_rep = mono.cuit.replace("-", "")
-
-        resultado = await consultar_constancia(
+        r = await consultar_constancia(
             cuit_consulta=cuit_limpio,
             cert_pem=cert_pem,
             key_pem=key_pem,
             cuit_representada=cuit_rep,
-            environment="production",
+            environment=getattr(mono, "afip_environment", "production") or "production",
         )
-        if resultado.error:
-            # Fallback: intentar API pública de ARCA sin autenticación
-            from app.afip.padron import consultar_cuit_publico
-            pub = await consultar_cuit_publico(cuit_limpio)
-            if not pub.get("error"):
-                return JSONResponse({
-                    "razon_social": pub["razon_social"],
-                    "domicilio": "",
-                    "tipo_persona": "",
-                    "estado_clave": "",
-                })
-            return JSONResponse({"error": pub.get("error", resultado.error)})
-        return JSONResponse({
-            "razon_social": resultado.razon_social,
-            "domicilio": str(resultado.domicilio_fiscal),
-            "tipo_persona": resultado.tipo_persona,
-            "estado_clave": resultado.estado_clave,
-        })
     except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+        import logging
+        logging.getLogger(__name__).warning(f"padron consulta fallo: {e}")
+        return JSONResponse(
+            {"error": "ARCA no respondió. Podés cargar el nombre a mano."},
+            status_code=200)
+
+    if getattr(r, "error", None) or not getattr(r, "razon_social", ""):
+        return JSONResponse(
+            {"error": "No se encontró ese CUIT en el padrón de ARCA"},
+            status_code=200)
+
+    _es_mono = getattr(r, "es_monotributo", False)
+    # ConstanciaInscripcion no trae condicion_iva como texto: lo derivamos.
+    _cond_txt = getattr(r, "condicion_iva", "") or (
+        "Responsable Monotributo" if _es_mono else "Responsable Inscripto")
+    return JSONResponse({
+        "razon_social": r.razon_social,
+        "condicion_iva": _cond_txt,
+        "cond_iva_cod": 6 if _es_mono else 1,
+        "domicilio": str(getattr(r, "domicilio_fiscal", "")),
+        "cuit": cuit_limpio,
+    })

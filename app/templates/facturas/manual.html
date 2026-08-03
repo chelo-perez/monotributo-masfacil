@@ -148,16 +148,22 @@
         </div>
         <div id="cliente-results"></div>
         <div class="or-divider">o</div>
-        <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;flex-direction:column;gap:10px">
           <label class="fm-label">Cliente nuevo</label>
           <input type="text" id="nc-nombre" class="fm-input" placeholder="Nombre y apellido *">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-            <input type="text" id="nc-dni" class="fm-input" placeholder="DNI (opcional)" inputmode="numeric">
-            <div>
-              <input type="text" id="nc-cuit" class="fm-input" placeholder="CUIT (opcional)" inputmode="numeric" maxlength="11" oninput="consultarCuit(this.value)">
-              <div id="cuit-resultado" style="font-size:11px;margin-top:3px;min-height:14px"></div>
+
+          {# Documento: un solo campo con selector DNI/CUIT #}
+          <div>
+            <div style="display:flex;gap:0;margin-bottom:6px;background:var(--surface,#f3f4f6);border:0.5px solid var(--border,#e5e7eb);border-radius:10px;padding:3px;width:fit-content">
+              <button type="button" id="doc-tab-dni" onclick="setDocTipo('dni')"
+                      style="font-size:12px;font-weight:600;padding:5px 16px;border-radius:8px;border:none;cursor:pointer;background:var(--navy,#2C3178);color:#fff;font-family:inherit">DNI</button>
+              <button type="button" id="doc-tab-cuit" onclick="setDocTipo('cuit')"
+                      style="font-size:12px;font-weight:600;padding:5px 16px;border-radius:8px;border:none;cursor:pointer;background:none;color:var(--muted,#6b7280);font-family:inherit">CUIT</button>
             </div>
+            <input type="text" id="nc-doc" class="fm-input" placeholder="Número de DNI (opcional)" inputmode="numeric" oninput="onDocInput(this.value)">
+            <div id="cuit-resultado" style="font-size:11px;margin-top:4px;min-height:14px"></div>
           </div>
+
           <input type="email" id="nc-email" class="fm-input" placeholder="Email (opcional)">
           <button onclick="seleccionarNuevo()" class="btn btn-ghost" style="width:100%">Usar este cliente →</button>
         </div>
@@ -348,8 +354,12 @@ function seleccionarNuevo() {
   const n = document.getElementById('nc-nombre').value.trim();
   if (!n) { alert('Ingresá el nombre'); return; }
   fm.cliente_nombre = n;
-  fm.cliente_dni    = document.getElementById('nc-dni').value.trim();
-  fm.cliente_cuit   = document.getElementById('nc-cuit') ? document.getElementById('nc-cuit').value.trim() : '';
+  const doc = document.getElementById('nc-doc').value.trim();
+  if (_docTipo === 'cuit') {
+    fm.cliente_cuit = doc; fm.cliente_dni = '';
+  } else {
+    fm.cliente_dni = doc; fm.cliente_cuit = '';
+  }
   fm.cliente_email  = document.getElementById('nc-email').value.trim();
   irAPaso3();
 }
@@ -459,24 +469,68 @@ function compartirWA() {
 }
 function nueva() { fm.mono_id = null; fm.pdf_b64 = null; goStep(1); }
 
-async function consultarCuit(val) {
-  const cuit = val.replace(/[^0-9]/g, '');
+let _docTipo = 'dni';
+let _padronTimer = null;
+let _padronUltimoCuit = null;
+
+function setDocTipo(tipo) {
+  _docTipo = tipo;
+  const inp = document.getElementById('nc-doc');
+  const tabDni = document.getElementById('doc-tab-dni');
+  const tabCuit = document.getElementById('doc-tab-cuit');
   const res = document.getElementById('cuit-resultado');
-  if (cuit.length !== 11) { if (res) res.textContent = ''; return; }
+  const on = 'var(--navy,#2C3178)', onTxt = '#fff', off = 'none', offTxt = 'var(--muted,#6b7280)';
+  if (tipo === 'dni') {
+    tabDni.style.background = on; tabDni.style.color = onTxt;
+    tabCuit.style.background = off; tabCuit.style.color = offTxt;
+    if (inp) inp.placeholder = 'Número de DNI (opcional)';
+  } else {
+    tabCuit.style.background = on; tabCuit.style.color = onTxt;
+    tabDni.style.background = off; tabDni.style.color = offTxt;
+    if (inp) inp.placeholder = 'Número de CUIT — traemos los datos de ARCA';
+  }
+  if (res) res.innerHTML = '';
+  _padronUltimoCuit = null;
+  if (inp && inp.value.trim()) onDocInput(inp.value);
+}
+
+function onDocInput(val) {
+  const num = (val || '').replace(/[^0-9]/g, '');
+  const res = document.getElementById('cuit-resultado');
+  clearTimeout(_padronTimer);
+  if (_docTipo !== 'cuit' || num.length !== 11) {
+    if (res) res.innerHTML = '';
+    _padronUltimoCuit = null;
+    return;
+  }
+  if (num === _padronUltimoCuit) return;
+  _padronTimer = setTimeout(() => consultarPadron(num), 500);
+}
+
+async function consultarPadron(cuit) {
+  const res = document.getElementById('cuit-resultado');
+  if (!fm.mono_id) {
+    if (res) res.innerHTML = '<span style="color:var(--muted)">Elegí primero la cuenta para consultar ARCA.</span>';
+    return;
+  }
   if (res) res.innerHTML = '<span style="color:var(--muted)">Consultando ARCA...</span>';
   try {
     const r = await fetch(`/factura-manual/consultar-cuit?cuit=${cuit}&mono_id=${fm.mono_id}`);
     const d = await r.json();
     if (d.error) {
-      // Consulta al padrón es opcional — si falla, el contador completa el nombre manualmente
-      if (res) res.innerHTML = '<span style="color:var(--muted)">Ingresá el nombre manualmente</span>';
+      if (res) res.innerHTML = '<span style="color:#b45309">' + d.error + '</span>';
       return;
     }
-    if (res) res.innerHTML = `<span style="color:#166534;font-weight:700">✓ ${d.razon_social}</span>`;
+    _padronUltimoCuit = cuit;
+    let extra = d.condicion_iva ? (' · ' + d.condicion_iva) : '';
+    if (res) res.innerHTML = '<span style="color:#166534;font-weight:700">✓ ' + d.razon_social + extra + '</span>';
     const nc = document.getElementById('nc-nombre');
-    if (nc && !nc.value.trim()) nc.value = d.razon_social;
+    if (nc) nc.value = d.razon_social;
+    fm.cliente_condicion_iva = d.condicion_iva || '';
+    fm.cliente_cond_iva_cod = d.cond_iva_cod || null;
+    fm.cliente_domicilio = d.domicilio || '';
   } catch(e) {
-    if (res) res.innerHTML = '';
+    if (res) res.innerHTML = '<span style="color:var(--muted)">No se pudo consultar ARCA. Cargá el nombre a mano.</span>';
   }
 }
 </script>
