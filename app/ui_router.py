@@ -1384,6 +1384,7 @@ async def page_recategorizacion(
     dias_para_cierre = (cierre_recat - hoy).days
     en_ventana = 0 <= dias_para_cierre <= 40
 
+    from decimal import Decimal
     topes = await get_topes_db(db, hasta)
     ORDEN = ["A","B","C","D","E","F","G","H","I","J","K"]
 
