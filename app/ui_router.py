@@ -1365,8 +1365,12 @@ async def page_recategorizacion(
     from decimal import Decimal
 
     # Flag global: solo habilitada en ventana fiscal (control superadmin)
-    _hab = await db.execute(_txt("SELECT valor FROM app_config WHERE clave = 'recategorizacion_habilitada'"))
-    recat_habilitada = (_hab.scalar_one_or_none() == "true")
+    try:
+        _hab = await db.execute(_txt("SELECT valor FROM app_config WHERE clave = 'recategorizacion_habilitada'"))
+        recat_habilitada = (_hab.scalar_one_or_none() == "true")
+    except Exception as _e:
+        import logging; logging.getLogger(__name__).error(f"[recat] app_config: {_e}")
+        recat_habilitada = False
 
     hoy = hoy_ar()
     desde, hasta, periodo_label, _ = _periodo_recategorizacion(hoy)
