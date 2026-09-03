@@ -46,6 +46,7 @@ class AfipInvoiceHistory(Base):
 
     # 'wsfe' = sincronizado via API | 'mis_comprobantes' = importado desde CSV
     source:         Mapped[str | None]   = mapped_column(String(20), default="wsfe")
+    cbte_asoc_nro:  Mapped[int | None]   = mapped_column(Integer, nullable=True)  # Para NC: nro de la factura original
     synced_at:      Mapped[datetime]     = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc)

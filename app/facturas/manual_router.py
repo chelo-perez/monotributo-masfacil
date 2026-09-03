@@ -548,6 +548,7 @@ async def anular_factura(
             imp_total=hist.imp_total,
             cae=cae,
             source="nc",
+            cbte_asoc_nro=hist.cbte_nro,  # referencia exacta a la factura anulada
         ))
         await db.commit()
 

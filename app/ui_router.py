@@ -772,52 +772,27 @@ async def lista_facturas(
         result_h = await db.execute(hq)
         hist_list = result_h.scalars().all()
 
-        # Detectar facturas anuladas: buscar NCs con source='nc' del mismo mono
+        # Cargar NCs del tenant para detectar facturas anuladas
         nc_query = await db.execute(
-            select(AfipInvoiceHistory.punto_venta, AfipInvoiceHistory.cbte_nro)
-            .where(
-                AfipInvoiceHistory.tenant_id == current_user.tenant_id,
-                AfipInvoiceHistory.source == "nc",
-            )
-        )
-        # Las NCs referencian la factura original — guardamos set de (pv, nro_original)
-        # ARCA numera las NC independientemente, pero guardamos cbte_asoc en source
-        # Por ahora detectamos: si existe NC del mismo mono emitida después de la factura
-        nc_monos = {(r.punto_venta,): True for r in nc_query.fetchall()}
-
-        # Buscar qué facturas tienen una NC asociada por cbte_nro_asoc si lo guardamos
-        # Approach simple: marcar como anulada si hay una NC source='nc' del mismo mono
-        # con cbte_fecha >= cbte_fecha de la factura (la NC viene después)
-        nc_por_mono = {}
-        nc_query2 = await db.execute(
             select(AfipInvoiceHistory).where(
                 AfipInvoiceHistory.tenant_id == current_user.tenant_id,
                 AfipInvoiceHistory.source == "nc",
             )
         )
-        for nc in nc_query2.scalars().all():
-            key = nc.mono_id
-            if key not in nc_por_mono:
-                nc_por_mono[key] = []
-            nc_por_mono[key].append(nc)
+        # Índice: (mono_id, punto_venta, cbte_asoc_nro) → True
+        # cbte_asoc_nro es el número de la factura original que se anuló
+        anuladas_exactas = set()
+        for nc in nc_query.scalars().all():
+            if nc.cbte_asoc_nro:
+                anuladas_exactas.add((nc.mono_id, nc.punto_venta, nc.cbte_asoc_nro))
 
         for h in hist_list:
             if estado == "rechazada":
-                continue  # historial solo tiene aprobadas
+                continue
             mono = mono_by_id.get(h.mono_id)
 
-            # Detectar si esta factura fue anulada (tiene una NC posterior del mismo mono/PV/importe)
-            anulada = False
-            if h.source != "nc" and h.cbte_tipo in (11, 1, 6):
-                NC_TIPOS = {11: 13, 1: 3, 6: 8}
-                nc_tipo_esperado = NC_TIPOS.get(h.cbte_tipo, 13)
-                for nc in nc_por_mono.get(h.mono_id, []):
-                    if (nc.cbte_tipo == nc_tipo_esperado and
-                        nc.punto_venta == h.punto_venta and
-                        abs(float(nc.imp_total) - float(h.imp_total)) < 1 and
-                        (nc.cbte_fecha or date(2000,1,1)) >= (h.cbte_fecha or date(2000,1,1))):
-                        anulada = True
-                        break
+            # Detección exacta: la NC guarda el cbte_nro de la factura original
+            anulada = (h.mono_id, h.punto_venta, h.cbte_nro) in anuladas_exactas
 
             rows.append({
                 "id": h.id,
