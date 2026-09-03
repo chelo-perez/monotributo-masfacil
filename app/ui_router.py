@@ -775,7 +775,7 @@ async def lista_facturas(
                 continue  # historial solo tiene aprobadas
             mono = mono_by_id.get(h.mono_id)
             rows.append({
-                "id": None,
+                "id": h.id,
                 "fuente": "historial",
                 "mono": mono,
                 "mono_id": h.mono_id,

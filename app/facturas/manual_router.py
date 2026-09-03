@@ -434,3 +434,128 @@ async def consultar_cuit_arca(
         "domicilio": str(getattr(r, "domicilio_fiscal", "")),
         "cuit": cuit_limpio,
     })
+
+
+# ── POST /factura-manual/anular ─────────────────────────────────────
+@router.post("/anular", response_class=JSONResponse)
+async def anular_factura(
+    request: Request,
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """
+    Anula una factura del historial emitiendo una Nota de Crédito C (tipo 13).
+    La NC se guarda en AfipInvoiceHistory con source='nc'.
+    """
+    from app.afip.history_models import AfipInvoiceHistory
+    from app.wsfe import get_token_sign, get_ultimo_cbte, solicitar_cae, load_credentials
+    from app.config import FERNET_KEY
+    from datetime import timedelta
+    import calendar as _cal
+
+    body = await request.json()
+    hist_id  = int(body.get("hist_id", 0))
+    mono_id  = int(body.get("mono_id", 0))
+
+    # Cargar el comprobante original del historial
+    result = await db.execute(
+        select(AfipInvoiceHistory).where(
+            AfipInvoiceHistory.id == hist_id,
+            AfipInvoiceHistory.tenant_id == current_user.tenant_id,
+            AfipInvoiceHistory.mono_id == mono_id,
+        )
+    )
+    hist = result.scalar_one_or_none()
+    if not hist:
+        return JSONResponse({"ok": False, "error": "Comprobante no encontrado"}, status_code=404)
+
+    if hist.cbte_tipo not in (11, 1, 6):
+        return JSONResponse({"ok": False, "error": "Solo se pueden anular facturas (no NC)"})
+
+    NC_TIPOS = {11: 13, 1: 3, 6: 8}
+    nc_tipo = NC_TIPOS.get(hist.cbte_tipo, 13)
+
+    # Cargar monotributista y credenciales
+    mono = await db.get(Monotributista, mono_id)
+    if not mono or mono.tenant_id != current_user.tenant_id:
+        return JSONResponse({"ok": False, "error": "Monotributista no encontrado"}, status_code=404)
+    if not mono.cert_encrypted:
+        return JSONResponse({"ok": False, "error": "Sin certificado configurado"})
+
+    try:
+        cert_pem, key_pem = load_credentials(mono, FERNET_KEY)
+        token, sign = await get_token_sign(
+            cert_pem, key_pem, environment=mono.afip_environment or "production"
+        )
+        cuit = mono.cuit.replace("-", "")
+
+        # Último número de NC para ese PV
+        ultimo_nc = await get_ultimo_cbte(
+            token, sign, cuit, mono.afip_punto_venta, nc_tipo,
+            environment=mono.afip_environment or "production",
+        )
+        nc_nro = ultimo_nc + 1
+
+        # Fecha de la NC: la del comprobante original, ajustada al límite de 10 días
+        hoy = date.today()
+        min_valida = hoy - timedelta(days=10)
+        nc_fecha = hist.cbte_fecha or hoy
+        if nc_fecha < min_valida:
+            nc_fecha = min_valida
+        if nc_fecha > hoy:
+            nc_fecha = hoy
+
+        # Período de servicio: mes de la NC
+        ult_dia = _cal.monthrange(nc_fecha.year, nc_fecha.month)[1]
+        fch_desde = nc_fecha.replace(day=1)
+        fch_hasta = nc_fecha.replace(day=ult_dia)
+
+        cae, cae_vto, obs_list = await solicitar_cae(
+            token=token, sign=sign,
+            cuit=cuit,
+            punto_venta=mono.afip_punto_venta,
+            cbte_tipo=nc_tipo,
+            cbte_nro=nc_nro,
+            cbte_fecha=nc_fecha,
+            imp_total=float(hist.imp_total),
+            concepto=2,
+            doc_tipo=99,
+            doc_nro="0",
+            fch_serv_desde=fch_desde,
+            fch_serv_hasta=fch_hasta,
+            environment=mono.afip_environment or "production",
+        )
+
+        if not cae:
+            obs = "; ".join(obs_list) if obs_list else "ARCA rechazó la NC"
+            return JSONResponse({"ok": False, "error": obs})
+
+        # Guardar NC en historial
+        db.add(AfipInvoiceHistory(
+            tenant_id=current_user.tenant_id,
+            mono_id=mono_id,
+            cbte_tipo=nc_tipo,
+            punto_venta=mono.afip_punto_venta,
+            cbte_nro=nc_nro,
+            cbte_fecha=nc_fecha,
+            fch_serv_desde=fch_desde,
+            fch_serv_hasta=fch_hasta,
+            imp_total=hist.imp_total,
+            cae=cae,
+            source="nc",
+        ))
+        await db.commit()
+
+        return JSONResponse({
+            "ok": True,
+            "nc_nro": nc_nro,
+            "nc_cae": cae,
+            "nc_tipo": nc_tipo,
+            "mensaje": f"NC C {mono.afip_punto_venta:04d}-{nc_nro:08d} — CAE {cae}",
+        })
+
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Error anulando factura: {e}", exc_info=True)
+        await db.rollback()
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)

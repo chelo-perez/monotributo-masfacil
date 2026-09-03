@@ -158,7 +158,16 @@ select.f-select {
               <i class="ti ti-share" style="font-size:13px"></i> Compartir
             </button>
             {% else %}
+            {% if f.fuente == 'historial' and f.cbte_tipo_label in ['C','B','A'] and f.id %}
+            <button class="share-btn" style="border-color:#991B1B;color:#991B1B"
+                    data-mono="{{ f.mono_id }}" data-hist="{{ f.id }}"
+                    data-nro="{{ f.cbte_tipo_label }} {{ '%04d'|format(f.punto_venta) }}-{{ '%08d'|format(f.cbte_nro) }}"
+                    onclick="confirmarAnulacion(this)">
+              <i class="ti ti-x" style="font-size:13px"></i> Anular
+            </button>
+            {% else %}
             <span style="font-size:11px;color:var(--muted)">PDF en ARCA</span>
+            {% endif %}
             {% endif %}
           {% elif f.estado == 'rechazada' %}
             <span style="font-size:11px;color:#991B1B">Rechazada</span>
@@ -252,6 +261,25 @@ function cerrarMenu() {
 // ── Acciones ──
 function descargarPDF(id) {
   window.open('/facturas/' + id + '/pdf', '_blank');
+}
+
+async function confirmarAnulacion(btn) {
+  const monoId = btn.dataset.mono;
+  const histId  = btn.dataset.hist;
+  const nroFc   = btn.dataset.nro;
+  if (!confirm('¿Anular la factura ' + nroFc + '?\n\nSe emitirá una Nota de Crédito C en ARCA por el mismo importe.')) return;
+  btn.disabled = true; btn.textContent = 'Anulando...';
+  try {
+    const r = await fetch('/factura-manual/anular', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      credentials: 'same-origin',
+      body: JSON.stringify({hist_id: parseInt(histId), mono_id: parseInt(monoId)}),
+    });
+    const d = await r.json();
+    if (d.ok) { alert('✓ ' + d.mensaje); location.reload(); }
+    else { alert('Error: ' + d.error); btn.disabled = false; btn.innerHTML = '<i class="ti ti-x" style="font-size:13px"></i> Anular'; }
+  } catch(e) { alert('Error: ' + e.message); btn.disabled = false; }
 }
 
 async function compartirWA(id, nro, nombre) {
