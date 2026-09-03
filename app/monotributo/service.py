@@ -359,3 +359,115 @@ async def get_semaforo_mono(
         "categoria":        categoria_actual,
         "cat_markers":      cat_markers,
     }
+
+
+# ============================================================
+# Proyección de cierre del período de recategorización
+# Copiado de Facturo Más Fácil — adaptado para Monotributo MF
+# ============================================================
+
+def _meses_transcurridos(f_desde: date, ref: date) -> Decimal:
+    dias = (ref - f_desde).days + 1
+    return Decimal(str(dias)) / Decimal("30.4375")
+
+
+def _meses_restantes_recat(ref: date, f_hasta: date) -> Decimal:
+    dias = max((f_hasta - ref).days, 0)
+    return Decimal(str(dias)) / Decimal("30.4375")
+
+
+async def _facturado_ultimos_3_meses(
+    mono_id: int, db: AsyncSession, ref: date, f_desde_periodo: date,
+) -> tuple[Decimal, Decimal]:
+    """
+    Suma los últimos 3 meses calendario completos dentro del período,
+    para calcular el ritmo mensual. Excluye el mes en curso (incompleto).
+    """
+    from datetime import timedelta as _td
+
+    inicio_mes_actual = ref.replace(day=1)
+    anio, mes = inicio_mes_actual.year, inicio_mes_actual.month
+    for _ in range(3):
+        mes -= 1
+        if mes == 0:
+            mes, anio = 12, anio - 1
+    ventana_desde = max(f_desde_periodo, date(anio, mes, 1))
+    ventana_hasta = inicio_mes_actual - _td(days=1)
+
+    if ventana_hasta < ventana_desde:
+        # Período reciente sin meses completos — usar lo acumulado hasta hoy
+        total = await acumulado_periodo(mono_id, db, f_desde_periodo, ref)
+        dias = Decimal(str((ref - f_desde_periodo).days + 1))
+        return total, max(dias / Decimal("30.4375"), Decimal("0.5"))
+
+    total = await acumulado_periodo(mono_id, db, ventana_desde, ventana_hasta)
+    meses = Decimal(str(
+        (ventana_hasta.year - ventana_desde.year) * 12
+        + (ventana_hasta.month - ventana_desde.month) + 1
+    ))
+    return total, max(meses, Decimal("1"))
+
+
+async def proyeccion_mono(
+    mono_id: int, db: AsyncSession, fecha_ref: date | None = None,
+) -> dict | None:
+    """
+    Proyección de cierre del período de recategorización vigente.
+    Ritmo = facturación de los últimos 3 meses completos.
+    """
+    from datetime import timedelta as _td
+
+    ref = fecha_ref or date.today()
+    f_desde, f_hasta, periodo_label, _ = _periodo_recategorizacion(ref)
+
+    # Topes vigentes al cierre del período (no los de hoy)
+    topes = await get_topes_db(db, f_hasta)
+    if not topes:
+        return None
+
+    ORDEN = ["A","B","C","D","E","F","G","H","I","J","K"]
+    def cat_corresponde(acum: Decimal) -> str | None:
+        for l in ORDEN:
+            if acum <= topes.get(l, Decimal("0")):
+                return l
+        return None
+
+    # Acumulado real del período hasta hoy
+    acu_sem = await acumulado_periodo(mono_id, db, f_desde, f_hasta)
+
+    # Ritmo mensual (últimos 3 meses)
+    total_3m, meses_3m = await _facturado_ultimos_3_meses(mono_id, db, ref, f_desde)
+    ritmo_mensual = total_3m / meses_3m if meses_3m > 0 else Decimal("0")
+
+    meses_rest = _meses_restantes_recat(ref, f_hasta)
+    proyeccion  = acu_sem + (ritmo_mensual * meses_rest)
+
+    tope_k   = topes.get("K", Decimal("0"))
+    tope_cat_str = None  # categoría actual del mono (se pasa desde fuera)
+
+    cat_proy    = cat_corresponde(proyeccion)
+    supera_k    = proyeccion > tope_k
+
+    def fmt(v: Decimal) -> str:
+        return f"${int(round(v)):,}".replace(",", ".")
+
+    # Mes estimado de cruce
+    mes_cruce = None
+
+    MESES_ES = ["", "enero", "febrero", "marzo", "abril", "mayo", "junio",
+                "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
+
+    return {
+        "periodo_label":        periodo_label,
+        "acu_sem":              float(acu_sem),
+        "acu_sem_fmt":          fmt(acu_sem),
+        "ritmo_mensual":        float(ritmo_mensual),
+        "ritmo_mensual_fmt":    fmt(ritmo_mensual),
+        "meses_restantes":      round(float(meses_rest), 1),
+        "proyeccion":           float(proyeccion),
+        "proyeccion_fmt":       fmt(proyeccion),
+        "categoria_proyectada": cat_proy,
+        "supera_k":             supera_k,
+        "tope_k":               float(tope_k),
+        "tope_k_fmt":           fmt(tope_k),
+    }

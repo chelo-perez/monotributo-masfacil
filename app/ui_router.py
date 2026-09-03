@@ -654,6 +654,18 @@ async def detalle_monotributista(
         mono_id=mono_id, categoria_actual=cat, db=db, fecha_ref=fecha_ref_parsed
     )
 
+    # Proyección de cierre del período de recategorización
+    from app.monotributo.service import proyeccion_mono
+    proyeccion = None
+    try:
+        proyeccion = await proyeccion_mono(mono_id, db, fecha_ref_parsed)
+        if proyeccion and proyeccion.get("categoria_proyectada"):
+            proyeccion["supera_categoria"] = (
+                proyeccion["categoria_proyectada"] != cat
+            )
+    except Exception:
+        pass
+
     return templates.TemplateResponse("monotributistas/detalle.html", {
         "request": request,
         "current_user": current_user,
@@ -662,6 +674,7 @@ async def detalle_monotributista(
         "mono": mono,
         "facturas": facturas,
         "sem": semaforo,
+        "proyeccion": proyeccion,
         "fecha_ref": fecha_ref or "",
     })
 

@@ -167,6 +167,48 @@
           <span>Acercándose al tope. Revisar si corresponde recategorizar en {{ sem.prox_recat }}.</span>
         </div>
         {% endif %}
+
+        {# ── Proyección de cierre ── #}
+        {% if proyeccion and not fecha_ref %}
+        <div style="margin-top:12px;border:1px solid var(--border);border-radius:10px;overflow:hidden">
+          <div style="padding:8px 12px;background:#f0f4ff;border-bottom:1px solid var(--border)">
+            <div style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#2C3178">
+              Proyección al cierre · {{ proyeccion.periodo_label }}
+            </div>
+            <div style="font-size:10px;color:var(--muted);margin-top:1px">
+              a un ritmo de {{ proyeccion.ritmo_mensual_fmt }}/mes · {{ proyeccion.meses_restantes }} meses restantes
+            </div>
+          </div>
+          <div style="padding:12px;display:flex;align-items:flex-end;justify-content:space-between;gap:10px;flex-wrap:wrap">
+            <div>
+              <div style="font-size:10px;color:var(--muted);margin-bottom:2px">Proyección al cierre</div>
+              {% if proyeccion.supera_k %}
+              <div style="font-family:'Nunito',sans-serif;font-size:22px;font-weight:900;color:#b91c1c;line-height:1">{{ proyeccion.proyeccion_fmt }}</div>
+              {% elif proyeccion.supera_categoria %}
+              <div style="font-family:'Nunito',sans-serif;font-size:22px;font-weight:900;color:#f97316;line-height:1">{{ proyeccion.proyeccion_fmt }}</div>
+              {% else %}
+              <div style="font-family:'Nunito',sans-serif;font-size:22px;font-weight:900;color:#15803d;line-height:1">{{ proyeccion.proyeccion_fmt }}</div>
+              {% endif %}
+              <div style="font-size:10px;color:var(--muted);margin-top:2px">Tope K: {{ proyeccion.tope_k_fmt }}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:10px;color:var(--muted);margin-bottom:2px">Categoría al cierre</div>
+              {% if proyeccion.supera_k %}
+              <span style="font-family:'Nunito',sans-serif;font-size:26px;font-weight:900;color:#b91c1c;line-height:1">+K</span>
+              <div style="font-size:10px;font-weight:700;color:#b91c1c;margin-top:2px">riesgo de exclusión</div>
+              {% elif proyeccion.categoria_proyectada %}
+              <span style="font-family:'Nunito',sans-serif;font-size:26px;font-weight:900;color:{% if proyeccion.supera_categoria %}#f97316{% else %}#15803d{% endif %};line-height:1">{{ proyeccion.categoria_proyectada }}</span>
+              {% if proyeccion.supera_categoria %}
+              <div style="font-size:10px;font-weight:700;color:#f97316;margin-top:2px">↑ sube desde {{ sem.categoria }}</div>
+              {% endif %}
+              {% endif %}
+            </div>
+          </div>
+          <div style="font-size:10px;color:var(--muted);padding:0 12px 10px;font-style:italic">
+            Estimación según ritmo de los últimos 3 meses. No reemplaza el cálculo oficial de ARCA.
+          </div>
+        </div>
+        {% endif %}
       </div>
 
     </div>
