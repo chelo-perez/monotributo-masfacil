@@ -158,15 +158,25 @@ select.f-select {
               <i class="ti ti-share" style="font-size:13px"></i> Compartir
             </button>
             {% else %}
-            {% if f.fuente == 'historial' and f.cbte_tipo_label in ['C','B','A'] and f.id %}
-            <button class="share-btn" style="border-color:#991B1B;color:#991B1B"
-                    data-mono="{{ f.mono_id }}" data-hist="{{ f.id }}"
-                    data-nro="{{ f.cbte_tipo_label }} {{ '%04d'|format(f.punto_venta) }}-{{ '%08d'|format(f.cbte_nro) }}"
-                    onclick="confirmarAnulacion(this)">
-              <i class="ti ti-x" style="font-size:13px"></i> Anular
-            </button>
+            {% if f.fuente == 'historial' and f.id %}
+            <div style="display:flex;gap:6px">
+              {% if f.cbte_tipo_label in ['C','B','A'] %}
+              <button class="share-btn"
+                      data-hist="{{ f.id }}"
+                      data-nro="{{ f.cbte_tipo_label }} {{ '%04d'|format(f.punto_venta) }}-{{ '%08d'|format(f.cbte_nro) }}"
+                      onclick="compartirHistorial(this)">
+                <i class="ti ti-share" style="font-size:13px"></i>
+              </button>
+              <button class="share-btn" style="border-color:#991B1B;color:#991B1B"
+                      data-mono="{{ f.mono_id }}" data-hist="{{ f.id }}"
+                      data-nro="{{ f.cbte_tipo_label }} {{ '%04d'|format(f.punto_venta) }}-{{ '%08d'|format(f.cbte_nro) }}"
+                      onclick="confirmarAnulacion(this)">
+                <i class="ti ti-x" style="font-size:13px"></i>
+              </button>
+              {% endif %}
+            </div>
             {% else %}
-            <span style="font-size:11px;color:var(--muted)">PDF en ARCA</span>
+            <span style="font-size:11px;color:var(--muted)">—</span>
             {% endif %}
             {% endif %}
           {% elif f.estado == 'rechazada' %}
@@ -261,6 +271,42 @@ function cerrarMenu() {
 // ── Acciones ──
 function descargarPDF(id) {
   window.open('/facturas/' + id + '/pdf', '_blank');
+}
+
+let _activeMenu2 = null;
+
+function compartirHistorial(btn) {
+  if (_activeMenu2) { _activeMenu2.remove(); _activeMenu2 = null; return; }
+  const histId = btn.dataset.hist;
+  const nro    = btn.dataset.nro;
+
+  const menu = document.createElement('div');
+  menu.className = 'share-menu';
+  menu.innerHTML = `
+    <button class="share-item" onclick="descargarPDFHist('${histId}', '${nro}'); cerrarMenu2()">
+      <i class="ti ti-download"></i> Descargar PDF
+    </button>
+    <button class="share-item wa" onclick="compartirWAHist('${histId}', '${nro}'); cerrarMenu2()">
+      <i class="ti ti-brand-whatsapp"></i> WhatsApp
+    </button>
+  `;
+  document.body.appendChild(menu);
+  _activeMenu2 = menu;
+  const r = btn.getBoundingClientRect();
+  menu.style.top  = (window.innerHeight - r.bottom > 120 ? r.bottom + 4 : r.top - 130) + 'px';
+  menu.style.left = Math.min(r.left, window.innerWidth - 200) + 'px';
+  setTimeout(() => document.addEventListener('click', cerrarMenu2, {once: true}), 0);
+}
+function cerrarMenu2() { if (_activeMenu2) { _activeMenu2.remove(); _activeMenu2 = null; } }
+
+function descargarPDFHist(histId, nro) {
+  window.open('/facturas/historial/' + histId + '/pdf', '_blank');
+}
+
+function compartirWAHist(histId, nro) {
+  const txt = encodeURIComponent('Hola! Te comparto tu factura.\n\n' + nro + '\n\nEmitido con Monotributo Más Fácil');
+  window.open('/facturas/historial/' + histId + '/pdf', '_blank');
+  setTimeout(() => window.open('https://wa.me/?text=' + txt, '_blank'), 800);
 }
 
 async function confirmarAnulacion(btn) {

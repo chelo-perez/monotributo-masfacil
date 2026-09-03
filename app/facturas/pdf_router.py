@@ -248,3 +248,66 @@ async def whatsapp_link(
     # Link a número de WhatsApp Business de Monotributo Más Fácil
     wa_url = f"https://wa.me/{WA_NUMBER}?text={texto}"
     return JSONResponse({"url": wa_url})
+
+
+# ── GET /facturas/historial/{hist_id}/pdf ────────────────────────────
+@router.get("/historial/{hist_id}/pdf")
+async def pdf_historial(
+    hist_id: int,
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Genera el PDF de una factura importada del historial de ARCA."""
+    from app.afip.history_models import AfipInvoiceHistory
+    from app.auth.models import Monotributista
+    from app.facturas.pdf_generator import generar_factura_pdf
+    from fastapi.responses import Response
+    import calendar as _cal
+
+    result = await db.execute(
+        select(AfipInvoiceHistory).where(
+            AfipInvoiceHistory.id == hist_id,
+            AfipInvoiceHistory.tenant_id == current_user.tenant_id,
+        )
+    )
+    hist = result.scalar_one_or_none()
+    if not hist:
+        raise HTTPException(status_code=404)
+
+    mono = await db.get(Monotributista, hist.mono_id)
+    if not mono:
+        raise HTTPException(status_code=404)
+
+    fecha = hist.cbte_fecha or date.today()
+    ult   = _cal.monthrange(fecha.year, fecha.month)[1]
+
+    pdf_bytes = generar_factura_pdf(
+        razon_social=mono.nombre_fantasia or mono.razon_social,
+        cuit_emisor=mono.cuit,
+        punto_venta=hist.punto_venta or mono.afip_punto_venta or 1,
+        cbte_nro=hist.cbte_nro or 0,
+        cbte_tipo=hist.cbte_tipo or 11,
+        fecha=fecha,
+        fch_serv_desde=hist.fch_serv_desde or fecha.replace(day=1),
+        fch_serv_hasta=hist.fch_serv_hasta or fecha.replace(day=ult),
+        concepto=mono.nombre_fantasia or "Honorarios",
+        importe=float(hist.imp_total),
+        cae=hist.cae or "",
+        cae_vto=None,
+        cliente_nombre="",
+        cliente_dni=None,
+        cliente_cuit=None,
+        logo_base64=getattr(mono, "logo_base64", None),
+        domicilio_emisor=mono.domicilio or "",
+        ingresos_brutos=None,
+    )
+
+    TIPOS = {11: "Factura_C", 13: "NC_C", 1: "Factura_A", 3: "NC_A", 6: "Factura_B", 8: "NC_B"}
+    tipo_label = TIPOS.get(hist.cbte_tipo, "Comprobante")
+    filename = f"{tipo_label}_{hist.punto_venta:04d}_{hist.cbte_nro:08d}.pdf"
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{filename}"'},
+    )
