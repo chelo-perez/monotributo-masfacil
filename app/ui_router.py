@@ -814,7 +814,7 @@ async def lista_facturas(
             })
 
     # Ordenar por fecha desc y paginar
-    rows.sort(key=lambda r: r["cbte_fecha"] or date(2000, 1, 1), reverse=True)
+    rows.sort(key=lambda r: (r["cbte_fecha"] or date(2000, 1, 1), r["cbte_nro"] or 0), reverse=True)
     total = len(rows)
     rows = rows[offset: offset + limit]
 
