@@ -195,6 +195,21 @@ async def get_ultimo_cbte(
 ) -> int:
     """Retorna el número del último comprobante autorizado."""
     url = WSFE_URLS.get(environment, WSFE_URLS["production"])
+    # Bloque CbteAsoc — debe definirse ANTES del f-string body
+    cbte_asoc_block = ""
+    if cbte_asoc_tipo and cbte_asoc_nro:
+        _asoc_fecha = (cbte_asoc_fecha or cbte_fecha).strftime("%Y%m%d")
+        _asoc_cuit  = cbte_asoc_cuit or cuit
+        cbte_asoc_block = (
+            f"<ar:CbtesAsoc><ar:CbteAsoc>"
+            f"<ar:Tipo>{cbte_asoc_tipo}</ar:Tipo>"
+            f"<ar:PtoVta>{punto_venta}</ar:PtoVta>"
+            f"<ar:Nro>{cbte_asoc_nro}</ar:Nro>"
+            f"<ar:Cuit>{_asoc_cuit}</ar:Cuit>"
+            f"<ar:CbteFch>{_asoc_fecha}</ar:CbteFch>"
+            f"</ar:CbteAsoc></ar:CbtesAsoc>"
+        )
+
     body = f"""<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
                   xmlns:ar="http://ar.gov.afip.dif.FEV1/">
@@ -283,6 +298,21 @@ async def solicitar_cae(
     else:
         cond_iva = 5
 
+    # Bloque CbteAsoc — debe definirse ANTES del f-string body
+    cbte_asoc_block = ""
+    if cbte_asoc_tipo and cbte_asoc_nro:
+        _asoc_fecha = (cbte_asoc_fecha or cbte_fecha).strftime("%Y%m%d")
+        _asoc_cuit  = cbte_asoc_cuit or cuit
+        cbte_asoc_block = (
+            f"<ar:CbtesAsoc><ar:CbteAsoc>"
+            f"<ar:Tipo>{cbte_asoc_tipo}</ar:Tipo>"
+            f"<ar:PtoVta>{punto_venta}</ar:PtoVta>"
+            f"<ar:Nro>{cbte_asoc_nro}</ar:Nro>"
+            f"<ar:Cuit>{_asoc_cuit}</ar:Cuit>"
+            f"<ar:CbteFch>{_asoc_fecha}</ar:CbteFch>"
+            f"</ar:CbteAsoc></ar:CbtesAsoc>"
+        )
+
     body = f"""<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
                   xmlns:ar="http://ar.gov.afip.dif.FEV1/">
@@ -328,20 +358,6 @@ async def solicitar_cae(
   </soapenv:Body>
 </soapenv:Envelope>"""
 
-    # Bloque CbteAsoc para NC (requerido por ARCA cuando concepto=2 servicios)
-    cbte_asoc_block = ""  # inicializar siempre
-    if cbte_asoc_tipo and cbte_asoc_nro:
-        _asoc_fecha = (cbte_asoc_fecha or cbte_fecha).strftime("%Y%m%d")
-        _asoc_cuit  = cbte_asoc_cuit or cuit
-        cbte_asoc_block = f"""<ar:CbtesAsoc>
-              <ar:CbteAsoc>
-                <ar:Tipo>{cbte_asoc_tipo}</ar:Tipo>
-                <ar:PtoVta>{punto_venta}</ar:PtoVta>
-                <ar:Nro>{cbte_asoc_nro}</ar:Nro>
-                <ar:Cuit>{_asoc_cuit}</ar:Cuit>
-                <ar:CbteFch>{_asoc_fecha}</ar:CbteFch>
-              </ar:CbteAsoc>
-            </ar:CbtesAsoc>"""
     import logging as _log
     _log.getLogger(__name__).info(f"[WSFE] Enviando FECAESolicitar PtoVta={punto_venta} Tipo={cbte_tipo} Nro={cbte_nro} Fecha={cbte_fecha} Importe={imp_total}")
     async with _afip_http_client(30) as client:
@@ -400,6 +416,21 @@ async def get_puntos_venta(
 ) -> list[int]:
     """Retorna todos los PVs habilitados para el CUIT."""
     url = WSFE_URLS.get(environment, WSFE_URLS["production"])
+    # Bloque CbteAsoc — debe definirse ANTES del f-string body
+    cbte_asoc_block = ""
+    if cbte_asoc_tipo and cbte_asoc_nro:
+        _asoc_fecha = (cbte_asoc_fecha or cbte_fecha).strftime("%Y%m%d")
+        _asoc_cuit  = cbte_asoc_cuit or cuit
+        cbte_asoc_block = (
+            f"<ar:CbtesAsoc><ar:CbteAsoc>"
+            f"<ar:Tipo>{cbte_asoc_tipo}</ar:Tipo>"
+            f"<ar:PtoVta>{punto_venta}</ar:PtoVta>"
+            f"<ar:Nro>{cbte_asoc_nro}</ar:Nro>"
+            f"<ar:Cuit>{_asoc_cuit}</ar:Cuit>"
+            f"<ar:CbteFch>{_asoc_fecha}</ar:CbteFch>"
+            f"</ar:CbteAsoc></ar:CbtesAsoc>"
+        )
+
     body = f"""<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
                   xmlns:ar="http://ar.gov.afip.dif.FEV1/">
