@@ -1352,6 +1352,33 @@ async def perfil_guardar(
 # Recategorización
 # ---------------------------------------------------------------------------
 
+@router.get("/recategorizacion/debug", response_class=HTMLResponse)
+async def debug_recategorizacion(
+    request: Request,
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Diagnóstico de recategorización — muestra el traceback completo."""
+    import traceback as _tb
+    try:
+        from app.monotributo.service import get_topes_db, acumulado_periodo, _periodo_recategorizacion
+        from sqlalchemy import text as _txt
+        from datetime import date as _date
+        from decimal import Decimal
+        hoy = hoy_ar()
+        desde, hasta, periodo_label, _ = _periodo_recategorizacion(hoy)
+        topes = await get_topes_db(db, hasta)
+        result = await db.execute(select(Monotributista).where(
+            Monotributista.tenant_id == current_user.tenant_id,
+            Monotributista.activo == True,
+        ))
+        monos = result.scalars().all()
+        info = f"hoy={hoy} desde={desde} hasta={hasta} topes={len(topes)} monos={len(monos)}"
+        return HTMLResponse(f"<pre style='padding:20px;font-size:13px'>OK: {info}</pre>")
+    except Exception:
+        return HTMLResponse(f"<pre style='padding:20px;color:red;font-size:12px'>{_tb.format_exc()}</pre>", status_code=200)
+
+
 @router.get("/recategorizacion", response_class=HTMLResponse)
 async def page_recategorizacion(
     request: Request,
