@@ -524,6 +524,11 @@ async def anular_factura(
             fch_serv_desde=fch_desde,
             fch_serv_hasta=fch_hasta,
             environment=mono.afip_environment or "production",
+            # Referencia al comprobante original (requerida por ARCA para NC)
+            cbte_asoc_tipo=hist.cbte_tipo,
+            cbte_asoc_nro=hist.cbte_nro,
+            cbte_asoc_fecha=hist.cbte_fecha,
+            cbte_asoc_cuit=cuit,
         )
 
         if not cae:

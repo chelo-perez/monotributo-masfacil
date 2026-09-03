@@ -252,6 +252,10 @@ async def solicitar_cae(
     fch_serv_hasta: Optional[date] = None,
     environment: str = "production",
     cond_iva_receptor: Optional[int] = None,
+    cbte_asoc_tipo: Optional[int] = None,     # Para NC: tipo del comprobante original
+    cbte_asoc_nro: Optional[int] = None,      # Para NC: número del comprobante original
+    cbte_asoc_fecha: Optional[date] = None,   # Para NC: fecha del comprobante original
+    cbte_asoc_cuit: Optional[str] = None,     # Para NC: CUIT del emisor original
 ) -> tuple[Optional[str], Optional[date], Optional[str]]:
     """
     Emite un comprobante via FECAESolicitar.
@@ -316,12 +320,29 @@ async def solicitar_cae(
             <ar:FchVtoPago>{fch_vto_pago}</ar:FchVtoPago>
             <ar:MonId>PES</ar:MonId>
             <ar:MonCotiz>1</ar:MonCotiz>
+            {cbte_asoc_block}
           </ar:FECAEDetRequest>
         </ar:FeDetReq>
       </ar:FeCAEReq>
     </ar:FECAESolicitar>
   </soapenv:Body>
 </soapenv:Envelope>"""
+
+    # Bloque CbteAsoc para NC (requerido por ARCA cuando concepto=2 servicios)
+    if cbte_asoc_tipo and cbte_asoc_nro:
+        _asoc_fecha = (cbte_asoc_fecha or cbte_fecha).strftime("%Y%m%d")
+        _asoc_cuit  = cbte_asoc_cuit or cuit
+        cbte_asoc_block = f"""<ar:CbtesAsoc>
+              <ar:CbteAsoc>
+                <ar:Tipo>{cbte_asoc_tipo}</ar:Tipo>
+                <ar:PtoVta>{punto_venta}</ar:PtoVta>
+                <ar:Nro>{cbte_asoc_nro}</ar:Nro>
+                <ar:Cuit>{_asoc_cuit}</ar:Cuit>
+                <ar:CbteFch>{_asoc_fecha}</ar:CbteFch>
+              </ar:CbteAsoc>
+            </ar:CbtesAsoc>"""
+    else:
+        cbte_asoc_block = ""
 
     import logging as _log
     _log.getLogger(__name__).info(f"[WSFE] Enviando FECAESolicitar PtoVta={punto_venta} Tipo={cbte_tipo} Nro={cbte_nro} Fecha={cbte_fecha} Importe={imp_total}")
