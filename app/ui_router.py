@@ -115,8 +115,21 @@ async def dashboard(
         )
     )
     hist_count, hist_total = result_hist_mes.one()
-    aprobadas_mes_total = len(aprobadas_mes) + int(hist_count or 0)
-    total_mes = float(total_mes) + float(hist_total or 0)
+
+    # Restar NC emitidas este mes (anulaciones)
+    result_nc_mes = await db.execute(
+        select(func.count(), func.coalesce(func.sum(AfipInvoiceHistory.imp_total), 0)).where(
+            AfipInvoiceHistory.tenant_id == current_user.tenant_id,
+            AfipInvoiceHistory.cbte_tipo.in_([13, 3, 8]),
+            func.extract("month", AfipInvoiceHistory.cbte_fecha) == hoy.month,
+            func.extract("year", AfipInvoiceHistory.cbte_fecha) == hoy.year,
+            AfipInvoiceHistory.source == "nc",
+        )
+    )
+    nc_count, nc_total = result_nc_mes.one()
+
+    aprobadas_mes_total = len(aprobadas_mes) + int(hist_count or 0) - int(nc_count or 0)
+    total_mes = float(total_mes) + float(hist_total or 0) - float(nc_total or 0)
 
     # Facturas por monotributista este mes (para la columna de la tabla)
     facts_por_mono: dict[int, dict] = {}
