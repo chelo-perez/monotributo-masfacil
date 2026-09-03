@@ -37,6 +37,8 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE monotributistas ADD COLUMN IF NOT EXISTS logo_base64 TEXT",
             "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS logo_base64 TEXT",
             "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS telefono VARCHAR(50)",
+            """CREATE TABLE IF NOT EXISTS app_config (clave VARCHAR(100) PRIMARY KEY, valor TEXT)""",
+            "INSERT INTO app_config (clave, valor) VALUES ('recategorizacion_habilitada', 'false') ON CONFLICT DO NOTHING",
             "ALTER TABLE monotributistas ADD COLUMN IF NOT EXISTS telefono VARCHAR(50)",
             "ALTER TABLE monotributistas ADD COLUMN IF NOT EXISTS actividad VARCHAR(200)",
             "ALTER TABLE monotributistas ADD COLUMN IF NOT EXISTS afip_environment VARCHAR(20) DEFAULT 'production'",

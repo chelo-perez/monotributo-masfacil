@@ -1310,39 +1310,42 @@ async def page_recategorizacion(
     current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Sección Recategorización: estado de todos los monotributistas con su sugerencia."""
+    """Sección Recategorización — espejo de Facturo MF."""
     from app.monotributo.service import get_topes_db, acumulado_periodo, _periodo_recategorizacion
-    from datetime import date as _date, timedelta
+    from sqlalchemy import text as _txt
+    from datetime import date as _date
+    from decimal import Decimal
+
+    # Flag global: solo habilitada en ventana fiscal (control superadmin)
+    _hab = await db.execute(_txt("SELECT valor FROM app_config WHERE clave = 'recategorizacion_habilitada'"))
+    recat_habilitada = (_hab.scalar_one_or_none() == "true")
 
     hoy = hoy_ar()
     desde, hasta, periodo_label, _ = _periodo_recategorizacion(hoy)
 
-    # Ventana de recategorización: julio (hasta ~05/08) o enero (hasta ~05/02)
+    # Ventana agosto (hasta 05/08) o febrero (hasta 05/02)
     if hoy.month <= 7:
-        cierre_recat = _date(hoy.year, 8, 5)
-        vigencia     = _date(hoy.year, 8, 1)
-        ventana_label = "julio"
+        cierre_recat  = _date(hoy.year, 8, 5)
+        vigencia      = _date(hoy.year, 8, 1)
+        ventana_label = "agosto"
     else:
-        cierre_recat = _date(hoy.year + 1, 2, 5)
-        vigencia     = _date(hoy.year + 1, 2, 1)
-        ventana_label = "enero"
+        cierre_recat  = _date(hoy.year + 1, 2, 5)
+        vigencia      = _date(hoy.year + 1, 2, 1)
+        ventana_label = "febrero"
 
     dias_para_cierre = (cierre_recat - hoy).days
     en_ventana = 0 <= dias_para_cierre <= 40
 
-    # Topes vigentes para el período evaluado
     topes = await get_topes_db(db, hasta)
     ORDEN = ["A","B","C","D","E","F","G","H","I","J","K"]
 
     def cat_corresponde(acum):
-        from decimal import Decimal
         for letra in ORDEN:
             if acum <= topes.get(letra, Decimal("0")):
                 return letra
-        return None  # supera K
+        return None
 
-    # Recategorizaciones ya confirmadas este período
-    from sqlalchemy import text as _txt
+    # Confirmadas este período — resiliente: si la tabla no existe, vacío
     confirmadas = set()
     try:
         _h = await db.execute(_txt("""
@@ -1351,7 +1354,7 @@ async def page_recategorizacion(
         """), {"tid": current_user.tenant_id, "pd": desde, "ph": hasta})
         confirmadas = {r.mono_id for r in _h.fetchall()}
     except Exception:
-        confirmadas = set()
+        pass
 
     result = await db.execute(
         select(Monotributista).where(
@@ -1364,21 +1367,16 @@ async def page_recategorizacion(
     items = []
     for m in monos:
         cat_actual = m.categoria_actual.value if m.categoria_actual else "A"
-        acum = await acumulado_periodo(m.id, db, desde, hasta)
-        sugerida = cat_corresponde(acum)
-        excede_k = sugerida is None
-        ya_confirmada = m.id in confirmadas
+        acum       = await acumulado_periodo(m.id, db, desde, hasta)
+        sugerida   = cat_corresponde(acum)
+        excede_k   = sugerida is None
+        ya_conf    = m.id in confirmadas
 
-        if excede_k:
-            estado = "exclusion"
-        elif ya_confirmada:
-            estado = "confirmada"
-        elif sugerida == cat_actual:
-            estado = "sin_cambio"
-        elif ORDEN.index(sugerida) > ORDEN.index(cat_actual):
-            estado = "sube"
-        else:
-            estado = "baja"
+        if excede_k:            estado = "exclusion"
+        elif ya_conf:           estado = "confirmada"
+        elif sugerida == cat_actual: estado = "sin_cambio"
+        elif ORDEN.index(sugerida) > ORDEN.index(cat_actual): estado = "sube"
+        else:                   estado = "baja"
 
         items.append({
             "mono_id":    m.id,
@@ -1387,7 +1385,9 @@ async def page_recategorizacion(
             "acumulado":  float(acum),
             "cat_actual": cat_actual,
             "sugerida":   sugerida,
-            "tope_sug":   float(topes.get(sugerida, 0)) if sugerida else 0,
+            "tope_sug":   float(topes.get(sugerida, Decimal("0"))) if sugerida else 0,
+            "periodo_desde": desde.isoformat(),
+            "periodo_hasta": hasta.isoformat(),
             "estado":     estado,
         })
 
@@ -1403,76 +1403,132 @@ async def page_recategorizacion(
         "dias_para_cierre": dias_para_cierre,
         "en_ventana": en_ventana,
         "vigencia": vigencia.strftime("%d/%m/%Y"),
+        "recat_habilitada": recat_habilitada,
     })
-    resp.headers["Cache-Control"] = "no-store"
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
     return resp
 
 
-@router.post("/recategorizacion/{mono_id}/confirmar", response_class=HTMLResponse)
+@router.post("/recategorizacion/{mono_id}/confirmar")
 async def confirmar_recategorizacion(
     mono_id: int,
     request: Request,
     current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Confirma la recategorización de un monotributista y actualiza su categoría."""
-    from app.monotributo.service import get_topes_db, acumulado_periodo, _periodo_recategorizacion
+    """Confirma la recategorización — espejo del flujo de Facturo MF."""
+    from fastapi.responses import JSONResponse
     from sqlalchemy import text as _txt
+    from datetime import date as _date
+
+    # Control global
+    _hab = await db.execute(_txt("SELECT valor FROM app_config WHERE clave = 'recategorizacion_habilitada'"))
+    if _hab.scalar_one_or_none() != "true":
+        return JSONResponse({"error": "La recategorización todavía no está abierta."}, status_code=403)
+
+    body = await request.json()
+    cat_nueva = (body.get("categoria") or "").upper().strip()
+    if cat_nueva not in list("ABCDEFGHIJK"):
+        return JSONResponse({"error": "Categoría inválida"}, status_code=400)
+
+    def _to_date(v):
+        if not v: return None
+        if isinstance(v, _date): return v
+        try: return _date.fromisoformat(str(v)[:10])
+        except: return None
+
+    pd = _to_date(body.get("periodo_desde"))
+    ph = _to_date(body.get("periodo_hasta"))
 
     mono = await db.get(Monotributista, mono_id)
     if not mono or mono.tenant_id != current_user.tenant_id:
-        raise HTTPException(status_code=404)
+        return JSONResponse({"error": "No encontrado"}, status_code=404)
+
+    cat_anterior = mono.categoria_actual.value if mono.categoria_actual else None
+
+    # Historial resiliente — si falla no aborta
+    historial_ok = False
+    try:
+        await db.execute(_txt("""
+            CREATE TABLE IF NOT EXISTS recategorizacion_historial_mono (
+                id SERIAL PRIMARY KEY,
+                tenant_id INTEGER NOT NULL,
+                mono_id INTEGER NOT NULL,
+                periodo_desde DATE NOT NULL,
+                periodo_hasta DATE NOT NULL,
+                cat_anterior VARCHAR(2),
+                cat_nueva VARCHAR(2),
+                acumulado NUMERIC(14,2),
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        """))
+        await db.execute(_txt("""
+            INSERT INTO recategorizacion_historial_mono
+            (tenant_id, mono_id, periodo_desde, periodo_hasta, cat_anterior, cat_nueva, acumulado)
+            VALUES (:tid, :mid, :pd, :ph, :ca, :cn, :acu)
+        """), {"tid": current_user.tenant_id, "mid": mono_id,
+               "pd": pd, "ph": ph, "ca": cat_anterior,
+               "cn": cat_nueva, "acu": body.get("acumulado")})
+        historial_ok = True
+    except Exception as _e:
+        import logging
+        logging.getLogger(__name__).warning(f"historial recat no guardado: {_e}")
+        await db.rollback()
+        mono = await db.get(Monotributista, mono_id)  # re-leer tras rollback
+
+    # Actualizar categoría
+    try:
+        from app.auth.models import CategoriaMonotributo
+        mono.categoria_actual = CategoriaMonotributo(cat_nueva)
+        await db.commit()
+    except Exception as _e:
+        import logging, traceback
+        logging.getLogger(__name__).error(f"confirmar_recat falló: {traceback.format_exc()}")
+        await db.rollback()
+        return JSONResponse({"error": str(_e)[:120]}, status_code=500)
+
+    return JSONResponse({"ok": True, "categoria": cat_nueva, "anterior": cat_anterior, "historial_ok": historial_ok})
+
+
+@router.get("/recategorizacion/datos/{mono_id}")
+async def datos_recategorizacion(
+    mono_id: int,
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Datos de recategorización para el modal — espejo de Facturo MF."""
+    from fastapi.responses import JSONResponse
+    from app.monotributo.service import get_topes_db, acumulado_periodo, _periodo_recategorizacion
+    from decimal import Decimal
+
+    mono = await db.get(Monotributista, mono_id)
+    if not mono or mono.tenant_id != current_user.tenant_id:
+        return JSONResponse({"error": "No encontrado"}, status_code=404)
 
     hoy = hoy_ar()
-    desde, hasta, _, _ = _periodo_recategorizacion(hoy)
+    desde, hasta, periodo_label, _ = _periodo_recategorizacion(hoy)
     topes = await get_topes_db(db, hasta)
     ORDEN = ["A","B","C","D","E","F","G","H","I","J","K"]
 
-    acum = await acumulado_periodo(mono_id, db, desde, hasta)
+    acumulado = await acumulado_periodo(mono_id, db, desde, hasta)
     sugerida = None
-    from decimal import Decimal as _Dec
     for letra in ORDEN:
-        if acum <= topes.get(letra, _Dec("0")):
+        if acumulado <= topes.get(letra, Decimal("0")):
             sugerida = letra
             break
 
-    if sugerida:
-        # Actualizar categoría del monotributista
-        from app.auth.models import CategoriaMonotributo
-        try:
-            mono.categoria_actual = CategoriaMonotributo(sugerida)
-        except Exception:
-            pass
-        await db.commit()
+    cat_actual = mono.categoria_actual.value if mono.categoria_actual else "A"
+    tope_sug = float(topes.get(sugerida, Decimal("0"))) if sugerida else 0
 
-        # Registrar en historial
-        try:
-            await db.execute(_txt("""
-                CREATE TABLE IF NOT EXISTS recategorizacion_historial_mono (
-                    id SERIAL PRIMARY KEY,
-                    tenant_id INTEGER NOT NULL,
-                    mono_id INTEGER NOT NULL,
-                    periodo_desde DATE NOT NULL,
-                    periodo_hasta DATE NOT NULL,
-                    cat_anterior VARCHAR(2),
-                    cat_nueva VARCHAR(2),
-                    acumulado NUMERIC(14,2),
-                    created_at TIMESTAMPTZ DEFAULT NOW()
-                )
-            """))
-            await db.execute(_txt("""
-                INSERT INTO recategorizacion_historial_mono
-                (tenant_id, mono_id, periodo_desde, periodo_hasta, cat_anterior, cat_nueva, acumulado)
-                VALUES (:tid, :mid, :pd, :ph, :ca, :cn, :acu)
-                ON CONFLICT DO NOTHING
-            """), {
-                "tid": current_user.tenant_id, "mid": mono_id,
-                "pd": desde, "ph": hasta,
-                "ca": mono.categoria_actual.value if mono.categoria_actual else None,
-                "cn": sugerida, "acu": float(acum),
-            })
-            await db.commit()
-        except Exception:
-            pass
-
-    return RedirectResponse("/recategorizacion", status_code=303)
+    return JSONResponse({
+        "branch_id": mono_id,
+        "periodo_label": periodo_label,
+        "periodo_desde": desde.isoformat(),
+        "periodo_hasta": hasta.isoformat(),
+        "acumulado": float(acumulado),
+        "categoria_actual": cat_actual,
+        "categoria_sugerida": sugerida,
+        "tope_sugerida": tope_sug,
+        "sin_cambio": (sugerida == cat_actual),
+        "excede_k": sugerida is None,
+    })

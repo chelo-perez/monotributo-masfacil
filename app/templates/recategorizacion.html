@@ -1,150 +1,169 @@
 {% extends "base.html" %}
-{% block title %}Recategorización — Monotributo Más Fácil{% endblock %}
 
-{% block extra_styles %}
-.recat-header {
-  border-radius: var(--radius); padding: 18px 20px; margin-bottom: 16px; color: white;
-}
-.recat-header.en-ventana { background: linear-gradient(135deg, #2C3178, #3d4499); }
-.recat-header.fuera { background: white; border: 1px solid var(--border); color: var(--navy); }
+{% block title %}Recategorización — Más Fácil{% endblock %}
 
-.item-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 10px; overflow: hidden; display: flex; }
-.item-franja { width: 5px; flex-shrink: 0; }
-.item-body { flex: 1; padding: 14px 16px; }
-.item-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
-.item-nombre { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 14px; color: var(--navy); }
-.item-cuit { font-size: 11px; color: var(--muted); }
-.cat-badge { font-family: 'Nunito', sans-serif; font-weight: 900; font-size: 28px; line-height: 1; }
-.cat-label { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; font-weight: 700; }
-.item-acum { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
-{% endblock %}
+
 
 {% block content %}
-<div class="page-header">
-  <div>
-    <div class="page-title">Recategorización</div>
-    <div class="page-subtitle">Mantené las categorías al día con ARCA</div>
+{# active_page y tenant_nombre vienen del contexto #}
+{% include 'partials/recategorizacion_modal.html' %}
+
+{# ── Banner: recategorización cerrada (control del admin) ── #}
+{% if not recat_habilitada %}
+<div style="background:#fffbeb;border:0.5px solid #fcd34d;border-radius:16px;padding:18px 22px;margin-bottom:18px">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+    <i class="ti ti-lock" style="font-size:20px;color:#b45309"></i>
+    <span style="font-weight:800;font-size:1.05rem;color:#92400e;font-family:'Nunito',sans-serif">La recategorización todavía no está abierta</span>
+  </div>
+  <div style="font-size:.85rem;color:#92400e;line-height:1.5">
+    La próxima ventana de recategorización ({{ ventana_label }}) evalúa tu facturación del período {{ periodo_label }}.
+    Cuando ARCA abra el período, vas a poder revisar y confirmar la categoría de cada sede desde acá.
+    Por ahora podés ver tu situación estimada, pero la confirmación está deshabilitada.
   </div>
 </div>
+{% endif %}
 
-{# Banner estado ventana #}
+{# ── Encabezado / estado de la ventana ── #}
+{% if recat_habilitada %}
 {% if en_ventana %}
-<div class="recat-header en-ventana">
+<div style="background:linear-gradient(135deg,#2C3178,#3d4499);border-radius:16px;padding:20px 22px;margin-bottom:18px;color:#fff">
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
     <i class="ti ti-calendar-check" style="font-size:20px"></i>
-    <span style="font-family:'Nunito',sans-serif;font-weight:800;font-size:16px">Estás en período de recategorización</span>
+    <span style="font-weight:800;font-size:1.1rem;font-family:'Nunito',sans-serif">Estás en período de recategorización</span>
   </div>
-  <div style="font-size:13px;opacity:.92;line-height:1.5">
+  <div style="font-size:.88rem;opacity:.92;line-height:1.5">
     Tenés tiempo hasta el <strong>{{ cierre_recat }}</strong>
-    ({{ dias_para_cierre }} día{{ 's' if dias_para_cierre != 1 }} restante{{ 's' if dias_para_cierre != 1 }}).
-    Revisamos la facturación del período <strong>{{ periodo_label }}</strong>.
+    {% if dias_para_cierre is not none %}({{ dias_para_cierre }} día{{ 's' if dias_para_cierre != 1 }} restante{{ 's' if dias_para_cierre != 1 }}){% endif %}.
+    Revisamos tu facturación del período <strong>{{ periodo_label }}</strong> y te decimos qué categoría te corresponde en cada sede.
     La nueva categoría rige desde el <strong>{{ vigencia }}</strong>.
   </div>
 </div>
 {% else %}
-<div class="recat-header fuera" style="color:var(--navy)">
-  <div style="font-family:'Nunito',sans-serif;font-weight:800;font-size:15px;margin-bottom:4px">
-    Próxima recategorización: {{ ventana_label | capitalize }} {{ vigencia[-4:] }}
+<div style="background:var(--surface);border:0.5px solid var(--border);border-radius:16px;padding:18px 22px;margin-bottom:18px">
+  <div style="font-weight:700;font-size:1rem;color:var(--text);font-family:'Nunito',sans-serif;margin-bottom:4px">
+    Próxima recategorización: {{ ventana_label }}
   </div>
-  <div style="font-size:13px;color:var(--muted);line-height:1.5">
-    Evalúa la facturación del período <strong>{{ periodo_label }}</strong>.
-    Acá vas a poder revisar y confirmar la categoría de cada monotributista cuando se abra la ventana.
+  <div style="font-size:.85rem;color:var(--text-soft)">
+    La recategorización de {{ ventana_label }} evalúa tu facturación del período {{ periodo_label }}.
+    Acá vas a poder revisar y confirmar la categoría de cada sede cuando se abra la ventana.
   </div>
-</div>
-
-<div style="display:flex;gap:10px;padding:12px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;margin-bottom:16px;font-size:12px;color:#1e3a5f;line-height:1.5">
-  <i class="ti ti-info-circle" style="font-size:16px;color:#2563eb;flex-shrink:0;margin-top:1px"></i>
-  Dos veces al año (agosto y enero) ARCA revisa la facturación de los últimos 12 meses.
-  Si el monotributista superó el tope de su categoría, tiene que recategorizarse para no quedar excluido del régimen simplificado.
 </div>
 {% endif %}
 
-{# Lista de monotributistas #}
+{# ── Qué es (educativo, solo si no hay urgencia) ── #}
+{% if not en_ventana %}
+<div style="display:flex;gap:10px;padding:14px 16px;background:#eff6ff;border:0.5px solid #bfdbfe;border-radius:12px;margin-bottom:18px">
+  <i class="ti ti-info-circle" style="font-size:18px;color:#2563eb;flex-shrink:0;margin-top:1px"></i>
+  <div style="font-size:.82rem;color:#1e3a5f;line-height:1.5">
+    Dos veces al año (agosto y febrero) ARCA revisa tu facturación de los últimos 12 meses.
+    Si superaste el tope de tu categoría, tenés que recategorizarte para no quedar excluido del monotributo.
+    El sistema te avisa y te guía en cada sede.
+  </div>
+</div>
+{% endif %}
+{% endif %}{# fin recat_habilitada para el encabezado #}
+
+{# ── Sedes ── #}
 {% if items %}
-<div>
+<div style="display:flex;flex-direction:column;gap:12px">
   {% for s in items %}
-  {% set col = '#dc2626' if s.estado == 'exclusion' else ('#16a34a' if s.estado in ['sin_cambio','confirmada'] else ('#d97706' if s.estado == 'sube' else '#2563eb')) %}
-  <div class="item-card">
-    <div class="item-franja" style="background:{{ col }}"></div>
-    <div class="item-body">
-      <div class="item-top">
-        <div>
-          <div class="item-nombre">{{ s.nombre }}</div>
-          <div class="item-cuit">{{ s.cuit }}</div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <div style="display:flex;align-items:stretch">
+      {# Franja de estado a la izquierda #}
+      {% set col = '#dc2626' if s.estado == 'exclusion' else ('#16a34a' if s.estado in ['sin_cambio', 'confirmada'] else ('#d97706' if s.estado == 'sube' else '#2563eb')) %}
+      <div style="width:5px;background:{{ col }};flex-shrink:0"></div>
+
+      <div style="flex:1;padding:16px 18px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div>
+            <div style="font-weight:700;font-size:1rem;color:var(--text);font-family:'Nunito',sans-serif">{{ s.nombre }}</div>
+            <div style="font-size:.74rem;color:var(--text-soft)">{{ s.cuit }}</div>
+          </div>
+
+          {# Actual → Sugerida #}
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="text-align:center">
+              <div style="font-size:.62rem;color:var(--text-soft);text-transform:uppercase;letter-spacing:.05em">Actual</div>
+              <div style="font-size:1.4rem;font-weight:800;color:var(--text-soft);font-family:'Nunito',sans-serif;line-height:1.1">{{ s.cat_actual or '—' }}</div>
+            </div>
+            {% if s.estado != 'sin_cambio' and s.estado != 'exclusion' %}
+            <i class="ti ti-arrow-right" style="font-size:18px;color:{{ col }}"></i>
+            <div style="text-align:center">
+              <div style="font-size:.62rem;color:{{ col }};text-transform:uppercase;letter-spacing:.05em;font-weight:600">Te corresponde</div>
+              <div style="font-size:1.7rem;font-weight:900;color:{{ col }};font-family:'Nunito',sans-serif;line-height:1.1">{{ s.sugerida }}</div>
+            </div>
+            {% endif %}
+          </div>
         </div>
-        <div style="display:flex;align-items:center;gap:12px">
-          <div style="text-align:center">
-            <div class="cat-label" style="color:var(--muted)">Actual</div>
-            <div class="cat-badge" style="color:var(--muted)">{{ s.cat_actual or '—' }}</div>
+
+        <div style="margin-top:12px">
+          <div style="font-size:.8rem;color:var(--text-soft);margin-bottom:10px">
+            Facturado {{ periodo_label }}: <strong style="color:var(--text)">$ {{ "{:,.0f}".format(s.acumulado).replace(",",".") }}</strong>
           </div>
-          {% if s.estado not in ['sin_cambio','exclusion','confirmada'] %}
-          <i class="ti ti-arrow-right" style="font-size:18px;color:{{ col }}"></i>
-          <div style="text-align:center">
-            <div class="cat-label" style="color:{{ col }}">Corresponde</div>
-            <div class="cat-badge" style="color:{{ col }}">{{ s.sugerida }}</div>
-          </div>
+
+          {# Acción según estado — solo con botones si la recat está habilitada #}
+          {% if not recat_habilitada %}
+            {% if s.estado == 'exclusion' %}
+              <span style="display:inline-flex;align-items:center;gap:5px;font-size:.78rem;color:#b91c1c;font-weight:600">
+                <i class="ti ti-alert-triangle"></i> Supera el tope K — consultá RI
+              </span>
+            {% elif s.estado == 'confirmada' %}
+              <span style="display:inline-flex;align-items:center;gap:6px;font-size:.82rem;color:#15803d;font-weight:700;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:6px 12px">
+                <i class="ti ti-circle-check-filled"></i> Recategorización confirmada — Categoría {{ s.cat_actual }}
+              </span>
+            {% elif s.estado == 'sin_cambio' %}
+              <span style="display:inline-flex;align-items:center;gap:5px;font-size:.78rem;color:#15803d;font-weight:600">
+                <i class="ti ti-check"></i> Estimado: mantenés la categoría {{ s.cat_actual }}
+              </span>
+            {% else %}
+              <span style="display:inline-flex;align-items:center;gap:5px;font-size:.78rem;color:var(--text-soft);font-weight:600">
+                <i class="ti ti-info-circle"></i> Estimado: te correspondería {{ s.sugerida }} (confirmación cerrada)
+              </span>
+            {% endif %}
+          {% elif s.estado == 'exclusion' %}
+            <span style="display:inline-flex;align-items:center;gap:5px;font-size:.78rem;color:#b91c1c;font-weight:600">
+              <i class="ti ti-alert-triangle"></i> Supera el tope K — consultá RI
+            </span>
+          {% elif s.estado == 'confirmada' %}
+            <span style="display:inline-flex;align-items:center;gap:6px;font-size:.82rem;color:#15803d;font-weight:700;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:6px 12px">
+              <i class="ti ti-circle-check-filled"></i> Recategorización confirmada — Categoría {{ s.cat_actual }}
+            </span>
+          {% elif s.estado == 'sin_cambio' %}
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <span style="display:inline-flex;align-items:center;gap:5px;font-size:.78rem;color:#15803d;font-weight:600">
+                <i class="ti ti-check"></i> Mantenés la categoría {{ s.cat_actual }}
+              </span>
+              <button class="btn btn-secondary btn-sm"
+                      onclick="abrirRecategorizacion('{{ s.mono_id }}', '{{ s.nombre }}')">
+                Confirmar en ARCA →
+              </button>
+            </div>
+          {% else %}
+            <button class="btn btn-primary btn-sm"
+                    onclick="abrirRecategorizacion('{{ s.mono_id }}', '{{ s.nombre }}')"
+                    style="background:{{ col }}">
+              {% if s.estado == 'sube' %}Recategorizar a {{ s.sugerida }} →{% else %}Bajar a {{ s.sugerida }} →{% endif %}
+            </button>
           {% endif %}
         </div>
       </div>
-
-      <div class="item-acum">
-        Facturado {{ periodo_label }}: <strong style="color:var(--navy)">$ {{ "{:,.0f}".format(s.acumulado).replace(",",".") }}</strong>
-        {% if s.tope_sug %} · Tope Cat. {{ s.sugerida }}: $ {{ "{:,.0f}".format(s.tope_sug).replace(",",".") }}{% endif %}
-      </div>
-
-      {% if s.estado == 'exclusion' %}
-      <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#b91c1c;font-weight:700">
-        <i class="ti ti-alert-triangle"></i> Supera el tope K — evaluar exclusión del régimen
-      </span>
-
-      {% elif s.estado == 'confirmada' %}
-      <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#15803d;font-weight:700;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:6px 12px">
-        <i class="ti ti-circle-check-filled"></i> Recategorización confirmada — Categoría {{ s.cat_actual }}
-      </span>
-
-      {% elif s.estado == 'sin_cambio' %}
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <span style="font-size:12px;color:#15803d;font-weight:600;display:inline-flex;align-items:center;gap:4px">
-          <i class="ti ti-check"></i> Mantiene la Categoría {{ s.cat_actual }}
-        </span>
-        {% if en_ventana %}
-        <form action="/recategorizacion/{{ s.mono_id }}/confirmar" method="post" style="display:inline">
-          <button type="submit" class="btn btn-ghost" style="font-size:12px;padding:5px 12px">
-            Confirmar en ARCA →
-          </button>
-        </form>
-        {% endif %}
-      </div>
-
-      {% else %}
-      {% if en_ventana %}
-      <form action="/recategorizacion/{{ s.mono_id }}/confirmar" method="post" style="display:inline">
-        <button type="submit" class="btn btn-primary" style="font-size:12px;padding:7px 14px;background:{{ col }};border:none">
-          {% if s.estado == 'sube' %}Recategorizar a {{ s.sugerida }} →{% else %}Bajar a {{ s.sugerida }} →{% endif %}
-        </button>
-      </form>
-      {% else %}
-      <span style="font-size:12px;color:{{ col }};font-weight:700">
-        {% if s.estado == 'sube' %}Debería subir a Cat. {{ s.sugerida }} en {{ ventana_label }}{% else %}Podría bajar a Cat. {{ s.sugerida }} en {{ ventana_label }}{% endif %}
-      </span>
-      {% endif %}
-      {% endif %}
-
     </div>
   </div>
   {% endfor %}
 </div>
 
-<div style="font-size:12px;color:var(--muted);margin-top:14px;padding:12px 14px;background:white;border-radius:10px;box-shadow:var(--shadow);line-height:1.5">
-  <strong>Cómo lo calculamos:</strong> sumamos la facturación de cada monotributista en el período {{ periodo_label }}
-  (los mismos meses que evalúa ARCA) y buscamos la categoría cuyo tope de ingresos corresponde.
-  Recategorizá primero en ARCA y después confirmá acá para mantener todo sincronizado.
+{# Nota metodológica #}
+<div style="font-size:.74rem;color:var(--text-soft);margin-top:16px;padding:12px 14px;background:var(--surface);border-radius:10px;line-height:1.5">
+  <strong>Cómo lo calculamos:</strong> sumamos la facturación de cada sede en el período {{ periodo_label }}
+  (los mismos 12 meses que evalúa ARCA) y buscamos la categoría cuyo tope de ingresos brutos corresponde.
+  Recategorizate primero en ARCA con la categoría sugerida y después confirmá acá para mantener todo sincronizado.
 </div>
 
 {% else %}
-<div style="text-align:center;padding:48px 20px;color:var(--muted)">
-  <i class="ti ti-users" style="font-size:40px;opacity:.4"></i>
-  <div style="margin-top:10px;font-size:14px">No hay monotributistas configurados.</div>
+<div style="text-align:center;padding:48px 20px;color:var(--text-soft)">
+  <i class="ti ti-building-store" style="font-size:32px;opacity:.4"></i>
+  <div style="margin-top:10px;font-size:.9rem">No hay sedes monotributistas configuradas.</div>
 </div>
 {% endif %}
+
 {% endblock %}

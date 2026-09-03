@@ -450,3 +450,25 @@ async def crear_tabla_categorias(
         "tablas": tablas,
         "ok": "Tabla agregada correctamente.",
     })
+
+
+# ---------------------------------------------------------------------------
+# Toggle recategorización habilitada
+# ---------------------------------------------------------------------------
+
+@router.post(f"/{SECRET_PATH}/toggle-recategorizacion")
+async def toggle_recategorizacion(
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    _check_auth(request)
+    from sqlalchemy import text as _txt
+    cur = await db.execute(_txt("SELECT valor FROM app_config WHERE clave = 'recategorizacion_habilitada'"))
+    actual = cur.scalar_one_or_none()
+    nuevo = "false" if actual == "true" else "true"
+    await db.execute(_txt("""
+        INSERT INTO app_config (clave, valor) VALUES ('recategorizacion_habilitada', :v)
+        ON CONFLICT (clave) DO UPDATE SET valor = :v
+    """), {"v": nuevo})
+    await db.commit()
+    return RedirectResponse(f"/admin/{SECRET_PATH}", status_code=303)

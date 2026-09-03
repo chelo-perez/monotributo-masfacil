@@ -1,0 +1,147 @@
+{# Flujo de recategorización — espeja el proceso de ARCA #}
+{# Se carga vía JS con los datos de /monotributo/recategorizacion/{branch_id} #}
+<div id="recat-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;padding:20px">
+  <div class="card" style="width:440px;max-width:95vw;max-height:90vh;overflow-y:auto">
+    <div id="recat-content" style="padding:22px">
+      <div class="flex-center gap-8 text-soft" style="justify-content:center;padding:30px">
+        <span class="spinner"></span> Calculando...
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+async function abrirRecategorizacion(branchId, branchName) {
+  document.getElementById("recat-modal").style.display = "flex";
+  var c = document.getElementById("recat-content");
+  c.innerHTML = '<div class="flex-center gap-8 text-soft" style="justify-content:center;padding:30px"><span class="spinner"></span> Calculando...</div>';
+  try {
+    var resp = await fetch("/recategorizacion/datos/" + branchId, {credentials: "same-origin"});
+    var d = await resp.json();
+    window._recatData = Object.assign({}, d, {branchName: branchName});
+    renderRecatPaso1(d, branchName);
+  } catch (e) {
+    c.innerHTML = '<div style="color:#b91c1c;padding:20px">No se pudo calcular la recategorización. Reintentá.</div>';
+  }
+}
+
+function fmtMoney(n) {
+  return "$" + Math.round(n).toLocaleString("es-AR");
+}
+function cerrarRecat() { document.getElementById("recat-modal").style.display = "none"; }
+
+// PASO 1 — Sugerencia (espeja "Recategorización simplificada" de ARCA)
+function renderRecatPaso1(d, branchName) {
+  var c = document.getElementById("recat-content");
+  var actual = d.categoria_actual || "—";
+  var sinCambio = d.sin_cambio;
+  var excedeK = d.excede_k;
+
+  var cuerpo;
+  if (excedeK) {
+    cuerpo =
+      '<div style="padding:14px;background:#fef2f2;border:1px solid #fca5a5;border-radius:10px;margin-bottom:16px">' +
+        '<div style="font-weight:700;color:#b91c1c;margin-bottom:4px">Superás el límite del monotributo</div>' +
+        '<div style="font-size:.84rem;color:#991b1b">Tu facturación de ' + fmtMoney(d.acumulado) + ' supera el tope de la categoría K. ' +
+        'Consultá con tu contador: podría corresponder el pase a Responsable Inscripto.</div>' +
+      '</div>';
+  } else if (sinCambio) {
+    cuerpo =
+      '<div style="padding:14px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;margin-bottom:16px">' +
+        '<div style="font-weight:700;color:#15803d;margin-bottom:4px">Seguís en la misma categoría</div>' +
+        '<div style="font-size:.84rem;color:#166534">Por tu facturación de ' + fmtMoney(d.acumulado) + ' te corresponde la ' +
+        '<strong>Categoría ' + d.categoria_sugerida + '</strong>, la misma que tenés. No necesitás recategorizarte, ' +
+        'pero podés registrarlo igual para dejar constancia.</div>' +
+      '</div>';
+  } else {
+    cuerpo =
+      '<div style="font-size:.85rem;color:var(--text-soft);margin-bottom:6px">Por tu facturación de los últimos 12 meses</div>' +
+      '<div style="font-size:1.5rem;font-weight:900;color:var(--navy);font-family:Nunito,sans-serif;margin-bottom:14px">' + fmtMoney(d.acumulado) + '</div>' +
+      '<div style="display:flex;align-items:center;gap:12px;padding:14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;margin-bottom:16px">' +
+        '<div style="text-align:center;flex:1">' +
+          '<div style="font-size:.68rem;color:var(--text-soft);text-transform:uppercase;letter-spacing:.05em">Actual</div>' +
+          '<div style="font-size:1.3rem;font-weight:800;color:var(--text-soft);font-family:Nunito,sans-serif">' + actual + '</div>' +
+        '</div>' +
+        '<i class="ti ti-arrow-right" style="font-size:20px;color:#2563eb"></i>' +
+        '<div style="text-align:center;flex:1">' +
+          '<div style="font-size:.68rem;color:#2563eb;text-transform:uppercase;letter-spacing:.05em;font-weight:600">Te corresponde</div>' +
+          '<div style="font-size:1.8rem;font-weight:900;color:#2C3178;font-family:Nunito,sans-serif">' + d.categoria_sugerida + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="font-size:.78rem;color:var(--text-soft);margin-bottom:16px">Límite de la categoría ' + d.categoria_sugerida + ': ' + fmtMoney(d.tope_sugerida) + '</div>';
+  }
+
+  var botones;
+  if (excedeK) {
+    botones = '<button class="btn btn-secondary" onclick="cerrarRecat()" style="width:100%;justify-content:center">Entendido</button>';
+  } else {
+    // El texto cambia según sea una recategorización (cambia la categoría) o una
+    // confirmación (ARCA exige recategorizarse igual aunque la categoría no cambie).
+    var accionArca = sinCambio
+      ? ('confirmá tu categoría ' + d.categoria_sugerida + ' en ARCA (ARCA te pide hacer la recategorización igual, aunque no cambie).')
+      : ('recategorizate primero en ARCA con la categoría ' + d.categoria_sugerida + '.');
+    var textoCheck = sinCambio
+      ? ('Ya confirmé mi categoría ' + d.categoria_sugerida + ' en ARCA')
+      : ('Ya me recategoricé en ARCA como <strong>Categoría ' + d.categoria_sugerida + '</strong>');
+    botones =
+      '<div style="padding:12px 14px;background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;margin-bottom:14px;font-size:.8rem;color:#92400e">' +
+        '<strong>Importante:</strong> ' + accionArca + ' ' +
+        'Después confirmá acá para mantener la app sincronizada.' +
+      '</div>' +
+      '<label style="display:flex;align-items:start;gap:10px;cursor:pointer;font-size:.85rem;margin-bottom:14px">' +
+        '<input type="checkbox" id="recat-confirmado" style="width:18px;height:18px;margin-top:1px;flex-shrink:0;accent-color:#2C3178">' +
+        '<span>' + textoCheck + '</span>' +
+      '</label>' +
+      '<div style="display:flex;gap:10px">' +
+        '<button class="btn btn-secondary" onclick="cerrarRecat()" style="flex:1;justify-content:center">Cancelar</button>' +
+        '<button class="btn btn-primary" id="recat-btn" disabled onclick="confirmarRecat()" style="flex:1.5;justify-content:center;background:#2C3178">Confirmar →</button>' +
+      '</div>';
+  }
+
+  c.innerHTML =
+    '<div style="font-weight:800;font-size:1.05rem;color:var(--text);font-family:Nunito,sans-serif;margin-bottom:2px">Recategorización — ' + branchName + '</div>' +
+    '<div style="font-size:.75rem;color:var(--text-soft);margin-bottom:16px">Período ' + d.periodo_label + '</div>' +
+    cuerpo + botones;
+
+  // Habilitar "Confirmar" solo cuando el usuario tilda que ya se recategorizó en ARCA
+  var chk = document.getElementById("recat-confirmado");
+  var btn = document.getElementById("recat-btn");
+  if (chk && btn) {
+    chk.addEventListener("change", function () {
+      btn.disabled = !this.checked;
+    });
+  }
+}
+
+async function confirmarRecat() {
+  var d = window._recatData;
+  var btn = document.getElementById("recat-btn");
+  btn.disabled = true; btn.innerHTML = '<span class="spinner" style="width:14px;height:14px"></span> Guardando...';
+  try {
+    var resp = await fetch("/recategorizacion/" + d.branch_id + "/confirmar", {method: "POST", headers: {"Content-Type": "application/json"}, credentials: "same-origin", body: JSON.stringify({
+      categoria: d.categoria_sugerida,
+      acumulado: d.acumulado,
+      periodo_desde: d.periodo_desde,
+      periodo_hasta: d.periodo_hasta,
+      vigente_desde: "2026-08-01"
+    })});
+    var r = await resp.json();
+    if (r.ok) {
+      document.getElementById("recat-content").innerHTML =
+        '<div style="text-align:center;padding:20px">' +
+          '<div style="width:56px;height:56px;border-radius:50%;background:#f0fdf4;border:1px solid #86efac;display:flex;align-items:center;justify-content:center;margin:0 auto 14px">' +
+            '<i class="ti ti-check" style="font-size:28px;color:#16a34a"></i></div>' +
+          '<div style="font-weight:800;font-size:1.1rem;color:#15803d;font-family:Nunito,sans-serif;margin-bottom:4px">Listo, quedó registrado</div>' +
+          '<div style="font-size:.86rem;color:var(--text-soft);margin-bottom:18px">' + (d.branchName) + ' ahora está en <strong>Categoría ' + r.categoria + '</strong>, vigente desde el 01/08/2026.</div>' +
+          '<button class="btn btn-primary" onclick="cerrarRecat();location.reload()" style="width:100%;justify-content:center;background:#2C3178">Cerrar</button>' +
+        '</div>';
+    } else {
+      btn.disabled = false; btn.innerHTML = "Confirmar →";
+      if (typeof toast === "function") toast(r.error || "No se pudo registrar", "error");
+    }
+  } catch (e) {
+    btn.disabled = false; btn.innerHTML = "Confirmar →";
+    if (typeof toast === "function") toast("Error al confirmar", "error");
+  }
+}
+</script>
