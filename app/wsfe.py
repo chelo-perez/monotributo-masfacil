@@ -329,6 +329,7 @@ async def solicitar_cae(
 </soapenv:Envelope>"""
 
     # Bloque CbteAsoc para NC (requerido por ARCA cuando concepto=2 servicios)
+    cbte_asoc_block = ""  # inicializar siempre
     if cbte_asoc_tipo and cbte_asoc_nro:
         _asoc_fecha = (cbte_asoc_fecha or cbte_fecha).strftime("%Y%m%d")
         _asoc_cuit  = cbte_asoc_cuit or cuit
@@ -341,9 +342,6 @@ async def solicitar_cae(
                 <ar:CbteFch>{_asoc_fecha}</ar:CbteFch>
               </ar:CbteAsoc>
             </ar:CbtesAsoc>"""
-    else:
-        cbte_asoc_block = ""
-
     import logging as _log
     _log.getLogger(__name__).info(f"[WSFE] Enviando FECAESolicitar PtoVta={punto_venta} Tipo={cbte_tipo} Nro={cbte_nro} Fecha={cbte_fecha} Importe={imp_total}")
     async with _afip_http_client(30) as client:
