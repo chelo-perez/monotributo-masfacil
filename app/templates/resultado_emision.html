@@ -143,6 +143,17 @@
     {% if r.error_general %}
     <div class="error-general"><i class="ti ti-alert-triangle"></i> {{ r.error_general }}</div>
     {% endif %}
+    {% for f in r.facturas if not f.aprobada %}
+    <div class="error-general" style="display:block">
+      <strong>{{ f.cliente_nombre }} — $ {{ "{:,.0f}".format(f.importe | float) }}</strong><br>
+      {{ f.error or "Rechazada sin detalle" }}
+    </div>
+    {% endfor %}
+    {% if r.rechazadas > 0 %}
+    <div style="padding:10px 20px;font-size:13px;color:var(--muted)">
+      La emisión de este monotributista se detuvo en el primer rechazo para no saltear numeración. Las filas siguientes no se enviaron a ARCA.
+    </div>
+    {% endif %}
   </div>
   {% endfor %}
 {% endif %}
