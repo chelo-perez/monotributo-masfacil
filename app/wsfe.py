@@ -123,7 +123,13 @@ async def get_token_sign(
     service: str = "wsfe",
 ) -> tuple[str, str]:
     """Obtiene token y sign del WSAA. Cachea por cuit hasta el vencimiento."""
-    cache_key = f"{cert_pem[:30]}:{environment}:{service}"
+    # La clave usa la huella del certificado completo: los primeros caracteres
+    # del PEM son iguales en todos los certificados y mezclaban tickets entre CUITs.
+    import hashlib as _hashlib
+    _huella = _hashlib.sha256(
+        cert_pem if isinstance(cert_pem, bytes) else str(cert_pem).encode()
+    ).hexdigest()
+    cache_key = f"{_huella}:{environment}:{service}"
     if cache_key in _ticket_cache:
         token, sign, expira = _ticket_cache[cache_key]
         if datetime.now(timezone.utc) < expira - timedelta(minutes=5):
