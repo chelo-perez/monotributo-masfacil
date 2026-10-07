@@ -26,6 +26,7 @@ log = logging.getLogger(__name__)
 
 from app.afip.history_models import AfipInvoiceHistory
 from app.facturas.models import Factura, EstadoFactura
+from app.monotributo import reglas
 
 # ─────────────────────────────────────────────
 # Tablas de topes por período
@@ -100,17 +101,20 @@ async def get_topes_db(db, fecha_ref=None) -> dict:
     ref = fecha_ref or _hoy_ar()
     try:
         from sqlalchemy import or_
-        result = await db.execute(
-            select(TablaCategorias).where(
-                TablaCategorias.activa == True,
-                TablaCategorias.vigente_desde <= ref,
-                or_(
-                    TablaCategorias.vigente_hasta == None,
-                    TablaCategorias.vigente_hasta >= ref,
-                )
-            ).order_by(TablaCategorias.vigente_desde.desc()).limit(1)
-        )
-        tabla = result.scalar_one_or_none()
+        # Savepoint: si la consulta falla no deja abortada la transacción de
+        # quien llama (por ejemplo, un lote en plena emisión).
+        async with db.begin_nested():
+            result = await db.execute(
+                select(TablaCategorias).where(
+                    TablaCategorias.activa == True,
+                    TablaCategorias.vigente_desde <= ref,
+                    or_(
+                        TablaCategorias.vigente_hasta == None,
+                        TablaCategorias.vigente_hasta >= ref,
+                    )
+                ).order_by(TablaCategorias.vigente_desde.desc()).limit(1)
+            )
+            tabla = result.scalar_one_or_none()
         if tabla and tabla.topes:
             return {k: Decimal(str(v)) for k, v in tabla.topes.items()}
     except Exception as e:
@@ -129,12 +133,9 @@ def _tope(cat: str, topes: dict | None = None) -> Decimal:
     return t.get(cat, t["A"])
 
 
-def _categoria_para_monto(monto: Decimal, topes: dict | None = None) -> str:
-    t = topes or TOPES
-    for letra in LETRAS:
-        if monto <= t[letra]:
-            return letra
-    return "K"
+def _categoria_para_monto(monto: Decimal, topes: dict | None = None) -> str | None:
+    """Categoría que corresponde al monto. None = supera el tope K (exclusión)."""
+    return reglas.categoria_corresponde(monto, topes or TOPES)
 
 
 def _pct(monto: Decimal, tope: Decimal) -> float:
@@ -153,47 +154,11 @@ def _estado(pct: float) -> str:
 
 def _periodo_recategorizacion(ref: date) -> tuple[date, date, str, str]:
     """
-    Retorna (desde, hasta, label_periodo, label_prox_recat).
-
-    ARCA recategoriza en enero y julio evaluando el período que YA CERRÓ:
-
-      Recategorización Enero → evalúa Ene–Dic del año anterior
-      Recategorización Julio → evalúa Jul(año ant)–Jun(año act)
-
-    La fecha_ref es la fecha a la que queremos calcular. Lo que importa
-    es cuál fue el ÚLTIMO período cerrado antes de esa fecha:
-
-      Si ref <= 30/06 → el último período cerrado es Ene–Dic del año anterior
-                        (recategorizado en enero de este año)
-      Si ref >= 01/07 → el último período cerrado es Jul(año ant)–Jun(año act)
-                        (se recategoriza en julio de este año)
+    (desde, hasta, etiqueta del período, etiqueta de la próxima recategorización).
+    La regla vive en reglas.periodo_recategorizacion (ventanas reales de ARCA).
     """
-    anio = ref.year
-
-    # ARCA recategoriza en julio y enero evaluando el período que YA CERRÓ:
-    #
-    #   Recategorización Julio → evalúa Jul(año ant) – Jun(año act)
-    #     El período cierra el 30/06. El 30/06 ya está en este período.
-    #     Corte: ref >= 30/06 (inclusive)
-    #
-    #   Recategorización Enero → evalúa Ene–Dic(año ant)
-    #     El período cierra el 31/12. A partir del 01/01 ya se puede evaluar.
-    #     Corte: ref < 30/06
-
-    if ref >= date(anio, 6, 30):
-        # Período Jul(año ant) – Jun(año act)
-        desde = date(anio - 1, 7, 1)
-        hasta = date(anio, 6, 30)
-        label = f"Jul {anio - 1} – Jun {anio}"
-        # Próxima: julio si todavía no llegó, enero del año siguiente si ya pasó julio
-        prox  = f"Enero {anio + 1}" if ref.month >= 7 else f"Julio {anio}"
-    else:
-        # Período Ene–Dic(año ant) → próxima recategorización es julio de este año
-        desde = date(anio - 1, 1, 1)
-        hasta = date(anio - 1, 12, 31)
-        label = f"Ene – Dic {anio - 1}"
-        prox  = f"Julio {anio}"
-    return desde, hasta, label, prox
+    desde, hasta, label = reglas.periodo_recategorizacion(ref)
+    return desde, hasta, label, reglas.ventana_recategorizacion(ref).etiqueta
 
 
 def _fmt(v: Decimal) -> str:
@@ -289,78 +254,114 @@ async def get_semaforo_mono(
     fecha_ref: date | None = None,
 ) -> dict:
     """
-    Calcula el estado completo del semáforo para un monotributista.
-    Retorna un dict listo para pasar al template.
+    Semáforo completo de un monotributista, con las reglas de Facturo Más Fácil:
+      - Exclusión: 365 días corridos contra el tope K de la tabla vigente a la fecha.
+      - Recategorización: período según la ventana de ARCA, contra la tabla que
+        rige al cierre de ese período.
     """
     from app.fechas import hoy_ar as _hoy_ar
     ref = fecha_ref or _hoy_ar()
+    cat = (categoria_actual or "A").upper()
+
+    # ── Control 1: exclusión — 365 días corridos ──
     topes = await get_topes_db(db, ref)
-
-    # ── Control 1: Exclusión — 365 días corridos ──
     desde_365 = ref - timedelta(days=365)
-    acu_365   = await acumulado_periodo(mono_id, db, desde_365, ref)
-    tope_k    = topes["K"]
-    tope_cat  = _tope(categoria_actual, topes)
-    pct_365   = _pct(acu_365, tope_k)          # respecto a K (exclusión)
-    pct_cat   = _pct(acu_365, tope_cat)         # respecto a su categoría
-    estado_365 = _estado(pct_365)
+    acu_365 = await acumulado_periodo(mono_id, db, desde_365, ref)
+    sem_365 = reglas.semaforo(acu_365, cat, topes)
+    tope_k = sem_365.tope_k
+    estado_365 = reglas.estado_exclusion(sem_365.porcentaje_k)
+    disponible_k = max(Decimal("0"), tope_k - acu_365)
 
-    # ── Control 2: Recategorización — período semestral ──
+    # ── Control 2: recategorización — período de la ventana de ARCA ──
     f_desde, f_hasta, periodo_label, prox_recat = _periodo_recategorizacion(ref)
-    acu_sem   = await acumulado_periodo(mono_id, db, f_desde, f_hasta)
+    topes_per = await get_topes_db(db, f_hasta)
+    acu_sem = await acumulado_periodo(mono_id, db, f_desde, f_hasta)
+    sem_sem = reglas.semaforo(acu_sem, cat, topes_per)
+    tope_cat_per = reglas.limite_categoria(cat, topes_per)
+    corresponde = sem_sem.categoria_corresponde          # None = supera K
+    sube = corresponde is None or reglas.indice(corresponde) > reglas.indice(cat)
+    baja = corresponde is not None and reglas.indice(corresponde) < reglas.indice(cat)
 
-    # Tope de referencia semestral: si ya superó la categoría actual, usar la siguiente
-    tope_sem = tope_cat
-    cat_siguiente = None
-    if acu_sem > tope_cat:
-        cat_siguiente = _categoria_para_monto(acu_sem, topes)
-        tope_sem = _tope(cat_siguiente, topes)
+    # Tope de referencia: el de la categoría que corresponde si ya superó la suya
+    tope_ref_sem = tope_cat_per
+    if sube and corresponde:
+        tope_ref_sem = reglas.limite_categoria(corresponde, topes_per)
 
-    pct_sem    = _pct(acu_sem, tope_sem)
-    estado_sem = _estado(pct_sem)
+    meses_rest = reglas.meses_restantes(ref, f_hasta)
+    meses_div = meses_rest if meses_rest >= 1 else Decimal("1")
 
-    # Marcadores de categorías para la barra visual
     cat_markers = [
         {
             "letra": letra,
-            "pct": round(float(topes[letra] / tope_k * 100), 1),
-            "activa": letra == categoria_actual,
+            "pct": min(100, round(float(topes[letra] / tope_k * 100), 1)) if tope_k else 0,
+            "activa": letra == cat,
             "tope_fmt": _fmt(topes[letra]),
         }
-        for letra in LETRAS[:-1]  # excluir K (es el 100%)
+        for letra in LETRAS[:-1] if letra in topes
     ]
 
     return {
-        # Control 365 — exclusión
+        # Control 365 — exclusión (estado según % de K: 80 / 85 / 90)
         "acu_365":          float(acu_365),
         "acu_365_fmt":      _fmt(acu_365),
         "tope_k":           float(tope_k),
         "tope_k_fmt":       _fmt(tope_k),
-        "tope_cat":         float(tope_cat),
-        "tope_cat_fmt":     _fmt(tope_cat),
-        "pct_365":          pct_365,
-        "pct_cat":          pct_cat,
+        "tope_cat":         float(sem_365.tope_categoria),
+        "tope_cat_fmt":     _fmt(sem_365.tope_categoria),
+        "pct_365":          sem_365.porcentaje_k,
+        "pct_365_barra":    min(100.0, sem_365.porcentaje_k),
+        "pct_cat":          sem_365.porcentaje,
         "estado_365":       estado_365,
-        "disponible_k":     _fmt(max(Decimal("0"), tope_k - acu_365)),
+        "excluido":         acu_365 > tope_k,
+        "disponible_k":     _fmt(disponible_k),
+        "disponible_k_mensual": _fmt(disponible_k / meses_div),
         "desde_365":        desde_365.strftime("%-d/%-m/%Y"),
         "hasta_365":        ref.strftime("%-d/%-m/%Y"),
+        "hasta_365_iso":    ref.isoformat(),
 
-        # Control semestral — recategorización
+        # Control de recategorización
         "acu_sem":          float(acu_sem),
         "acu_sem_fmt":      _fmt(acu_sem),
-        "tope_sem":         float(tope_sem),
-        "tope_sem_fmt":     _fmt(tope_sem),
-        "pct_sem":          pct_sem,
-        "estado_sem":       estado_sem,
+        "tope_sem":         float(tope_ref_sem),
+        "tope_sem_fmt":     _fmt(tope_ref_sem),
+        "tope_cat_sem_fmt": _fmt(tope_cat_per),
+        "pct_sem":          round(float(acu_sem / tope_cat_per * 100), 1) if tope_cat_per else 0.0,
+        "pct_sem_barra":    min(100.0, round(float(acu_sem / tope_ref_sem * 100), 1)) if tope_ref_sem else 0.0,
+        "estado_sem":       sem_sem.estado,
+        "mensaje_sem":      sem_sem.mensaje,
         "periodo_label":    periodo_label,
+        "periodo_cerrado":  meses_rest <= 0,
         "prox_recat":       prox_recat,
-        "cat_siguiente":    cat_siguiente,
-        "disponible_sem":   _fmt(max(Decimal("0"), tope_sem - acu_sem)),
+        "cat_corresponde":  corresponde,
+        "cat_siguiente":    corresponde if sube else None,   # compatibilidad
+        "sube_categoria":   sube and corresponde is not None,
+        "baja_categoria":   baja,
+        "excede_k_sem":     corresponde is None,
+        "disponible_sem":   _fmt(max(Decimal("0"), tope_ref_sem - acu_sem)),
 
         # Datos generales
-        "categoria":        categoria_actual,
+        "categoria":        cat,
         "cat_markers":      cat_markers,
+        "estado":           reglas.peor_estado(estado_365, sem_sem.estado),
     }
+
+
+async def control_emision_mono(
+    mono_id: int,
+    importe_nuevo,
+    db: AsyncSession,
+    acumulado_extra: Decimal | None = None,
+) -> reglas.ControlExclusion:
+    """
+    Control previo a emitir: ¿el acumulado de 365 días + este importe llega al
+    90 % del tope K? `acumulado_extra` suma lo ya emitido en el lote en curso.
+    """
+    from app.fechas import hoy_ar as _hoy_ar
+    hoy = _hoy_ar()
+    topes = await get_topes_db(db, hoy)
+    acu = await acumulado_periodo(mono_id, db, hoy - timedelta(days=365), hoy)
+    return reglas.verificar_limite_exclusion(
+        acu + (acumulado_extra or Decimal("0")), importe_nuevo, topes)
 
 
 # ============================================================
@@ -412,65 +413,29 @@ async def _facturado_ultimos_3_meses(
 
 async def proyeccion_mono(
     mono_id: int, db: AsyncSession, fecha_ref: date | None = None,
+    categoria_actual: str | None = None, sujeto: str = "el cliente",
 ) -> dict | None:
     """
     Proyección de cierre del período de recategorización vigente.
-    Ritmo = facturación de los últimos 3 meses completos.
+    Ritmo = facturación de los últimos 3 meses completos. El cálculo es el de
+    reglas.calcular_proyeccion (el mismo de Facturo Más Fácil).
     """
-    from datetime import timedelta as _td
-
     from app.fechas import hoy_ar as _hoy_ar
     ref = fecha_ref or _hoy_ar()
     f_desde, f_hasta, periodo_label, _ = _periodo_recategorizacion(ref)
 
-    # Topes vigentes al cierre del período (no los de hoy)
+    # Tabla que va a regir al cierre del período (no la de hoy)
     topes = await get_topes_db(db, f_hasta)
     if not topes:
         return None
 
-    ORDEN = ["A","B","C","D","E","F","G","H","I","J","K"]
-    def cat_corresponde(acum: Decimal) -> str | None:
-        for l in ORDEN:
-            if acum <= topes.get(l, Decimal("0")):
-                return l
-        return None
-
-    # Acumulado real del período hasta hoy
     acu_sem = await acumulado_periodo(mono_id, db, f_desde, f_hasta)
-
-    # Ritmo mensual (últimos 3 meses)
     total_3m, meses_3m = await _facturado_ultimos_3_meses(mono_id, db, ref, f_desde)
-    ritmo_mensual = total_3m / meses_3m if meses_3m > 0 else Decimal("0")
+    ritmo = total_3m / meses_3m if meses_3m > 0 else Decimal("0")
 
-    meses_rest = _meses_restantes_recat(ref, f_hasta)
-    proyeccion  = acu_sem + (ritmo_mensual * meses_rest)
-
-    tope_k   = topes.get("K", Decimal("0"))
-    tope_cat_str = None  # categoría actual del mono (se pasa desde fuera)
-
-    cat_proy    = cat_corresponde(proyeccion)
-    supera_k    = proyeccion > tope_k
-
-    def fmt(v: Decimal) -> str:
-        return f"${int(round(v)):,}".replace(",", ".")
-
-    # Mes estimado de cruce
-    mes_cruce = None
-
-    MESES_ES = ["", "enero", "febrero", "marzo", "abril", "mayo", "junio",
-                "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
-
-    return {
-        "periodo_label":        periodo_label,
-        "acu_sem":              float(acu_sem),
-        "acu_sem_fmt":          fmt(acu_sem),
-        "ritmo_mensual":        float(ritmo_mensual),
-        "ritmo_mensual_fmt":    fmt(ritmo_mensual),
-        "meses_restantes":      round(float(meses_rest), 1),
-        "proyeccion":           float(proyeccion),
-        "proyeccion_fmt":       fmt(proyeccion),
-        "categoria_proyectada": cat_proy,
-        "supera_k":             supera_k,
-        "tope_k":               float(tope_k),
-        "tope_k_fmt":           fmt(tope_k),
-    }
+    proy = reglas.calcular_proyeccion(
+        acumulado=acu_sem, ritmo_mensual=ritmo, ref=ref, f_hasta=f_hasta,
+        categoria=categoria_actual or "A", categorias=topes, sujeto=sujeto,
+    )
+    proy["periodo_label"] = periodo_label
+    return proy

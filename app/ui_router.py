@@ -137,17 +137,14 @@ async def dashboard(
 
         # Acumulado 365 días vs tope K (exclusión)
         acumulado = await _acumulado_mono(m.id, db)
-        pct_k = round(min(float(acumulado) / tope_k * 100, 100), 1) if tope_k else 0
+        pct_real = round(float(acumulado) / tope_k * 100, 1) if tope_k else 0
+        pct_k = min(pct_real, 100)
 
-        # Estado semáforo
-        if pct_k >= 90:
-            estado = "rojo"
+        # Mismo criterio que la ficha del cliente: 80 / 85 / 90 % del tope K
+        from app.monotributo import reglas as _reglas
+        estado = _reglas.estado_exclusion(pct_real)
+        if estado != "verde":
             alertas += 1
-        elif pct_k >= 75:
-            estado = "amarillo"
-            alertas += 1
-        else:
-            estado = "verde"
 
         if not m.cert_encrypted:
             sin_certificado += 1
@@ -182,7 +179,7 @@ async def dashboard(
 
     # Alertas primero, luego verde ordenado por pct desc
     monos_data.sort(key=lambda x: (
-        0 if x["estado"] == "rojo" else 1 if x["estado"] == "amarillo" else 2,
+        {"rojo": 0, "naranja": 1, "amarillo": 2}.get(x["estado"], 3),
         -x["pct_k"]
     ))
 
@@ -286,6 +283,27 @@ async def upload_excel(
     for r in resultado.por_monotributista:
         if r.razon_social in grupos_dict:
             grupos_dict[r.razon_social]["cuit"] = r.cuit
+
+    # Aviso de exclusión antes de emitir: 80 % avisa, 90 % bloquea (igual que FMF)
+    from app.monotributo.service import control_emision_mono
+    for g in grupos_dict.values():
+        _mid = next((f.monotributista_id for f in g["filas"] if f.monotributista_id), None)
+        g["alerta_tope"] = None
+        if not _mid or not g["total_importe"]:
+            continue
+        try:
+            _c = await control_emision_mono(_mid, g["total_importe"], db)
+            if _c.aviso:
+                g["alerta_tope"] = {
+                    "bloquea": _c.bloquear,
+                    "pct": _c.porcentaje_k,
+                    "mensaje": _c.mensaje.replace("esta factura", "este lote")
+                                         .replace("esta emisión", "este lote"),
+                }
+        except Exception as _e:
+            import logging as _lg
+            _lg.getLogger(__name__).warning(f"[preview] control de tope: {_e}")
+            await db.rollback()
 
     return templates.TemplateResponse("preview_emision.html", {
         "request": request,
@@ -716,13 +734,14 @@ async def detalle_monotributista(
     from app.monotributo.service import proyeccion_mono
     proyeccion = None
     try:
-        proyeccion = await proyeccion_mono(mono_id, db, fecha_ref_parsed)
-        if proyeccion and proyeccion.get("categoria_proyectada"):
-            proyeccion["supera_categoria"] = (
-                proyeccion["categoria_proyectada"] != cat
-            )
-    except Exception:
-        pass
+        proyeccion = await proyeccion_mono(
+            mono_id, db, fecha_ref_parsed, categoria_actual=cat,
+            sujeto=(mono.nombre_fantasia or mono.razon_social or "el cliente"),
+        )
+    except Exception as _e:
+        import logging as _lg
+        _lg.getLogger(__name__).warning(f"[proyeccion] mono {mono_id}: {_e}")
+        await db.rollback()
 
     return templates.TemplateResponse("monotributistas/detalle.html", {
         "request": request,
@@ -734,6 +753,7 @@ async def detalle_monotributista(
         "sem": semaforo,
         "proyeccion": proyeccion,
         "fecha_ref": fecha_ref or "",
+        "hoy_iso": hoy_ar().isoformat(),
     })
 
 
@@ -1443,31 +1463,20 @@ async def page_recategorizacion(
         recat_habilitada = False
         await db.rollback()  # sin esto Postgres deja la transacción abortada
 
+    from app.monotributo import reglas as _reglas
     hoy = hoy_ar()
     desde, hasta, periodo_label, _ = _periodo_recategorizacion(hoy)
 
-    # Ventana agosto (hasta 05/08) o febrero (hasta 05/02)
-    if hoy.month <= 7:
-        cierre_recat  = _date(hoy.year, 8, 5)
-        vigencia      = _date(hoy.year, 8, 1)
-        ventana_label = "agosto"
-    else:
-        cierre_recat  = _date(hoy.year + 1, 2, 5)
-        vigencia      = _date(hoy.year + 1, 2, 1)
-        ventana_label = "febrero"
+    # La ventana sale de la misma regla que el período, así nunca se desfasan
+    _v = _reglas.ventana_recategorizacion(hoy)
+    cierre_recat, vigencia, ventana_label = _v.cierre, _v.vigencia, _v.nombre
+    dias_para_cierre, en_ventana = _v.dias_para_cierre, _v.en_ventana
 
-    dias_para_cierre = (cierre_recat - hoy).days
-    en_ventana = 0 <= dias_para_cierre <= 40
-
-    from decimal import Decimal
     topes = await get_topes_db(db, hasta)
-    ORDEN = ["A","B","C","D","E","F","G","H","I","J","K"]
+    ORDEN = _reglas.ORDEN_CATEGORIAS
 
     def cat_corresponde(acum):
-        for letra in ORDEN:
-            if acum <= topes.get(letra, Decimal("0")):
-                return letra
-        return None
+        return _reglas.categoria_corresponde(acum, topes)
 
     # Confirmadas este período — resiliente: si la tabla no existe, vacío
     confirmadas = set()
@@ -1513,6 +1522,7 @@ async def page_recategorizacion(
             "tope_sug":   float(topes.get(sugerida, Decimal("0"))) if sugerida else 0,
             "periodo_desde": desde.isoformat(),
             "periodo_hasta": hasta.isoformat(),
+            "vigencia":   vigencia.isoformat(),
             "estado":     estado,
         })
 
@@ -1528,6 +1538,8 @@ async def page_recategorizacion(
         "dias_para_cierre": dias_para_cierre,
         "en_ventana": en_ventana,
         "vigencia": vigencia.strftime("%d/%m/%Y"),
+        "vigencia_iso": vigencia.isoformat(),
+        "periodo_en_curso": hasta >= hoy,
         "recat_habilitada": recat_habilitada,
     })
     resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
@@ -1630,17 +1642,14 @@ async def datos_recategorizacion(
     if not mono or mono.tenant_id != current_user.tenant_id:
         return JSONResponse({"error": "No encontrado"}, status_code=404)
 
+    from app.monotributo import reglas as _reglas
     hoy = hoy_ar()
     desde, hasta, periodo_label, _ = _periodo_recategorizacion(hoy)
     topes = await get_topes_db(db, hasta)
-    ORDEN = ["A","B","C","D","E","F","G","H","I","J","K"]
+    _v = _reglas.ventana_recategorizacion(hoy)
 
     acumulado = await acumulado_periodo(mono_id, db, desde, hasta)
-    sugerida = None
-    for letra in ORDEN:
-        if acumulado <= topes.get(letra, Decimal("0")):
-            sugerida = letra
-            break
+    sugerida = _reglas.categoria_corresponde(acumulado, topes)
 
     cat_actual = mono.categoria_actual.value if mono.categoria_actual else "A"
     tope_sug = float(topes.get(sugerida, Decimal("0"))) if sugerida else 0
@@ -1650,6 +1659,8 @@ async def datos_recategorizacion(
         "periodo_label": periodo_label,
         "periodo_desde": desde.isoformat(),
         "periodo_hasta": hasta.isoformat(),
+        "vigente_desde": _v.vigencia.isoformat(),
+        "vigente_desde_fmt": _v.vigencia.strftime("%d/%m/%Y"),
         "acumulado": float(acumulado),
         "categoria_actual": cat_actual,
         "categoria_sugerida": sugerida,

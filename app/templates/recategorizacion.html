@@ -16,9 +16,9 @@
     <span style="font-weight:800;font-size:1.05rem;color:#92400e;font-family:'Nunito',sans-serif">La recategorización todavía no está abierta</span>
   </div>
   <div style="font-size:.85rem;color:#92400e;line-height:1.5">
-    La próxima ventana de recategorización ({{ ventana_label }}) evalúa tu facturación del período {{ periodo_label }}.
-    Cuando ARCA abra el período, vas a poder revisar y confirmar la categoría de cada sede desde acá.
-    Por ahora podés ver tu situación estimada, pero la confirmación está deshabilitada.
+    La próxima ventana de recategorización ({{ ventana_label }}) evalúa la facturación de cada cliente en el período {{ periodo_label }}.
+    Cuando ARCA abra el período, vas a poder revisar y confirmar la categoría de cada monotributista desde acá.
+    {% if periodo_en_curso %}El período todavía está en curso: lo que ves es lo acumulado hasta hoy, no el resultado final.{% else %}Por ahora podés ver la situación de cada uno, pero la confirmación está deshabilitada.{% endif %}
   </div>
 </div>
 {% endif %}
@@ -34,7 +34,7 @@
   <div style="font-size:.88rem;opacity:.92;line-height:1.5">
     Tenés tiempo hasta el <strong>{{ cierre_recat }}</strong>
     {% if dias_para_cierre is not none %}({{ dias_para_cierre }} día{{ 's' if dias_para_cierre != 1 }} restante{{ 's' if dias_para_cierre != 1 }}){% endif %}.
-    Revisamos tu facturación del período <strong>{{ periodo_label }}</strong> y te decimos qué categoría te corresponde en cada sede.
+    Revisamos la facturación del período <strong>{{ periodo_label }}</strong> y te decimos qué categoría le corresponde a cada cliente.
     La nueva categoría rige desde el <strong>{{ vigencia }}</strong>.
   </div>
 </div>
@@ -44,8 +44,8 @@
     Próxima recategorización: {{ ventana_label }}
   </div>
   <div style="font-size:.85rem;color:var(--text-soft)">
-    La recategorización de {{ ventana_label }} evalúa tu facturación del período {{ periodo_label }}.
-    Acá vas a poder revisar y confirmar la categoría de cada sede cuando se abra la ventana.
+    La recategorización de {{ ventana_label }} evalúa la facturación de cada cliente en el período {{ periodo_label }}.
+    Acá vas a poder revisar y confirmar la categoría de cada monotributista cuando se abra la ventana.
   </div>
 </div>
 {% endif %}
@@ -55,15 +55,15 @@
 <div style="display:flex;gap:10px;padding:14px 16px;background:#eff6ff;border:0.5px solid #bfdbfe;border-radius:12px;margin-bottom:18px">
   <i class="ti ti-info-circle" style="font-size:18px;color:#2563eb;flex-shrink:0;margin-top:1px"></i>
   <div style="font-size:.82rem;color:#1e3a5f;line-height:1.5">
-    Dos veces al año (agosto y febrero) ARCA revisa tu facturación de los últimos 12 meses.
-    Si superaste el tope de tu categoría, tenés que recategorizarte para no quedar excluido del monotributo.
-    El sistema te avisa y te guía en cada sede.
+    Dos veces al año (agosto y febrero) ARCA revisa la facturación de los últimos 12 meses de cada monotributista.
+    Si superó el tope de su categoría, hay que recategorizarlo para que no quede excluido del régimen.
+    El sistema te avisa y te guía cliente por cliente.
   </div>
 </div>
 {% endif %}
 {% endif %}{# fin recat_habilitada para el encabezado #}
 
-{# ── Sedes ── #}
+{# ── Monotributistas ── #}
 {% if items %}
 <div style="display:flex;flex-direction:column;gap:12px">
   {% for s in items %}
@@ -113,11 +113,11 @@
               </span>
             {% elif s.estado == 'sin_cambio' %}
               <span style="display:inline-flex;align-items:center;gap:5px;font-size:.78rem;color:#15803d;font-weight:600">
-                <i class="ti ti-check"></i> Estimado: mantenés la categoría {{ s.cat_actual }}
+                <i class="ti ti-check"></i> Estimado: mantiene la categoría {{ s.cat_actual }}
               </span>
             {% else %}
               <span style="display:inline-flex;align-items:center;gap:5px;font-size:.78rem;color:var(--text-soft);font-weight:600">
-                <i class="ti ti-info-circle"></i> Estimado: te correspondería {{ s.sugerida }} (confirmación cerrada)
+                <i class="ti ti-info-circle"></i> Estimado: le correspondería {{ s.sugerida }} (confirmación cerrada)
               </span>
             {% endif %}
           {% elif s.estado == 'exclusion' %}
@@ -131,16 +131,16 @@
           {% elif s.estado == 'sin_cambio' %}
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
               <span style="display:inline-flex;align-items:center;gap:5px;font-size:.78rem;color:#15803d;font-weight:600">
-                <i class="ti ti-check"></i> Mantenés la categoría {{ s.cat_actual }}
+                <i class="ti ti-check"></i> Mantiene la categoría {{ s.cat_actual }}
               </span>
               <button class="btn btn-secondary btn-sm"
-                      onclick="abrirRecategorizacion('{{ s.mono_id }}', '{{ s.nombre }}')">
+                      data-mono="{{ s.mono_id }}" data-nombre="{{ s.nombre }}" onclick="abrirRecategorizacion(this.dataset.mono, this.dataset.nombre)">
                 Confirmar en ARCA →
               </button>
             </div>
           {% else %}
             <button class="btn btn-primary btn-sm"
-                    onclick="abrirRecategorizacion('{{ s.mono_id }}', '{{ s.nombre }}')"
+                    data-mono="{{ s.mono_id }}" data-nombre="{{ s.nombre }}" onclick="abrirRecategorizacion(this.dataset.mono, this.dataset.nombre)"
                     style="background:{{ col }}">
               {% if s.estado == 'sube' %}Recategorizar a {{ s.sugerida }} →{% else %}Bajar a {{ s.sugerida }} →{% endif %}
             </button>
@@ -154,15 +154,15 @@
 
 {# Nota metodológica #}
 <div style="font-size:.74rem;color:var(--text-soft);margin-top:16px;padding:12px 14px;background:var(--surface);border-radius:10px;line-height:1.5">
-  <strong>Cómo lo calculamos:</strong> sumamos la facturación de cada sede en el período {{ periodo_label }}
+  <strong>Cómo lo calculamos:</strong> sumamos la facturación de cada monotributista en el período {{ periodo_label }}
   (los mismos 12 meses que evalúa ARCA) y buscamos la categoría cuyo tope de ingresos brutos corresponde.
-  Recategorizate primero en ARCA con la categoría sugerida y después confirmá acá para mantener todo sincronizado.
+  Hacé primero la recategorización en ARCA con la categoría sugerida y después confirmala acá para mantener todo sincronizado.
 </div>
 
 {% else %}
 <div style="text-align:center;padding:48px 20px;color:var(--text-soft)">
   <i class="ti ti-building-store" style="font-size:32px;opacity:.4"></i>
-  <div style="margin-top:10px;font-size:.9rem">No hay sedes monotributistas configuradas.</div>
+  <div style="margin-top:10px;font-size:.9rem">No hay monotributistas cargados.</div>
 </div>
 {% endif %}
 

@@ -255,6 +255,21 @@ async def emitir_manual(
     if not mono.cert_encrypted:
         return JSONResponse({"ok": False, "error": "El monotributista no tiene certificado configurado"})
 
+    # Control de exclusión (90 % del tope K). En la factura manual no bloquea
+    # del todo: pide una confirmación explícita, porque es la vía para emitir
+    # lo que el lote frenó cuando igual corresponde facturar.
+    if cbte_tipo == 11 and not body.get("confirmar_tope"):
+        try:
+            from app.monotributo.service import control_emision_mono
+            _ctrl = await control_emision_mono(mono.id, importe, db)
+            if _ctrl.bloquear:
+                return JSONResponse({"ok": False, "requiere_confirmacion": True,
+                                     "error": _ctrl.mensaje})
+        except Exception as _e:
+            import logging as _log
+            _log.getLogger(__name__).warning(f"[manual] control de tope no disponible: {_e}")
+            await db.rollback()
+
     try:
         from app.wsfe import get_token_sign, get_ultimo_cbte as _ultimo, solicitar_cae, load_credentials
         from app.config import FERNET_KEY

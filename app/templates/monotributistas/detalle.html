@@ -74,7 +74,7 @@
       <span style="font-size:12px;font-weight:700;color:var(--muted)">Fecha de referencia</span>
       <input type="date" id="fecha-ref-input"
              value="{{ fecha_ref }}"
-             max="{{ sem.hasta_365 }}"
+             max="{{ hoy_iso }}"
              style="border:1.5px solid var(--border);border-radius:7px;padding:5px 10px;font-size:13px;font-family:inherit;outline:none;cursor:pointer"
              onchange="cambiarFecha(this.value)">
       {% if fecha_ref %}
@@ -88,6 +88,9 @@
     </div>
     <div class="det-card-body">
 
+      {# Colores de los cuatro estados (mismas reglas que Facturo Más Fácil) #}
+      {% set COLOR = {'rojo': 'var(--red)', 'naranja': '#f97316', 'amarillo': 'var(--yellow)', 'verde': 'var(--green)'} %}
+
       {# ── CONTROL 1: Exclusión 365 días ── #}
       <div style="margin-bottom:18px">
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
@@ -95,22 +98,23 @@
             <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">Exclusión — últimos 365 días</div>
             <div style="font-size:11px;color:var(--muted);margin-top:1px">{{ sem.desde_365 }} → {{ sem.hasta_365 }}</div>
           </div>
-          <div style="font-family:'Nunito',sans-serif;font-weight:800;font-size:20px;
-            color:{% if sem.estado_365 == 'rojo' %}var(--red){% elif sem.estado_365 == 'amarillo' %}var(--yellow){% else %}var(--green){% endif %}">
+          <div style="font-family:'Nunito',sans-serif;font-weight:800;font-size:20px;color:{{ COLOR.get(sem.estado_365, 'var(--green)') }}">
             {{ sem.pct_365 }}%
           </div>
         </div>
 
-        {# Barra con marcadores de categorías #}
+        {# Barra con marcadores de categorías y marca del 90% (bloqueo de emisión) #}
         <div style="position:relative;margin-bottom:4px">
           <div class="progress-track">
-            <div class="progress-fill" style="width:{{ sem.pct_365 }}%;background:{% if sem.estado_365 == 'rojo' %}var(--red){% elif sem.estado_365 == 'amarillo' %}var(--yellow){% else %}var(--green){% endif %}"></div>
+            <div class="progress-fill" style="width:{{ sem.pct_365_barra }}%;background:{{ COLOR.get(sem.estado_365, 'var(--green)') }}"></div>
           </div>
           {% for m in sem.cat_markers %}
           <div title="Cat {{ m.letra }}: {{ m.tope_fmt }}"
                style="position:absolute;top:-2px;left:{{ m.pct }}%;width:2px;height:12px;background:{% if m.activa %}var(--navy){% else %}rgba(0,0,0,.15){% endif %};border-radius:1px">
           </div>
           {% endfor %}
+          <div title="90% del tope K: desde acá se bloquea la emisión por lote"
+               style="position:absolute;top:-4px;left:90%;width:2px;height:16px;background:var(--red);border-radius:1px"></div>
         </div>
         <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)">
           <span>Acumulado: <strong style="color:var(--navy)">{{ sem.acu_365_fmt }}</strong></span>
@@ -118,58 +122,84 @@
         </div>
         <div style="font-size:11px;color:var(--muted);margin-top:2px">
           Disponible hasta exclusión: <strong>{{ sem.disponible_k }}</strong>
+          {% if not sem.periodo_cerrado and not sem.excluido %}
+          · puede facturar <strong>{{ sem.disponible_k_mensual }}</strong> por mes hasta el cierre del período
+          {% endif %}
         </div>
 
-        {% if sem.estado_365 == 'rojo' %}
+        {% if sem.excluido %}
         <div class="alerta-box" style="background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;margin-top:8px">
           <i class="ti ti-alert-octagon" style="flex-shrink:0"></i>
-          <span><strong>Superó el tope de exclusión.</strong> Revisar urgente con el cliente.</span>
+          <span><strong>Superó el tope máximo del monotributo.</strong> Corresponde la exclusión del régimen: revisar urgente con el cliente.</span>
+        </div>
+        {% elif sem.estado_365 == 'rojo' %}
+        <div class="alerta-box" style="background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;margin-top:8px">
+          <i class="ti ti-alert-octagon" style="flex-shrink:0"></i>
+          <span><strong>Más del 90% del tope máximo.</strong> La emisión por lote queda bloqueada para no excluirlo; revisar con el cliente.</span>
+        </div>
+        {% elif sem.estado_365 == 'naranja' %}
+        <div class="alerta-box" style="background:#FFF7ED;border:1px solid #FDBA74;color:#9A3412;margin-top:8px">
+          <i class="ti ti-alert-triangle" style="flex-shrink:0"></i>
+          <span>Más del 85% del tope máximo. Al 90% se bloquea la emisión por lote.</span>
         </div>
         {% elif sem.estado_365 == 'amarillo' %}
         <div class="alerta-box" style="background:#FEF9C3;border:1px solid #F59E0B;color:#854D0E;margin-top:8px">
           <i class="ti ti-alert-triangle" style="flex-shrink:0"></i>
-          <span>Cerca del tope de exclusión. Monitorear la facturación.</span>
+          <span>Más del 80% del tope máximo. Monitorear la facturación.</span>
         </div>
         {% endif %}
       </div>
 
       <hr style="border:none;border-top:1px solid var(--border);margin:0 0 16px">
 
-      {# ── CONTROL 2: Recategorización semestral ── #}
+      {# ── CONTROL 2: Recategorización ── #}
       <div>
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
           <div>
             <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">Recategorización — {{ sem.periodo_label }}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:1px">Próxima: <strong>{{ sem.prox_recat }}</strong></div>
+            <div style="font-size:11px;color:var(--muted);margin-top:1px">
+              Recategorización de <strong>{{ sem.prox_recat }}</strong>{% if not sem.periodo_cerrado %} · período en curso{% else %} · período cerrado{% endif %}
+            </div>
           </div>
-          <div style="font-family:'Nunito',sans-serif;font-weight:800;font-size:20px;
-            color:{% if sem.estado_sem == 'rojo' %}var(--red){% elif sem.estado_sem == 'amarillo' %}var(--yellow){% else %}var(--green){% endif %}">
+          <div style="font-family:'Nunito',sans-serif;font-weight:800;font-size:20px;color:{{ COLOR.get(sem.estado_sem, 'var(--green)') }}">
             {{ sem.pct_sem }}%
           </div>
         </div>
         <div class="progress-track">
-          <div class="progress-fill" style="width:{{ sem.pct_sem }}%;background:{% if sem.estado_sem == 'rojo' %}var(--red){% elif sem.estado_sem == 'amarillo' %}var(--yellow){% else %}var(--green){% endif %}"></div>
+          <div class="progress-fill" style="width:{{ sem.pct_sem_barra }}%;background:{{ COLOR.get(sem.estado_sem, 'var(--green)') }}"></div>
         </div>
         <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:4px">
           <span>Acumulado: <strong style="color:var(--navy)">{{ sem.acu_sem_fmt }}</strong></span>
-          <span>Tope {% if sem.cat_siguiente %}Cat {{ sem.cat_siguiente }}{% else %}Cat {{ sem.categoria }}{% endif %}: <strong>{{ sem.tope_sem_fmt }}</strong></span>
+          <span>Tope Cat {{ sem.categoria }}: <strong>{{ sem.tope_cat_sem_fmt }}</strong></span>
         </div>
 
-        {% if sem.cat_siguiente %}
+        {% if sem.excede_k_sem %}
         <div class="alerta-box" style="background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;margin-top:8px">
+          <i class="ti ti-alert-octagon" style="flex-shrink:0"></i>
+          <span><strong>Supera el tope de la categoría K.</strong> No hay categoría que corresponda: implica exclusión del régimen.</span>
+        </div>
+        {% elif sem.sube_categoria %}
+        <div class="alerta-box" style="background:#FFF7ED;border:1px solid #FDBA74;color:#9A3412;margin-top:8px">
           <i class="ti ti-trending-up" style="flex-shrink:0"></i>
           <span>Superó el tope de Categoría {{ sem.categoria }}.
-            Debería recategorizarse a <strong>Categoría {{ sem.cat_siguiente }}</strong> en {{ sem.prox_recat }}.</span>
+            {% if sem.periodo_cerrado %}Corresponde{% else %}Ya correspondería{% endif %} recategorizar a
+            <strong>Categoría {{ sem.cat_corresponde }}</strong> (tope {{ sem.tope_sem_fmt }}) en {{ sem.prox_recat }}.</span>
         </div>
         {% elif sem.estado_sem == 'amarillo' %}
         <div class="alerta-box" style="background:#FEF9C3;border:1px solid #F59E0B;color:#854D0E;margin-top:8px">
           <i class="ti ti-alert-triangle" style="flex-shrink:0"></i>
-          <span>Acercándose al tope. Revisar si corresponde recategorizar en {{ sem.prox_recat }}.</span>
+          <span>Más del 80% del tope de su categoría. Quedan {{ sem.disponible_sem }} antes de tener que subir.</span>
+        </div>
+        {% elif sem.baja_categoria and sem.periodo_cerrado %}
+        <div class="alerta-box" style="background:#F0FDF4;border:1px solid #86EFAC;color:#166534;margin-top:8px">
+          <i class="ti ti-trending-down" style="flex-shrink:0"></i>
+          <span>Facturó por debajo de su categoría: corresponde <strong>Categoría {{ sem.cat_corresponde }}</strong> en {{ sem.prox_recat }} y pagaría menos.</span>
         </div>
         {% endif %}
 
-        {# ── Proyección de cierre ── #}
-        {% if proyeccion and not fecha_ref %}
+        {# ── Proyección de cierre (solo con el período en curso) ── #}
+        {% if proyeccion and not proyeccion.periodo_cerrado %}
+        {% set PCOL = '#b91c1c' if proyeccion.supera_k else ('#f97316' if proyeccion.supera_categoria else '#15803d') %}
         <div style="margin-top:12px;border:1px solid var(--border);border-radius:10px;overflow:hidden">
           <div style="padding:8px 12px;background:#f0f4ff;border-bottom:1px solid var(--border)">
             <div style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#2C3178">
@@ -182,14 +212,8 @@
           <div style="padding:12px;display:flex;align-items:flex-end;justify-content:space-between;gap:10px;flex-wrap:wrap">
             <div>
               <div style="font-size:10px;color:var(--muted);margin-bottom:2px">Proyección al cierre</div>
-              {% if proyeccion.supera_k %}
-              <div style="font-family:'Nunito',sans-serif;font-size:22px;font-weight:900;color:#b91c1c;line-height:1">{{ proyeccion.proyeccion_fmt }}</div>
-              {% elif proyeccion.supera_categoria %}
-              <div style="font-family:'Nunito',sans-serif;font-size:22px;font-weight:900;color:#f97316;line-height:1">{{ proyeccion.proyeccion_fmt }}</div>
-              {% else %}
-              <div style="font-family:'Nunito',sans-serif;font-size:22px;font-weight:900;color:#15803d;line-height:1">{{ proyeccion.proyeccion_fmt }}</div>
-              {% endif %}
-              <div style="font-size:10px;color:var(--muted);margin-top:2px">Tope K: {{ proyeccion.tope_k_fmt }}</div>
+              <div style="font-family:'Nunito',sans-serif;font-size:22px;font-weight:900;color:{{ PCOL }};line-height:1">{{ proyeccion.proyeccion_fmt }}</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:2px">Tope Cat {{ sem.categoria }}: {{ proyeccion.tope_categoria_fmt }} · Tope K: {{ proyeccion.tope_k_fmt }}</div>
             </div>
             <div style="text-align:right">
               <div style="font-size:10px;color:var(--muted);margin-bottom:2px">Categoría al cierre</div>
@@ -197,15 +221,28 @@
               <span style="font-family:'Nunito',sans-serif;font-size:26px;font-weight:900;color:#b91c1c;line-height:1">+K</span>
               <div style="font-size:10px;font-weight:700;color:#b91c1c;margin-top:2px">riesgo de exclusión</div>
               {% elif proyeccion.categoria_proyectada %}
-              <span style="font-family:'Nunito',sans-serif;font-size:26px;font-weight:900;color:{% if proyeccion.supera_categoria %}#f97316{% else %}#15803d{% endif %};line-height:1">{{ proyeccion.categoria_proyectada }}</span>
+              <span style="font-family:'Nunito',sans-serif;font-size:26px;font-weight:900;color:{{ PCOL }};line-height:1">{{ proyeccion.categoria_proyectada }}</span>
               {% if proyeccion.supera_categoria %}
               <div style="font-size:10px;font-weight:700;color:#f97316;margin-top:2px">↑ sube desde {{ sem.categoria }}</div>
+              {% elif proyeccion.baja_categoria %}
+              <div style="font-size:10px;font-weight:700;color:#15803d;margin-top:2px">↓ baja desde {{ sem.categoria }}</div>
               {% endif %}
               {% endif %}
             </div>
           </div>
+          <div style="padding:0 12px 10px;font-size:11.5px;color:var(--navy);line-height:1.5">
+            {{ proyeccion.mensaje }}
+            {% if proyeccion.ya_supero_categoria and not proyeccion.supera_k %}
+            <div style="margin-top:4px;color:#9A3412">Ya superó el tope de la categoría {{ sem.categoria }}: lo facturado no se puede postergar. La categoría más baja posible es <strong>{{ proyeccion.categoria_minima }}</strong>.</div>
+            {% elif not proyeccion.supera_categoria %}
+            <div style="margin-top:4px;color:var(--muted)">Margen para seguir en la categoría {{ sem.categoria }}: <strong>{{ proyeccion.margen_total_fmt }}</strong> en total, <strong>{{ proyeccion.margen_mensual_fmt }}</strong> por mes.</div>
+            {% endif %}
+            {% if proyeccion.exceso_a_postergar_fmt %}
+            <div style="margin-top:4px;color:#9A3412">Para cerrar en la categoría {{ proyeccion.categoria_objetivo }} (tope {{ proyeccion.tope_objetivo_fmt }}) habría que facturar <strong>{{ proyeccion.exceso_a_postergar_fmt }}</strong> menos de lo proyectado, pasándolo al período siguiente.</div>
+            {% endif %}
+          </div>
           <div style="font-size:10px;color:var(--muted);padding:0 12px 10px;font-style:italic">
-            Estimación según ritmo de los últimos 3 meses. No reemplaza el cálculo oficial de ARCA.
+            Estimación según el ritmo de los últimos 3 meses completos. No reemplaza el cálculo oficial de ARCA.
           </div>
         </div>
         {% endif %}

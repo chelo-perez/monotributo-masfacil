@@ -41,21 +41,21 @@ function renderRecatPaso1(d, branchName) {
   if (excedeK) {
     cuerpo =
       '<div style="padding:14px;background:#fef2f2;border:1px solid #fca5a5;border-radius:10px;margin-bottom:16px">' +
-        '<div style="font-weight:700;color:#b91c1c;margin-bottom:4px">Superás el límite del monotributo</div>' +
-        '<div style="font-size:.84rem;color:#991b1b">Tu facturación de ' + fmtMoney(d.acumulado) + ' supera el tope de la categoría K. ' +
-        'Consultá con tu contador: podría corresponder el pase a Responsable Inscripto.</div>' +
+        '<div style="font-weight:700;color:#b91c1c;margin-bottom:4px">Supera el límite del monotributo</div>' +
+        '<div style="font-size:.84rem;color:#991b1b">La facturación del cliente (' + fmtMoney(d.acumulado) + ') supera el tope de la categoría K. ' +
+        'Corresponde evaluar el pase a Responsable Inscripto.</div>' +
       '</div>';
   } else if (sinCambio) {
     cuerpo =
       '<div style="padding:14px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;margin-bottom:16px">' +
-        '<div style="font-weight:700;color:#15803d;margin-bottom:4px">Seguís en la misma categoría</div>' +
-        '<div style="font-size:.84rem;color:#166534">Por tu facturación de ' + fmtMoney(d.acumulado) + ' te corresponde la ' +
-        '<strong>Categoría ' + d.categoria_sugerida + '</strong>, la misma que tenés. No necesitás recategorizarte, ' +
+        '<div style="font-weight:700;color:#15803d;margin-bottom:4px">Sigue en la misma categoría</div>' +
+        '<div style="font-size:.84rem;color:#166534">Por su facturación de ' + fmtMoney(d.acumulado) + ' le corresponde la ' +
+        '<strong>Categoría ' + d.categoria_sugerida + '</strong>, la misma que tiene. No cambia de categoría, ' +
         'pero podés registrarlo igual para dejar constancia.</div>' +
       '</div>';
   } else {
     cuerpo =
-      '<div style="font-size:.85rem;color:var(--text-soft);margin-bottom:6px">Por tu facturación de los últimos 12 meses</div>' +
+      '<div style="font-size:.85rem;color:var(--text-soft);margin-bottom:6px">Facturación del período evaluado</div>' +
       '<div style="font-size:1.5rem;font-weight:900;color:var(--navy);font-family:Nunito,sans-serif;margin-bottom:14px">' + fmtMoney(d.acumulado) + '</div>' +
       '<div style="display:flex;align-items:center;gap:12px;padding:14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;margin-bottom:16px">' +
         '<div style="text-align:center;flex:1">' +
@@ -64,7 +64,7 @@ function renderRecatPaso1(d, branchName) {
         '</div>' +
         '<i class="ti ti-arrow-right" style="font-size:20px;color:#2563eb"></i>' +
         '<div style="text-align:center;flex:1">' +
-          '<div style="font-size:.68rem;color:#2563eb;text-transform:uppercase;letter-spacing:.05em;font-weight:600">Te corresponde</div>' +
+          '<div style="font-size:.68rem;color:#2563eb;text-transform:uppercase;letter-spacing:.05em;font-weight:600">Le corresponde</div>' +
           '<div style="font-size:1.8rem;font-weight:900;color:#2C3178;font-family:Nunito,sans-serif">' + d.categoria_sugerida + '</div>' +
         '</div>' +
       '</div>' +
@@ -78,11 +78,11 @@ function renderRecatPaso1(d, branchName) {
     // El texto cambia según sea una recategorización (cambia la categoría) o una
     // confirmación (ARCA exige recategorizarse igual aunque la categoría no cambie).
     var accionArca = sinCambio
-      ? ('confirmá tu categoría ' + d.categoria_sugerida + ' en ARCA (ARCA te pide hacer la recategorización igual, aunque no cambie).')
-      : ('recategorizate primero en ARCA con la categoría ' + d.categoria_sugerida + '.');
+      ? ('confirmá la categoría ' + d.categoria_sugerida + ' del cliente en ARCA (ARCA pide hacer la recategorización igual, aunque no cambie).')
+      : ('hacé primero la recategorización del cliente en ARCA con la categoría ' + d.categoria_sugerida + '.');
     var textoCheck = sinCambio
-      ? ('Ya confirmé mi categoría ' + d.categoria_sugerida + ' en ARCA')
-      : ('Ya me recategoricé en ARCA como <strong>Categoría ' + d.categoria_sugerida + '</strong>');
+      ? ('Ya confirmé la categoría ' + d.categoria_sugerida + ' en ARCA')
+      : ('Ya lo recategoricé en ARCA como <strong>Categoría ' + d.categoria_sugerida + '</strong>');
     botones =
       '<div style="padding:12px 14px;background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;margin-bottom:14px;font-size:.8rem;color:#92400e">' +
         '<strong>Importante:</strong> ' + accionArca + ' ' +
@@ -123,7 +123,7 @@ async function confirmarRecat() {
       acumulado: d.acumulado,
       periodo_desde: d.periodo_desde,
       periodo_hasta: d.periodo_hasta,
-      vigente_desde: "2026-08-01"
+      vigente_desde: d.vigente_desde
     })});
     var r = await resp.json();
     if (r.ok) {
@@ -132,7 +132,7 @@ async function confirmarRecat() {
           '<div style="width:56px;height:56px;border-radius:50%;background:#f0fdf4;border:1px solid #86efac;display:flex;align-items:center;justify-content:center;margin:0 auto 14px">' +
             '<i class="ti ti-check" style="font-size:28px;color:#16a34a"></i></div>' +
           '<div style="font-weight:800;font-size:1.1rem;color:#15803d;font-family:Nunito,sans-serif;margin-bottom:4px">Listo, quedó registrado</div>' +
-          '<div style="font-size:.86rem;color:var(--text-soft);margin-bottom:18px">' + (d.branchName) + ' ahora está en <strong>Categoría ' + r.categoria + '</strong>, vigente desde el 01/08/2026.</div>' +
+          '<div style="font-size:.86rem;color:var(--text-soft);margin-bottom:18px">' + (d.branchName) + ' ahora está en <strong>Categoría ' + r.categoria + '</strong>, vigente desde el ' + (d.vigente_desde_fmt || '') + '.</div>' +
           '<button class="btn btn-primary" onclick="cerrarRecat();location.reload()" style="width:100%;justify-content:center;background:#2C3178">Cerrar</button>' +
         '</div>';
     } else {

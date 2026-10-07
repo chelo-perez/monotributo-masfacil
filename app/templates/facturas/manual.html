@@ -432,19 +432,29 @@ async function emitirFactura() {
   btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin .7s linear infinite"></i> Emitiendo...';
 
   try {
-    const res = await fetch('/factura-manual/emitir', {
+    const payload = {
+      mono_id: fm.mono_id, importe, fecha, concepto,
+      cliente_nombre: fm.cliente_nombre,
+      cliente_dni:    fm.cliente_dni,
+      cliente_cuit:   fm.cliente_cuit || '',
+      cliente_email:  fm.cliente_email,
+      tipo_cbte:      fm.tipo,
+    };
+    const enviar = () => fetch('/factura-manual/emitir', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        mono_id: fm.mono_id, importe, fecha, concepto,
-        cliente_nombre: fm.cliente_nombre,
-        cliente_dni:    fm.cliente_dni,
-        cliente_cuit:   fm.cliente_cuit || '',
-        cliente_email:  fm.cliente_email,
-        tipo_cbte:      fm.tipo,
-      }),
-    });
-    const d = await res.json();
+      body: JSON.stringify(payload),
+    }).then(r => r.json());
+    let d = await enviar();
+    // Control de exclusión: el servidor pide confirmar antes de superar el 90% del tope K
+    if (!d.ok && d.requiere_confirmacion) {
+      if (confirm(d.error + '\n\n¿Emitir de todos modos?')) {
+        payload.confirmar_tope = true;
+        d = await enviar();
+      } else {
+        d = { ok: false, error: 'Emisión cancelada.' };
+      }
+    }
     if (!d.ok) {
       alert('Error: ' + d.error);
       btn.disabled = false;

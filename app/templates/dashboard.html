@@ -128,18 +128,18 @@
       {% for m in monotributistas %}
 
       {# Separador entre alertas y al día #}
-      {% if ns.prev_estado in ('rojo', 'amarillo') and m.estado == 'verde' and alertas > 0 %}
+      {% if ns.prev_estado in ('rojo', 'naranja', 'amarillo') and m.estado == 'verde' and alertas > 0 %}
       <tr><td colspan="5" style="padding:0">
         <div class="section-sep"><i class="ti ti-circle-check" style="color:#16a34a"></i> Al día</div>
       </td></tr>
-      {% elif loop.first and m.estado in ('rojo', 'amarillo') %}
+      {% elif loop.first and m.estado in ('rojo', 'naranja', 'amarillo') %}
       <tr><td colspan="5" style="padding:0">
         <div class="section-sep" style="color:#991B1B"><i class="ti ti-alert-triangle"></i> Requieren atención</div>
       </td></tr>
       {% endif %}
       {% set ns.prev_estado = m.estado %}
 
-      <tr class="{% if m.estado == 'rojo' %}alerta-rojo{% elif m.estado == 'amarillo' %}alerta-amarillo{% endif %}">
+      <tr class="{% if m.estado == 'rojo' %}alerta-rojo{% elif m.estado in ('naranja', 'amarillo') %}alerta-amarillo{% endif %}">
 
         {# Nombre + badges #}
         <td>
@@ -159,9 +159,9 @@
         <td>
           <div class="prog-wrap">
             <div class="prog-track">
-              <div class="prog-fill" style="width:{{ m.pct_k }}%;background:{% if m.estado == 'rojo' %}var(--red){% elif m.estado == 'amarillo' %}var(--yellow){% else %}#22c55e{% endif %}"></div>
+              <div class="prog-fill" style="width:{{ m.pct_k }}%;background:{% if m.estado == 'rojo' %}var(--red){% elif m.estado == 'naranja' %}#f97316{% elif m.estado == 'amarillo' %}var(--yellow){% else %}#22c55e{% endif %}"></div>
             </div>
-            <div class="prog-pct" style="color:{% if m.estado == 'rojo' %}var(--red){% elif m.estado == 'amarillo' %}#b45309{% else %}var(--muted){% endif %}">
+            <div class="prog-pct" style="color:{% if m.estado == 'rojo' %}var(--red){% elif m.estado in ('naranja', 'amarillo') %}#b45309{% else %}var(--muted){% endif %}">
               {{ m.pct_k }}%
             </div>
           </div>

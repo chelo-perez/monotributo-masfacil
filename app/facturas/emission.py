@@ -149,9 +149,45 @@ async def _emitir_cuit(
     # Cache de condición IVA por CUIT receptor (una consulta al padrón por lote)
     _cond_iva_cache: dict[str, Optional[int]] = {}
 
+    # Control de exclusión: acumulado de 365 días al empezar + lo que se va
+    # emitiendo en este lote. Si el control no está disponible se emite igual
+    # (mismo criterio que Facturo Más Fácil) y queda registrado en el log.
+    _acu_base = None
+    _topes_ctrl = None
+    _emitido_lote = Decimal("0")
+    try:
+        from datetime import timedelta as _td
+        from app.monotributo.service import acumulado_periodo, get_topes_db
+        from app.monotributo import reglas as _reglas
+        _hoy = hoy_ar()
+        _topes_ctrl = await get_topes_db(db, _hoy)
+        _acu_base = await acumulado_periodo(monotributista.id, db, _hoy - _td(days=365), _hoy)
+    except Exception as _e:
+        import logging as _log
+        _log.getLogger(__name__).warning(f"[emision] control de tope no disponible: {_e}")
+        _acu_base = None
+
     # Emitir secuencialmente
     for fila in filas:
         _avanzar(fila.lote_id, actual=fila.cliente_raw)
+
+        if _acu_base is not None and _topes_ctrl:
+            _ctrl = _reglas.verificar_limite_exclusion(
+                _acu_base + _emitido_lote, fila.importe_resuelto or 0, _topes_ctrl)
+            if _ctrl.bloquear:
+                _res_b = ResultadoFactura(
+                    fila_id=fila.id, cliente_nombre=fila.cliente_raw,
+                    importe=fila.importe_resuelto or Decimal("0"),
+                    error=("Bloqueada por el control de exclusión. " + _ctrl.mensaje +
+                           " Si igual corresponde emitirla, hacelo desde Factura manual."),
+                )
+                resultado.rechazadas += 1
+                resultado.facturas.append(_res_b)
+                fila.valida = False
+                fila.error = _res_b.error
+                await db.commit()
+                _avanzar(fila.lote_id, procesadas=1, rechazadas=1)
+                continue  # no consume numeración: nunca se llamó a ARCA
         res_factura = ResultadoFactura(
             fila_id=fila.id,
             cliente_nombre=fila.cliente_raw,
@@ -276,6 +312,7 @@ async def _emitir_cuit(
                 res_factura.cae = cae
                 res_factura.aprobada = True
                 resultado.aprobadas += 1
+                _emitido_lote += Decimal(str(fila.importe_resuelto or 0))
                 _avanzar(fila.lote_id, procesadas=1, aprobadas=1)
 
             else:
