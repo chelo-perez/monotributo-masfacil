@@ -124,7 +124,8 @@
       <div class="fila-row {% if not fila.valida %}error{% endif %}">
         <div class="fila-info">
           <div class="fila-cliente">{{ fila.cliente_raw }}</div>
-          <div class="fila-concepto">{{ fila.concepto_raw }}</div>
+          <div class="fila-concepto">{{ fila.concepto_raw }}{% if fila.dni_cliente_raw %} · {{ 'CUIT' if fila.dni_cliente_raw|length == 11 else 'DNI' }} {{ fila.dni_cliente_raw }}{% endif %}</div>
+          {% if not fila.valida and fila.error %}<div style="font-size:12px;color:#B91C1C;margin-top:2px">{{ fila.error }}</div>{% endif %}
         </div>
         <div class="badge-date">{{ fila.fecha_raw }}</div>
         {% if fila.importe_resuelto %}

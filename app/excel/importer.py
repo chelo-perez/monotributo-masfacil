@@ -45,9 +45,22 @@ async def _resolver_monotributista(
     Intenta encontrar el monotributista en BD por CUIT exacto o nombre aproximado.
     Devuelve (monotributista, error).
     """
-    raw = raw.strip()
+    raw = (raw or "").strip()
     if not raw:
-        return None, "Monotributista vacío"
+        # Columna vacía: si la cuenta tiene un único monotributista, es ese.
+        result = await db.execute(
+            select(Monotributista).where(
+                Monotributista.tenant_id == tenant_id,
+                Monotributista.activo == True,
+            )
+        )
+        activos = result.scalars().all()
+        if len(activos) == 1:
+            return activos[0], None
+        if not activos:
+            return None, "No hay monotributistas cargados en la cuenta"
+        return None, ("Falta indicar el monotributista (la cuenta tiene más de "
+                      "uno: completá la columna con el nombre o CUIT)")
 
     if _es_cuit(raw):
         cuit_limpio = raw.replace("-", "").replace(" ", "")
@@ -108,9 +121,12 @@ async def _resolver_o_crear_cliente(
 
     for c in existentes:
         if _normalizar_texto(c.nombre) == nombre_norm:
-            # Si viene DNI y el cliente no lo tiene, actualizarlo
-            if dni and not c.dni:
-                c.dni = dni.strip()
+            # Completar el documento que falte (CUIT de 11 dígitos o DNI)
+            if dni:
+                if len(dni) == 11 and not c.cuit:
+                    c.cuit = dni
+                elif len(dni) != 11 and not c.dni:
+                    c.dni = dni
             return c
 
     # No existe — crear
@@ -118,7 +134,8 @@ async def _resolver_o_crear_cliente(
         monotributista_id=monotributista_id,
         tenant_id=tenant_id,
         nombre=nombre,
-        dni=dni.strip() if dni else None,
+        dni=dni if dni and len(dni) != 11 else None,
+        cuit=dni if dni and len(dni) == 11 else None,
     )
     db.add(nuevo)
     await db.flush()  # obtener el id antes de commit
@@ -223,7 +240,8 @@ async def importar_excel(
             cliente_raw=fila_parsed.cliente_raw,
             dni_cliente_raw=fila_parsed.dni_cliente_raw,
             concepto_raw=fila_parsed.concepto_raw,
-            monotributista_raw=fila_parsed.monotributista_raw,
+            monotributista_raw=(mono.razon_social if mono
+                                else (fila_parsed.monotributista_raw or "Sin monotributista")),
             monotributista_id=mono.id if mono else None,
             cliente_id=cliente_id,
             fecha_resuelta=fila_parsed.fecha,

@@ -152,8 +152,9 @@ async def _emitir_cuit(
             # ── RG 5700/2025: umbral de identificación del receptor ──
             # Se valida antes de llamar a ARCA para no quemar el intento.
             from ..config import UMBRAL_CF
-            _dni_raw = (fila.dni_cliente_raw or "").replace("-", "").replace(" ", "")
-            _sin_identificar = not (_dni_raw.isdigit() and int(_dni_raw or "0") > 0)
+            import re as _re
+            _dni_raw = _re.sub(r"\D", "", fila.dni_cliente_raw or "")
+            _sin_identificar = not (len(_dni_raw) in (7, 8, 11) and int(_dni_raw) > 0)
             if (_sin_identificar and UMBRAL_CF
                     and float(fila.importe_resuelto) >= UMBRAL_CF):
                 res_factura.error = (
@@ -186,6 +187,15 @@ async def _emitir_cuit(
                     except Exception:
                         _cond_iva = None  # fallback: 5 (CF) en el WSFE
 
+            # Documento del receptor: CUIT (80) si tiene 11 dígitos, DNI (96)
+            # si tiene 7-8, sin identificar (99) en cualquier otro caso.
+            if _dni_raw.isdigit() and len(_dni_raw) == 11:
+                _doc_tipo, _doc_nro = 80, _dni_raw
+            elif _dni_raw.isdigit() and len(_dni_raw) in (7, 8):
+                _doc_tipo, _doc_nro = 96, _dni_raw
+            else:
+                _doc_tipo, _doc_nro = 99, "0"
+
             # Llamada a FECAESolicitar
             cae, cae_vto, obs = await wsfe_module.solicitar_cae(
                 token=token,
@@ -199,8 +209,8 @@ async def _emitir_cuit(
                 concepto=1,  # Productos=1, Servicios=2, P+S=3
                 fch_serv_desde=fecha_cbte.replace(day=1),
                 fch_serv_hasta=_fch_hasta,
-                cliente_nombre=fila.cliente_raw,
-                cliente_dni=fila.dni_cliente_raw,
+                doc_tipo=_doc_tipo,
+                doc_nro=_doc_nro,
                 environment=monotributista.afip_environment,
                 cond_iva_receptor=_cond_iva,
             )

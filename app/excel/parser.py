@@ -5,9 +5,10 @@ Columnas esperadas (case-insensitive, acepta variantes):
   fecha         → date
   importe       → Decimal
   cliente       → str
-  dni_cliente   → str (opcional)
+  dni_cliente   → str (opcional; acepta DNI o CUIT)
+  cuit_cliente  → str (opcional; si vienen ambos, se usa el CUIT)
   concepto      → str
-  monotributista → str (nombre o CUIT — se resuelve contra la BD)
+  monotributista → str (nombre o CUIT — opcional si la cuenta tiene uno solo)
 
 El parser es tolerante: acepta variantes de nombres de columna,
 formatos de fecha argentinos, importes con $ y puntos de miles.
@@ -29,7 +30,9 @@ ALIAS_COLUMNAS = {
     "fecha": ["fecha", "date", "fecha_pago", "fecha de pago"],
     "importe": ["importe", "monto", "total", "amount", "precio", "valor"],
     "cliente": ["cliente", "alumno", "paciente", "receptor", "nombre_cliente", "nombre cliente"],
-    "dni_cliente": ["dni", "dni_cliente", "cuit_cliente", "documento", "doc"],
+    "dni_cliente": ["dni", "dni_cliente", "documento", "doc", "dni_cuit", "dni/cuit",
+                    "dni_o_cuit", "nro_documento", "numero_documento"],
+    "cuit_cliente": ["cuit", "cuit_cliente", "cuil", "cuit_cuil", "cuit/cuil", "cuil_cliente"],
     "email_cliente": ["email", "email_cliente", "mail", "mail_cliente", "correo"],
     "concepto": ["concepto", "descripcion", "descripción", "detalle", "servicio"],
     "monotributista": ["monotributista", "emisor", "profesional", "cuit_emisor", "nombre_emisor"],
@@ -85,7 +88,9 @@ def _detectar_columnas(headers: list) -> dict[str, int]:
                 mapa[campo] = headers_norm.index(alias_norm)
                 break
 
-    obligatorias = ["fecha", "importe", "cliente", "concepto", "monotributista"]
+    # "monotributista" es opcional: si falta o viene vacío, el importador lo
+    # completa cuando la cuenta tiene un único monotributista.
+    obligatorias = ["fecha", "importe", "cliente", "concepto"]
     faltantes = [c for c in obligatorias if c not in mapa]
     if faltantes:
         raise ValueError(
@@ -93,6 +98,38 @@ def _detectar_columnas(headers: list) -> dict[str, int]:
             f"Columnas detectadas: {', '.join(str(h) for h in headers)}"
         )
     return mapa
+
+
+def limpiar_documento(valor) -> str:
+    """Deja solo los dígitos de un DNI/CUIT. Tolera guiones, puntos, espacios
+    y números que Excel guarda como float (27444843778.0)."""
+    if valor is None:
+        return ""
+    if isinstance(valor, float) and valor.is_integer():
+        valor = int(valor)
+    s = str(valor).strip()
+    if re.fullmatch(r"\d+\.0+", s):
+        s = s.split(".")[0]
+    return re.sub(r"\D", "", s)
+
+
+def resolver_documento(dni_valor, cuit_valor) -> tuple[Optional[str], Optional[str]]:
+    """Unifica las columnas DNI y CUIT en un solo documento (solo dígitos).
+    Cualquiera de las dos columnas acepta DNI (7-8 díg.) o CUIT (11 díg.).
+    Si vienen ambas, se prioriza el CUIT. Devuelve (documento, error)."""
+    dni = limpiar_documento(dni_valor)
+    cuit = limpiar_documento(cuit_valor)
+    candidatos = [d for d in (cuit, dni) if d and int(d) > 0]
+    if not candidatos:
+        return None, None
+    for d in candidatos:
+        if len(d) == 11:
+            return d, None
+    for d in candidatos:
+        if len(d) in (7, 8):
+            return d, None
+    return None, (f"Documento inválido ({candidatos[0]}): debe ser un DNI de 7-8 "
+                  f"dígitos o un CUIT de 11 dígitos")
 
 
 def _parsear_fecha(valor) -> tuple[Optional[date], Optional[str]]:
@@ -205,7 +242,10 @@ def parsear_excel(file_bytes: bytes) -> ResultadoParseo:
         concepto_raw = celda("concepto")
         fecha_raw = row[mapa["fecha"]] if mapa.get("fecha") is not None else None
         importe_raw = row[mapa["importe"]] if mapa.get("importe") is not None else None
-        dni_raw = celda("dni_cliente") if "dni_cliente" in mapa else None
+        dni_raw, err_doc = resolver_documento(
+            row[mapa["dni_cliente"]] if "dni_cliente" in mapa else None,
+            row[mapa["cuit_cliente"]] if "cuit_cliente" in mapa else None,
+        )
         email_raw = celda("email_cliente") if "email_cliente" in mapa else None
 
         # Saltear filas completamente vacías
@@ -233,9 +273,10 @@ def parsear_excel(file_bytes: bytes) -> ResultadoParseo:
         if err_importe:
             fila.errores.append(err_importe)
 
-        # Validaciones básicas
-        if not monotributista_raw:
-            fila.errores.append("Falta el nombre/CUIT del monotributista")
+        if err_doc:
+            fila.errores.append(err_doc)
+
+        # Validaciones básicas (el monotributista vacío lo resuelve el importador)
         if not cliente_raw:
             fila.errores.append("Falta el nombre del cliente")
         if not concepto_raw:
