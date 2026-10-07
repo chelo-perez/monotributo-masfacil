@@ -30,32 +30,12 @@ async def _acumulado_mono(mono_id: int, db) -> float:
     2. Factura — emitidas por el sistema sin duplicar con el historial
     """
     from datetime import timedelta
-    corte = hoy_ar() - timedelta(days=365)
+    from app.monotributo.service import acumulado_periodo
+    hoy = hoy_ar()
+    # Misma cuenta que la ficha del monotributista: por devengamiento, las
+    # notas de crédito restan y no se duplica historial con lo emitido acá.
+    return float(await acumulado_periodo(mono_id, db, hoy - timedelta(days=365), hoy))
 
-    # Fuente 1: historial ARCA
-    r1 = await db.execute(
-        select(func.coalesce(func.sum(AfipInvoiceHistory.imp_total), 0)).where(
-            AfipInvoiceHistory.mono_id == mono_id,
-            AfipInvoiceHistory.cbte_fecha >= corte,
-        )
-    )
-    total_hist = float(r1.scalar() or 0)
-
-    # Fuente 2: facturas del sistema no presentes en el historial (por cbte_nro)
-    hist_nros = select(AfipInvoiceHistory.cbte_nro).where(
-        AfipInvoiceHistory.mono_id == mono_id
-    )
-    r2 = await db.execute(
-        select(func.coalesce(func.sum(Factura.imp_total), 0)).where(
-            Factura.monotributista_id == mono_id,
-            Factura.afip_result == EstadoFactura.aprobada,
-            Factura.anulada == False,
-            Factura.cbte_fecha >= corte,
-            ~Factura.cbte_nro.in_(hist_nros),
-        )
-    )
-    total_sys = float(r2.scalar() or 0)
-    return total_hist + total_sys
 
 
 
@@ -366,6 +346,9 @@ async def confirmar_emision(
         # En desarrollo sin módulo AFIP real: simular
         wsfe_module = None
 
+    from app.config import ENVIRONMENT as _ENV
+    if wsfe_module is None and _ENV == "production":
+        raise HTTPException(status_code=503, detail="El módulo de facturación no está disponible")
     if wsfe_module is None:
         # Modo demo: marcar todas las filas válidas como aprobadas
         result_filas = await db.execute(
@@ -423,6 +406,9 @@ async def confirmar_emision(
             fernet_key=FERNET_KEY,
         )
     except Exception as _e:
+        from app.facturas.emission import LoteNoDisponible
+        if isinstance(_e, LoteNoDisponible):
+            return HTMLResponse(str(_e), status_code=409)
         _log.getLogger(__name__).error(f"[emision] Error en lote {lote_id}: {_e}", exc_info=True)
         raise
 
@@ -496,10 +482,19 @@ async def consultar_cuit_arca(
                 ⚠️ CUIT inválido. Ingresá los 11 dígitos sin guiones.
             </div>""")
 
-    # Buscar un monotributista con certificado para hacer la consulta
     from app.config import FERNET_KEY
     from app.wsfe import load_credentials
-    from app.afip.padron import consultar_constancia
+    from app.afip.padron import consultar_constancia, consultar_padron_plataforma
+
+    # Primero el certificado de la plataforma: sirve también para el primer
+    # cliente de un estudio, que todavía no tiene ningún certificado propio.
+    constancia = None
+    try:
+        constancia = await consultar_padron_plataforma(cuit_raw, db)
+    except Exception as _e:
+        import logging as _lg
+        _lg.getLogger(__name__).warning(f"[alta] padrón de plataforma falló: {_e}")
+        constancia = None
 
     result = await db.execute(
         select(Monotributista).where(
@@ -510,7 +505,7 @@ async def consultar_cuit_arca(
     )
     consultante = result.scalar_one_or_none()
 
-    if not consultante:
+    if constancia is None and not consultante:
         return HTMLResponse("""
             <div style="background:#FEF9C3;border:1px solid #F59E0B;border-radius:8px;padding:10px 14px;
                         font-size:13px;color:#854D0E;margin-top:8px">
@@ -519,6 +514,7 @@ async def consultar_cuit_arca(
             </div>""")
 
     try:
+      if constancia is None:
         cert_pem, key_pem = load_credentials(consultante, FERNET_KEY)
         cuit_representada = consultante.cuit.replace("-", "")
         constancia = await consultar_constancia(
@@ -529,17 +525,18 @@ async def consultar_cuit_arca(
             environment=consultante.afip_environment or "production",
         )
     except Exception as e:
+        import html as _html
         return HTMLResponse(f"""
             <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:10px 14px;
                         font-size:13px;color:#991B1B;margin-top:8px">
-                ⚠️ Error consultando ARCA: {e}
+                ⚠️ Error consultando ARCA: {_html.escape(str(e))}
             </div>""")
 
     if constancia.error:
         return HTMLResponse(f"""
             <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:10px 14px;
                         font-size:13px;color:#991B1B;margin-top:8px">
-                ⚠️ ARCA: {constancia.error}
+                ⚠️ ARCA: {__import__("html").escape(str(constancia.error))}
             </div>""")
 
     dom_str = str(constancia.domicilio_fiscal) if constancia.domicilio_fiscal else ""
@@ -602,6 +599,7 @@ async def nuevo_monotributista_page(
         "active_page": "monotributistas",
         "tenant_nombre": current_user.tenant_nombre,
         "categorias": ["A","B","C","D","E","F","G","H","I","J","K"],
+        "error": request.query_params.get("error"),
     })
 
 
@@ -620,6 +618,37 @@ async def crear_monotributista(
     else:
         cuit = cuit_raw
 
+    def _volver(msg: str):
+        from urllib.parse import quote
+        return RedirectResponse(f"/monotributistas/nuevo?error={quote(msg)}", status_code=303)
+
+    if len(cuit_raw) != 11 or not cuit_raw.isdigit():
+        return _volver("El CUIT tiene que tener 11 dígitos")
+    if not str(form.get("razon_social", "")).strip():
+        return _volver("Falta el nombre o razón social")
+
+    # El límite del plan se controla también al guardar, no solo al abrir el formulario
+    from app.config import PLAN_LIMITES
+    _tot = await db.execute(
+        select(func.count()).where(
+            Monotributista.tenant_id == current_user.tenant_id,
+            Monotributista.activo == True,
+        )
+    )
+    if (_tot.scalar() or 0) >= PLAN_LIMITES.get(current_user.plan, 10):
+        return RedirectResponse("/monotributistas/nuevo", status_code=303)
+
+    # No duplicar un CUIT activo dentro del mismo estudio
+    _dup = await db.execute(
+        select(Monotributista.id).where(
+            Monotributista.tenant_id == current_user.tenant_id,
+            Monotributista.cuit == cuit,
+            Monotributista.activo == True,
+        ).limit(1)
+    )
+    if _dup.scalar_one_or_none():
+        return _volver(f"Ya tenés cargado un monotributista con el CUIT {cuit}")
+
     mono = Monotributista(
         tenant_id=current_user.tenant_id,
         cuit=cuit,
@@ -628,6 +657,7 @@ async def crear_monotributista(
         logo_base64=str(form.get("logo_base64", "")).strip() or None,
         domicilio=str(form.get("domicilio", "")).strip() or None,
         email=str(form.get("email", "")).strip() or None,
+        telefono=str(form.get("telefono", "")).strip() or None,
         afip_punto_venta=None,  # Se detecta automáticamente al cargar el certificado
         categoria_actual=form.get("categoria_actual") or None,
         actividad=str(form.get("actividad", "")).strip() or None,
@@ -993,6 +1023,25 @@ async def guardar_certificado(
 
     f = Fernet(FERNET_KEY)
     key_pem = f.decrypt(mono.key_encrypted.encode()).decode()
+
+    # El archivo tiene que ser un certificado real y corresponder a la clave
+    # privada que generamos en el paso 1 (antes se aceptaba cualquier archivo).
+    try:
+        from cryptography import x509 as _x509
+        from cryptography.hazmat.primitives import serialization as _ser
+        _i = cert_pem.find("-----BEGIN CERTIFICATE-----")
+        _cert = _x509.load_pem_x509_certificate(cert_pem[_i:].encode())
+        _priv = _ser.load_pem_private_key(key_pem.encode(), password=None)
+        _fmt = (_ser.Encoding.DER, _ser.PublicFormat.SubjectPublicKeyInfo)
+        _pareja = _cert.public_key().public_bytes(*_fmt) == _priv.public_key().public_bytes(*_fmt)
+    except Exception:
+        raise HTTPException(status_code=400,
+            detail="El archivo no es un certificado válido. Subí el .crt que descargaste de ARCA.")
+    if not _pareja:
+        raise HTTPException(status_code=400,
+            detail="Este certificado no corresponde al pedido (CSR) generado para este monotributista. "
+                   "Si generaste el CSR de nuevo, tenés que pedir un certificado nuevo en ARCA con ese CSR.")
+    cert_pem = cert_pem[_i:]
 
     # Guardar el .crt encriptado junto con la .key
     cert_enc, key_enc = encrypt_credentials(cert_pem, key_pem, FERNET_KEY)
@@ -1372,33 +1421,6 @@ async def perfil_guardar(
 # ---------------------------------------------------------------------------
 # Recategorización
 # ---------------------------------------------------------------------------
-
-@router.get("/recategorizacion/debug", response_class=HTMLResponse)
-async def debug_recategorizacion(
-    request: Request,
-    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
-    db: Annotated[AsyncSession, Depends(get_db)],
-):
-    """Diagnóstico de recategorización — muestra el traceback completo."""
-    import traceback as _tb
-    try:
-        from app.monotributo.service import get_topes_db, acumulado_periodo, _periodo_recategorizacion
-        from sqlalchemy import text as _txt
-        from datetime import date as _date
-        from decimal import Decimal
-        hoy = hoy_ar()
-        desde, hasta, periodo_label, _ = _periodo_recategorizacion(hoy)
-        topes = await get_topes_db(db, hasta)
-        result = await db.execute(select(Monotributista).where(
-            Monotributista.tenant_id == current_user.tenant_id,
-            Monotributista.activo == True,
-        ))
-        monos = result.scalars().all()
-        info = f"hoy={hoy} desde={desde} hasta={hasta} topes={len(topes)} monos={len(monos)}"
-        return HTMLResponse(f"<pre style='padding:20px;font-size:13px'>OK: {info}</pre>")
-    except Exception:
-        return HTMLResponse(f"<pre style='padding:20px;color:red;font-size:12px'>{_tb.format_exc()}</pre>", status_code=200)
-
 
 @router.get("/recategorizacion", response_class=HTMLResponse)
 async def page_recategorizacion(

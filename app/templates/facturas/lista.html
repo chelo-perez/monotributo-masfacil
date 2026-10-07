@@ -203,11 +203,11 @@ select.f-select {
 {% if page > 1 or total > 50 %}
 <div class="pagination">
   {% if page > 1 %}
-  <a href="?page={{ page - 1 }}{% if mono_id %}&mono_id={{ mono_id }}{% endif %}{% if fuente_filtro %}&fuente={{ fuente_filtro }}{% endif %}" class="page-btn">← Anterior</a>
+  <a href="?page={{ page - 1 }}{% if mono_id %}&mono_id={{ mono_id }}{% endif %}{% if fuente_filtro %}&fuente={{ fuente_filtro }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}" class="page-btn">← Anterior</a>
   {% endif %}
   <span class="page-btn active">{{ page }}</span>
   {% if total > page * 50 %}
-  <a href="?page={{ page + 1 }}{% if mono_id %}&mono_id={{ mono_id }}{% endif %}{% if fuente_filtro %}&fuente={{ fuente_filtro }}{% endif %}" class="page-btn">Siguiente →</a>
+  <a href="?page={{ page + 1 }}{% if mono_id %}&mono_id={{ mono_id }}{% endif %}{% if fuente_filtro %}&fuente={{ fuente_filtro }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}" class="page-btn">Siguiente →</a>
   {% endif %}
 </div>
 {% endif %}
@@ -306,12 +306,12 @@ function compartirHistorial(btn) {
 function cerrarMenu2() { if (_activeMenu2) { _activeMenu2.remove(); _activeMenu2 = null; } }
 
 function descargarPDFHist(histId, nro) {
-  window.open('/facturas/historial/' + histId + '/pdf', '_blank');
+  window.open('/historial/' + histId + '/pdf', '_blank');
 }
 
 function compartirWAHist(histId, nro) {
   const txt = encodeURIComponent('Hola! Te comparto tu factura.\n\n' + nro + '\n\nEmitido con Monotributo Más Fácil');
-  window.open('/facturas/historial/' + histId + '/pdf', '_blank');
+  window.open('/historial/' + histId + '/pdf', '_blank');
   setTimeout(() => window.open('https://wa.me/?text=' + txt, '_blank'), 800);
 }
 

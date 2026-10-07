@@ -58,6 +58,10 @@ def _resolver_fecha_cbte(fecha_pago: date, ultima_fecha_cbte: date | None = None
 # Resultado de emisión
 # ---------------------------------------------------------------------------
 
+class LoteNoDisponible(Exception):
+    """El lote ya fue tomado por otra emisión (doble clic, dos pestañas) o ya se emitió."""
+
+
 # Avance de los lotes en emisión, en memoria (el servicio corre con un solo
 # proceso). Lo lee GET /lotes/{id}/progreso para la barra de avance.
 PROGRESO: dict[int, dict] = {}
@@ -143,7 +147,7 @@ async def _emitir_cuit(
         return resultado
 
     # Cache de condición IVA por CUIT receptor (una consulta al padrón por lote)
-    _cond_iva_cache: dict[str, int] = {}
+    _cond_iva_cache: dict[str, Optional[int]] = {}
 
     # Emitir secuencialmente
     for fila in filas:
@@ -196,17 +200,25 @@ async def _emitir_cuit(
                     _cond_iva = _cond_iva_cache[_dni_raw]
                 else:
                     try:
-                        from ..afip.padron import consultar_constancia
-                        _cons = await consultar_constancia(
-                            _dni_raw, monotributista.cuit,
-                            cert_pem, key_pem,
-                            environment=monotributista.afip_environment or "production",
-                        )
-                        if not _cons.error:
-                            _cond_iva = 6 if _cons.es_monotributo else 1
+                        from ..afip.padron import consultar_padron_plataforma
+                        _cons = await asyncio.wait_for(
+                            consultar_padron_plataforma(_dni_raw, db), timeout=10)
+                        if _cons is not None and not _cons.error:
+                            # Monotributista → 6. Sociedad no monotributista → 1 (RI).
+                            # Persona física no monotributista: el padrón no alcanza para
+                            # distinguir RI de no inscripto → consumidor final (5).
+                            if _cons.es_monotributo:
+                                _cond_iva = 6
+                            elif (_cons.tipo_persona or "").upper().startswith("JUR"):
+                                _cond_iva = 1
+                            else:
+                                _cond_iva = None
                             _cond_iva_cache[_dni_raw] = _cond_iva
+                        else:
+                            _cond_iva_cache[_dni_raw] = None
                     except Exception:
                         _cond_iva = None  # fallback: 5 (CF) en el WSFE
+                        _cond_iva_cache[_dni_raw] = None
 
             # Documento del receptor: CUIT (80) si tiene 11 dígitos, DNI (96)
             # si tiene 7-8, sin identificar (99) en cualquier otro caso.
@@ -257,6 +269,9 @@ async def _emitir_cuit(
                     afip_result=EstadoFactura.aprobada,
                 )
                 db.add(factura)
+                # Se guarda factura por factura: si la conexión se corta a mitad
+                # del lote, lo que ARCA ya autorizó queda registrado.
+                await db.commit()
 
                 res_factura.cae = cae
                 res_factura.aprobada = True
@@ -272,6 +287,7 @@ async def _emitir_cuit(
                 # Actualizar FilaExcel
                 fila.valida = False
                 fila.error = res_factura.error
+                await db.commit()
                 _avanzar(fila.lote_id, procesadas=1, rechazadas=1)
                 break  # <-- preserva correlativo, igual que en Facturo Más Fácil
 
@@ -281,6 +297,10 @@ async def _emitir_cuit(
             resultado.facturas.append(res_factura)
             fila.valida = False
             fila.error = res_factura.error[:500]
+            try:
+                await db.commit()
+            except Exception:
+                await db.rollback()
             _avanzar(fila.lote_id, procesadas=1, rechazadas=1)
             import logging as _log
             _log.getLogger(__name__).error(
@@ -289,7 +309,7 @@ async def _emitir_cuit(
 
         resultado.facturas.append(res_factura)
 
-    await db.flush()
+    await db.commit()
     return resultado
 
 
@@ -313,13 +333,23 @@ async def emitir_lote(
     """
     inicio = datetime.now()
 
-    # Actualizar estado del lote
-    await db.execute(
+    # Tomar el lote de forma atómica: solo una emisión puede pasarlo de
+    # "borrador" a "emitiendo". Un doble clic o una segunda pestaña no entra.
+    tomado = await db.execute(
         update(LoteEmision)
-        .where(LoteEmision.id == lote_id)
+        .where(
+            LoteEmision.id == lote_id,
+            LoteEmision.tenant_id == tenant_id,
+            LoteEmision.estado == EstadoLote.borrador,
+        )
         .values(estado=EstadoLote.emitiendo, emitido_at=datetime.utcnow())
     )
-    await db.flush()
+    if not tomado.rowcount:
+        await db.rollback()
+        raise LoteNoDisponible(
+            "Este lote ya se está emitiendo o ya fue emitido. "
+            "Revisá Facturas emitidas antes de volver a intentar.")
+    await db.commit()
 
     # Obtener filas válidas del lote, agrupadas por monotributista
     result = await db.execute(
@@ -327,7 +357,15 @@ async def emitir_lote(
             FilaExcel.lote_id == lote_id,
             FilaExcel.valida == True,
             FilaExcel.monotributista_id.is_not(None),
-        ).order_by(FilaExcel.monotributista_id, FilaExcel.fila_numero)
+            # Nunca reemitir una fila que ya tiene factura aprobada
+            ~FilaExcel.id.in_(
+                select(Factura.fila_excel_id).where(
+                    Factura.fila_excel_id.is_not(None),
+                    Factura.afip_result == EstadoFactura.aprobada,
+                )
+            ),
+            # Orden cronológico: ARCA rechaza una fecha anterior a la del último comprobante
+        ).order_by(FilaExcel.monotributista_id, FilaExcel.fecha_resuelta, FilaExcel.fila_numero)
     )
     filas = result.scalars().all()
 

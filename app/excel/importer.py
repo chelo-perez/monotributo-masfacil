@@ -101,12 +101,38 @@ async def _resolver_monotributista(
     return None, f"No se encontró el monotributista '{raw}'"
 
 
+async def _facturas_previas(
+    mono_id: int, cliente: str, fecha, importe, db: AsyncSession,
+) -> list:
+    """
+    Facturas aprobadas y no anuladas que ya se emitieron para el mismo cobro:
+    mismo monotributista, misma fecha del Excel, mismo importe y mismo cliente.
+    """
+    from app.facturas.models import Factura, EstadoFactura
+    if not fecha or importe is None:
+        return []
+    res = await db.execute(
+        select(Factura, FilaExcel.cliente_raw)
+        .join(FilaExcel, FilaExcel.id == Factura.fila_excel_id)
+        .where(
+            Factura.monotributista_id == mono_id,
+            Factura.afip_result == EstadoFactura.aprobada,
+            Factura.anulada == False,
+            FilaExcel.fecha_resuelta == fecha,
+            Factura.imp_total == importe,
+        )
+    )
+    objetivo = _normalizar_texto(cliente or "")
+    return [f for f, cli in res.all() if _normalizar_texto(cli or "") == objetivo]
+
+
 async def _resolver_o_crear_cliente(
     nombre: str,
     dni: Optional[str],
     monotributista_id: int,
     tenant_id: int,
     db: AsyncSession,
+    email: Optional[str] = None,
 ) -> ClienteFinal:
     """Busca el cliente por nombre (y dni si viene). Si no existe, lo crea."""
     nombre = nombre.strip()
@@ -127,6 +153,8 @@ async def _resolver_o_crear_cliente(
                     c.cuit = dni
                 elif len(dni) != 11 and not c.dni:
                     c.dni = dni
+            if email and not c.email:
+                c.email = email
             return c
 
     # No existe — crear
@@ -136,6 +164,7 @@ async def _resolver_o_crear_cliente(
         nombre=nombre,
         dni=dni if dni and len(dni) != 11 else None,
         cuit=dni if dni and len(dni) == 11 else None,
+        email=email or None,
     )
     db.add(nuevo)
     await db.flush()  # obtener el id antes de commit
@@ -208,6 +237,8 @@ async def importar_excel(
     resumen_por_mono: dict[int, ResumenMonotributista] = {}
     filas_validas = 0
     filas_con_error = 0
+    ya_facturadas = 0
+    _vistas: dict[tuple, int] = {}
 
     for fila_parsed in resultado_parseo.filas:
         # Resolver monotributista
@@ -218,6 +249,10 @@ async def importar_excel(
             fila_parsed.errores.append(err_mono)
             fila_parsed.valida = False
 
+        _email = (fila_parsed.email_cliente_raw or "").strip() or None
+        if _email and ("@" not in _email or "." not in _email.split("@")[-1]):
+            _email = None  # un email mal escrito no frena la fila
+
         # Resolver cliente (solo si el mono existe)
         cliente_id = None
         if mono and fila_parsed.valida:
@@ -227,8 +262,29 @@ async def importar_excel(
                 monotributista_id=mono.id,
                 tenant_id=tenant_id,
                 db=db,
+                email=_email,
             )
             cliente_id = cliente.id
+
+        # Cobro ya facturado en una importación anterior → no se vuelve a emitir.
+        # Filas idénticas dentro del mismo archivo son cobros distintos: se
+        # descuentan de a una contra lo ya facturado.
+        if mono and fila_parsed.valida:
+            _clave = (mono.id, _normalizar_texto(fila_parsed.cliente_raw),
+                      fila_parsed.fecha, fila_parsed.importe)
+            _vistas[_clave] = _vistas.get(_clave, 0) + 1
+            _previas = await _facturas_previas(
+                mono.id, fila_parsed.cliente_raw, fila_parsed.fecha, fila_parsed.importe, db)
+            if len(_previas) >= _vistas[_clave]:
+                _f = _previas[_vistas[_clave] - 1]
+                fila_parsed.errores.append(
+                    f"Ya facturado: Factura C {int(_f.punto_venta or 0):04d}-"
+                    f"{int(_f.cbte_nro or 0):08d} del "
+                    f"{_f.cbte_fecha.strftime('%d/%m/%Y') if _f.cbte_fecha else '—'}. "
+                    f"Si es otro cobro, emitilo desde Factura manual."
+                )
+                fila_parsed.valida = False
+                ya_facturadas += 1
 
         # Guardar FilaExcel
         fila_db = FilaExcel(
@@ -239,6 +295,7 @@ async def importar_excel(
             importe_raw=fila_parsed.importe_raw,
             cliente_raw=fila_parsed.cliente_raw,
             dni_cliente_raw=fila_parsed.dni_cliente_raw,
+            email_cliente_raw=_email,
             concepto_raw=fila_parsed.concepto_raw,
             monotributista_raw=(mono.razon_social if mono
                                 else (fila_parsed.monotributista_raw or "Sin monotributista")),

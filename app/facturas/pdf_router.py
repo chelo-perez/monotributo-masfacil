@@ -282,7 +282,7 @@ async def pdf_historial(
     if not mono:
         raise HTTPException(status_code=404)
 
-    fecha = hist.cbte_fecha or date.today()
+    fecha = hist.cbte_fecha or hoy_ar()
     ult   = _cal.monthrange(fecha.year, fecha.month)[1]
 
     pdf_bytes = generar_factura_pdf(

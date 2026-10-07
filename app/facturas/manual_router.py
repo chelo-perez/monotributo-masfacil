@@ -46,7 +46,7 @@ async def page_factura_manual(
         "request": request,
         "current_user": current_user,
         "tenant_nombre": current_user.tenant_nombre,
-        "active_page": "facturas",
+        "active_page": "factura_manual",
         "monos": monos,
     })
 
@@ -94,6 +94,10 @@ async def buscar_cliente(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     from app.auth.models import ClienteFinal
+    # El monotributista tiene que ser del estudio que consulta
+    _mono = await db.get(Monotributista, mono_id)
+    if not _mono or _mono.tenant_id != current_user.tenant_id:
+        return JSONResponse([], status_code=404)
     results = await db.execute(
         select(ClienteFinal).where(
             ClienteFinal.monotributista_id == mono_id,
@@ -147,7 +151,10 @@ async def enviar_factura_email(
         return JSONResponse({"ok": False, "error": "No hay comprobante para enviar"}, status_code=400)
 
     mono = await db.get(Monotributista, mono_id) if mono_id else None
-    razon_emisor = mono.razon_social if mono else ""
+    # El monotributista tiene que ser del estudio que envía
+    if not mono or mono.tenant_id != current_user.tenant_id:
+        return JSONResponse({"ok": False, "error": "Monotributista no encontrado"}, status_code=404)
+    razon_emisor = mono.razon_social
 
     # Enviar
     from app.email import enviar_factura_pdf
@@ -203,14 +210,38 @@ async def emitir_manual(
     cliente_email  = body.get("cliente_email", "")
     tipo_cbte_str  = body.get("tipo_cbte", "factura")
 
-    fecha_original = date.fromisoformat(fecha_str)
+    try:
+        fecha_original = date.fromisoformat(fecha_str)
+    except Exception:
+        return JSONResponse({"ok": False, "error": "Fecha inválida"}, status_code=400)
     cbte_tipo = 13 if tipo_cbte_str == "nc" else 11
 
-    # Aplicar límite de 10 días de ARCA
+    # Validaciones de servidor (antes solo estaban en el navegador)
+    if importe <= 0:
+        return JSONResponse({"ok": False, "error": "El importe tiene que ser mayor a cero"}, status_code=400)
+    cliente_dni = "".join(ch for ch in str(cliente_dni or "") if ch.isdigit())
+    cliente_cuit = "".join(ch for ch in str(cliente_cuit or "") if ch.isdigit())
+    if cliente_cuit and len(cliente_cuit) != 11:
+        return JSONResponse({"ok": False, "error": "El CUIT tiene que tener 11 dígitos"}, status_code=400)
+    if cliente_dni and len(cliente_dni) == 11 and not cliente_cuit:
+        cliente_cuit, cliente_dni = cliente_dni, ""
+    if cliente_dni and len(cliente_dni) not in (7, 8):
+        return JSONResponse({"ok": False, "error": "El DNI tiene que tener 7 u 8 dígitos"}, status_code=400)
+
+    # RG 5700/2025: desde el umbral ARCA exige identificar al receptor
+    from app.config import UMBRAL_CF
+    if (cbte_tipo == 11 and UMBRAL_CF and float(importe) >= UMBRAL_CF
+            and not cliente_dni and not cliente_cuit):
+        return JSONResponse({"ok": False, "error": (
+            f"ARCA exige identificar al receptor para montos desde ${UMBRAL_CF:,.0f} "
+            f"(RG 5700/2025). Cargá el DNI o CUIT del cliente y volvé a emitir.")}, status_code=400)
+
+    # Aplicar límite de 10 días de ARCA; nunca fecha futura
     from datetime import timedelta
-    hoy = date.today()
+    from app.fechas import hoy_ar
+    hoy = hoy_ar()
     min_valida = hoy - timedelta(days=10)
-    fecha = max(fecha_original, min_valida)
+    fecha = min(max(fecha_original, min_valida), hoy)
     if fecha != fecha_original:
         import logging as _log
         _log.getLogger(__name__).info(
@@ -384,39 +415,18 @@ async def consultar_cuit_arca(
     if len(cuit_limpio) != 11:
         return JSONResponse({"error": "El CUIT debe tener 11 dígitos"}, status_code=400)
 
-    # Cargar el certificado de Más Fácil SAS desde padron_config
-    from sqlalchemy import text as _txt
-    _pc = await db.execute(_txt(
-        "SELECT cert_encrypted, key_encrypted, cuit, environment "
-        "FROM padron_config WHERE activo = TRUE ORDER BY updated_at DESC LIMIT 1"
-    ))
-    _row = _pc.fetchone()
-    if not _row:
-        return JSONResponse(
-            {"error": "La consulta al padrón no está configurada todavía."},
-            status_code=200)
-
     try:
-        from app.config import FERNET_KEY
-        from app.afip.padron import consultar_constancia
-        from cryptography.fernet import Fernet
-        _f = Fernet(FERNET_KEY)
-        cert_pem = _f.decrypt(_row.cert_encrypted.encode()).decode()
-        key_pem  = _f.decrypt(_row.key_encrypted.encode()).decode()
-        cuit_rep = (_row.cuit or "").replace("-", "").replace(" ", "")
-
-        r = await consultar_constancia(
-            cuit_consulta=cuit_limpio,
-            cert_pem=cert_pem,
-            key_pem=key_pem,
-            cuit_representada=cuit_rep,
-            environment=_row.environment or "production",
-        )
+        from app.afip.padron import consultar_padron_plataforma
+        r = await consultar_padron_plataforma(cuit_limpio, db)
     except Exception as e:
         import logging
         logging.getLogger(__name__).warning(f"padron consulta fallo: {e}")
         return JSONResponse(
             {"error": "ARCA no respondió. Podés cargar el nombre a mano."},
+            status_code=200)
+    if r is None:
+        return JSONResponse(
+            {"error": "La consulta al padrón no está configurada todavía."},
             status_code=200)
 
     if getattr(r, "error", None) or not getattr(r, "razon_social", ""):
@@ -497,7 +507,8 @@ async def anular_factura(
         nc_nro = ultimo_nc + 1
 
         # Fecha de la NC: la del comprobante original, ajustada al límite de 10 días
-        hoy = date.today()
+        from app.fechas import hoy_ar as _hoy_ar
+        hoy = _hoy_ar()
         min_valida = hoy - timedelta(days=10)
         nc_fecha = hist.cbte_fecha or hoy
         if nc_fecha < min_valida:

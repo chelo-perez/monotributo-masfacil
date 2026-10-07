@@ -34,24 +34,38 @@ DIAS_ALERTA_CERT = {30, 15, 7, 3, 1}
 
 async def check_certificados_vencimiento():
     """Alerta al contador cuando un certificado ARCA está por vencer."""
-    from .auth.models import Certificado, Monotributista, User
+    from .auth.models import Monotributista, User
     from .email import enviar_alerta_certificado
+    from .config import FERNET_KEY
+    from cryptography.fernet import Fernet
+    from cryptography import x509
 
     hoy = hoy_ar()
 
     async with AsyncSessionLocal() as db:
+        # La fecha de vencimiento se lee del propio certificado guardado en el
+        # monotributista (la tabla "certificados" nunca se llegó a usar).
         result = await db.execute(
-            select(Certificado, Monotributista)
-            .join(Monotributista, Monotributista.id == Certificado.monotributista_id)
-            .where(
-                Certificado.vence_el != None,
+            select(Monotributista).where(
                 Monotributista.activo == True,
+                Monotributista.cert_encrypted.is_not(None),
             )
         )
-        rows = result.all()
+        monos = result.scalars().all()
+        fernet = Fernet(FERNET_KEY) if FERNET_KEY else None
 
-        for cert, mono in rows:
-            vence = cert.vence_el.date() if isinstance(cert.vence_el, datetime) else cert.vence_el
+        for mono in monos:
+            if fernet is None:
+                break
+            try:
+                pem = fernet.decrypt(mono.cert_encrypted.encode()).decode()
+                ini = pem.find("-----BEGIN CERTIFICATE-----")
+                cert = x509.load_pem_x509_certificate(pem[ini:].encode())
+                vence_dt = getattr(cert, "not_valid_after_utc", None) or cert.not_valid_after
+                vence = vence_dt.date()
+            except Exception as e:
+                logger.warning(f"No se pudo leer el vencimiento del certificado de {mono.cuit}: {e}")
+                continue
             dias = (vence - hoy).days
             if dias not in DIAS_ALERTA_CERT:
                 continue

@@ -80,7 +80,8 @@ TOPES_AGO_2026 = {
 def _get_topes(fecha_ref=None) -> dict:
     """Retorna la tabla de topes vigente para la fecha dada (hardcoded fallback)."""
     from datetime import date as _date
-    ref = fecha_ref or _date.today()
+    from app.fechas import hoy_ar as _hoy_ar
+    ref = fecha_ref or _hoy_ar()
     if ref >= _date(2026, 8, 1):
         return TOPES_AGO_2026
     if ref >= _date(2026, 2, 1):
@@ -95,7 +96,8 @@ async def get_topes_db(db, fecha_ref=None) -> dict:
     """
     from datetime import date as _date
     from app.monotributo.models import TablaCategorias
-    ref = fecha_ref or _date.today()
+    from app.fechas import hoy_ar as _hoy_ar
+    ref = fecha_ref or _hoy_ar()
     try:
         from sqlalchemy import or_
         result = await db.execute(
@@ -290,7 +292,8 @@ async def get_semaforo_mono(
     Calcula el estado completo del semáforo para un monotributista.
     Retorna un dict listo para pasar al template.
     """
-    ref = fecha_ref or date.today()
+    from app.fechas import hoy_ar as _hoy_ar
+    ref = fecha_ref or _hoy_ar()
     topes = await get_topes_db(db, ref)
 
     # ── Control 1: Exclusión — 365 días corridos ──
@@ -416,7 +419,8 @@ async def proyeccion_mono(
     """
     from datetime import timedelta as _td
 
-    ref = fecha_ref or date.today()
+    from app.fechas import hoy_ar as _hoy_ar
+    ref = fecha_ref or _hoy_ar()
     f_desde, f_hasta, periodo_label, _ = _periodo_recategorizacion(ref)
 
     # Topes vigentes al cierre del período (no los de hoy)

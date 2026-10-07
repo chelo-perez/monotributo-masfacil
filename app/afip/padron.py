@@ -467,3 +467,46 @@ async def consultar_cuit_publico(cuit: str) -> dict:
                 continue
     
     return {"error": "No se pudo obtener el nombre. Ingresalo manualmente."}
+
+
+# ── Consulta con el certificado único de la plataforma ───────────
+
+async def consultar_padron_plataforma(cuit: str, db) -> Optional[ConstanciaInscripcion]:
+    """
+    Consulta la constancia de un CUIT usando el certificado de la plataforma
+    (tabla padron_config). Devuelve None si la consulta no está configurada.
+    Lanza excepción si ARCA no responde.
+    """
+    from sqlalchemy import text as _txt
+    from cryptography.fernet import Fernet
+    from app.config import FERNET_KEY
+
+    cuit_limpio = "".join(ch for ch in (cuit or "") if ch.isdigit())
+    if len(cuit_limpio) != 11:
+        raise ValueError("El CUIT debe tener 11 dígitos")
+
+    try:
+        # Savepoint: si la tabla no existe todavía, no se aborta la transacción
+        # de quien llama (por ejemplo, un lote en plena emisión).
+        async with db.begin_nested():
+            _pc = await db.execute(_txt(
+                "SELECT cert_encrypted, key_encrypted, cuit, environment "
+                "FROM padron_config WHERE activo = TRUE ORDER BY updated_at DESC LIMIT 1"
+            ))
+            row = _pc.fetchone()
+    except Exception:
+        return None
+    if not row:
+        return None
+
+    f = Fernet(FERNET_KEY)
+    cert_pem = f.decrypt(row.cert_encrypted.encode()).decode()
+    key_pem = f.decrypt(row.key_encrypted.encode()).decode()
+    cuit_rep = "".join(ch for ch in (row.cuit or "") if ch.isdigit())
+    return await consultar_constancia(
+        cuit_consulta=cuit_limpio,
+        cert_pem=cert_pem,
+        key_pem=key_pem,
+        cuit_representada=cuit_rep,
+        environment=row.environment or "production",
+    )
