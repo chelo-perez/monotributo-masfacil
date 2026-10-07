@@ -194,6 +194,7 @@ async def get_ultimo_cbte(
     environment: str = "production",
 ) -> int:
     """Retorna el número del último comprobante autorizado."""
+    cuit = "".join(ch for ch in str(cuit) if ch.isdigit())  # ARCA exige solo dígitos
     url = WSFE_URLS.get(environment, WSFE_URLS["production"])
 
     body = f"""<?xml version="1.0" encoding="UTF-8"?>
@@ -221,7 +222,8 @@ async def get_ultimo_cbte(
                 "SOAPAction": "http://ar.gov.afip.dif.FEV1/FECompUltimoAutorizado",
             },
         )
-        resp.raise_for_status()
+        if not resp.is_success:
+            raise ValueError(f"WSFE FECompUltimoAutorizado error {resp.status_code}: {resp.text[:800]}")
 
     root = ET.fromstring(resp.text)
     for elem in root.iter():
@@ -263,6 +265,9 @@ async def solicitar_cae(
     Retorna (cae, cae_vto, obs_str).
     """
     import calendar as _cal
+    cuit = "".join(ch for ch in str(cuit) if ch.isdigit())  # ARCA exige solo dígitos
+    if cbte_asoc_cuit:
+        cbte_asoc_cuit = "".join(ch for ch in str(cbte_asoc_cuit) if ch.isdigit())
     url      = WSFE_URLS.get(environment, WSFE_URLS["production"])
     fecha_str = cbte_fecha.strftime("%Y%m%d")
 

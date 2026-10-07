@@ -118,7 +118,10 @@ async def _emitir_cuit(
 
     # Obtener ticket de acceso ARCA
     try:
-        token, sign = await wsfe_module.get_token_sign(cert_pem, key_pem)
+        token, sign = await wsfe_module.get_token_sign(
+            cert_pem, key_pem,
+            environment=monotributista.afip_environment or "production",
+        )
     except Exception as e:
         resultado.error_general = f"Error de autenticación ARCA: {e}"
         return resultado
@@ -139,7 +142,7 @@ async def _emitir_cuit(
             ultimo = await wsfe_module.get_ultimo_cbte(
                 token, sign, monotributista.cuit,
                 monotributista.afip_punto_venta, cbte_tipo=11,
-                environment=monotributista.afip_environment,
+                environment=monotributista.afip_environment or "production",
             )
             nuevo_nro = (ultimo or 0) + 1
 
@@ -179,7 +182,7 @@ async def _emitir_cuit(
                         _cons = await consultar_constancia(
                             _dni_raw, monotributista.cuit,
                             cert_pem, key_pem,
-                            environment=monotributista.afip_environment,
+                            environment=monotributista.afip_environment or "production",
                         )
                         if not _cons.error:
                             _cond_iva = 6 if _cons.es_monotributo else 1
@@ -211,7 +214,7 @@ async def _emitir_cuit(
                 fch_serv_hasta=_fch_hasta,
                 doc_tipo=_doc_tipo,
                 doc_nro=_doc_nro,
-                environment=monotributista.afip_environment,
+                environment=monotributista.afip_environment or "production",
                 cond_iva_receptor=_cond_iva,
             )
 
