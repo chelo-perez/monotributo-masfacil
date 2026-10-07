@@ -36,7 +36,7 @@ def _resolver_fecha_cbte(fecha_pago: date, ultima_fecha_cbte: date | None = None
     - Nunca retroceder antes del último comprobante emitido
     """
     from datetime import timedelta
-    hoy = date.today()
+    hoy = hoy_ar()
     min_valida = hoy - timedelta(days=ARCA_MAX_DIAS_ATRAS)
 
     if fecha_pago < min_valida:
@@ -206,7 +206,7 @@ async def _emitir_cuit(
                 cbte_nro=nuevo_nro,
                 cbte_fecha=fecha_cbte,
                 imp_total=float(fila.importe_resuelto),
-                concepto=1,  # Productos=1, Servicios=2, P+S=3
+                concepto=2,  # Servicios (igual que factura manual): admite fecha hasta 10 días atrás
                 fch_serv_desde=fecha_cbte.replace(day=1),
                 fch_serv_hasta=_fch_hasta,
                 doc_tipo=_doc_tipo,
@@ -256,6 +256,11 @@ async def _emitir_cuit(
             res_factura.error = f"Error técnico: {e}"
             resultado.rechazadas += 1
             resultado.facturas.append(res_factura)
+            fila.valida = False
+            fila.error = res_factura.error[:500]
+            import logging as _log
+            _log.getLogger(__name__).error(
+                f"[emision] Fila {fila.id} ({fila.cliente_raw}): {e}", exc_info=True)
             break  # también detenemos en errores técnicos
 
         resultado.facturas.append(res_factura)
