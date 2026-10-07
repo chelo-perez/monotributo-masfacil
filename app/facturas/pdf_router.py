@@ -42,15 +42,19 @@ async def _generar_pdf_factura(
     import calendar as _cal
     fecha = factura.cbte_fecha or hoy_ar()
     ult = _cal.monthrange(fecha.year, fecha.month)[1]
+    # A ARCA siempre se informa el período hasta fin de mes: el PDF debe coincidir
+    _hasta = factura.fch_serv_hasta or fecha
+    _hasta = _hasta.replace(day=_cal.monthrange(_hasta.year, _hasta.month)[1])
     return generar_factura_pdf(
-        razon_social=_nombre_emisor(mono),
+        razon_social=mono.razon_social,
+        nombre_fantasia=mono.nombre_fantasia,
         cuit_emisor=mono.cuit,
         punto_venta=factura.punto_venta or mono.afip_punto_venta or 1,
         cbte_nro=factura.cbte_nro or 0,
         cbte_tipo=factura.cbte_tipo or 11,
         fecha=fecha,
         fch_serv_desde=factura.fch_serv_desde or fecha.replace(day=1),
-        fch_serv_hasta=factura.fch_serv_hasta or fecha.replace(day=ult),
+        fch_serv_hasta=_hasta,
         concepto=factura.concepto or "Honorarios",
         importe=float(factura.imp_total),
         cae=factura.cae or "",
@@ -282,7 +286,8 @@ async def pdf_historial(
     ult   = _cal.monthrange(fecha.year, fecha.month)[1]
 
     pdf_bytes = generar_factura_pdf(
-        razon_social=mono.nombre_fantasia or mono.razon_social,
+        razon_social=mono.razon_social,
+        nombre_fantasia=mono.nombre_fantasia,
         cuit_emisor=mono.cuit,
         punto_venta=hist.punto_venta or mono.afip_punto_venta or 1,
         cbte_nro=hist.cbte_nro or 0,

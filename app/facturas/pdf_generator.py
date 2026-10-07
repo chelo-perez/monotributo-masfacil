@@ -62,7 +62,7 @@ def generar_factura_pdf(
     fecha, fch_serv_desde, fch_serv_hasta, concepto, importe,
     cae, cae_vto, cliente_nombre,
     cliente_dni=None, cliente_cuit=None, logo_base64=None,
-    ingresos_brutos=None, domicilio_emisor=None,
+    ingresos_brutos=None, domicilio_emisor=None, nombre_fantasia=None,
     imp_neto=None, imp_iva=None,  # solo para Factura A
     condicion_iva_emisor=None,    # label de condición IVA del emisor
 ) -> bytes:
@@ -155,7 +155,7 @@ def generar_factura_pdf(
     if not logo_base64:
         c.setFillColor(DARK)
         max_w = MID - BOX_W/2 - ML - 6*mm  # margen extra para no solapar el cuadro C
-        rs_upper = razon_social.upper()
+        rs_upper = (nombre_fantasia or razon_social).upper()
         B(c, 7.5)
         if c.stringWidth(rs_upper, "Helvetica-Bold", 7.5) <= max_w:
             c.drawCentredString(left_cx, HDR_top - 6*mm, rs_upper)
@@ -184,7 +184,7 @@ def generar_factura_pdf(
     # ey = posición Y de la primera línea de datos
     if logo_used > 0:
         ey = HDR_top - logo_used - 5*mm
-    elif not logo_base64 and c.stringWidth(razon_social.upper(), "Helvetica-Bold", 8) > (MID - BOX_W/2 - ML - 6*mm):
+    elif not logo_base64 and c.stringWidth((nombre_fantasia or razon_social).upper(), "Helvetica-Bold", 8) > (MID - BOX_W/2 - ML - 6*mm):
         ey = HDR_top - 20*mm  # 2 líneas de nombre → más espacio arriba
     else:
         ey = HDR_top - 17*mm  # 1 línea de nombre

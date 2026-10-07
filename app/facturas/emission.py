@@ -249,7 +249,7 @@ async def _emitir_cuit(
                     punto_venta=monotributista.afip_punto_venta,
                     cbte_fecha=fecha_cbte,
                     fch_serv_desde=fecha_cbte.replace(day=1),
-                    fch_serv_hasta=fecha_cbte,
+                    fch_serv_hasta=_fch_hasta,
                     imp_total=fila.importe_resuelto,
                     concepto=fila.concepto_raw,
                     cae=cae,
