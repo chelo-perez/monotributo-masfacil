@@ -178,6 +178,9 @@ def _parsear_importe(valor) -> tuple[Optional[Decimal], Optional[str]]:
     # Si tiene punto como separador de miles y coma como decimal: 1.500,50
     if re.search(r"\d\.\d{3},", s):
         s = s.replace(".", "").replace(",", ".")
+    # Solo puntos de miles, sin decimales: 46.000 / 1.250.000 (formato argentino)
+    elif re.fullmatch(r"\d{1,3}(\.\d{3})+", s):
+        s = s.replace(".", "")
     # Si solo tiene coma como decimal: 1500,50
     elif "," in s and "." not in s:
         s = s.replace(",", ".")
