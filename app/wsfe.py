@@ -413,20 +413,7 @@ async def get_puntos_venta(
 ) -> list[int]:
     """Retorna todos los PVs habilitados para el CUIT."""
     url = WSFE_URLS.get(environment, WSFE_URLS["production"])
-    # Bloque CbteAsoc — debe definirse ANTES del f-string body
-    cbte_asoc_block = ""
-    if cbte_asoc_tipo and cbte_asoc_nro:
-        _asoc_fecha = (cbte_asoc_fecha or cbte_fecha).strftime("%Y%m%d")
-        _asoc_cuit  = cbte_asoc_cuit or cuit
-        cbte_asoc_block = (
-            f"<ar:CbtesAsoc><ar:CbteAsoc>"
-            f"<ar:Tipo>{cbte_asoc_tipo}</ar:Tipo>"
-            f"<ar:PtoVta>{punto_venta}</ar:PtoVta>"
-            f"<ar:Nro>{cbte_asoc_nro}</ar:Nro>"
-            f"<ar:Cuit>{_asoc_cuit}</ar:Cuit>"
-            f"<ar:CbteFch>{_asoc_fecha}</ar:CbteFch>"
-            f"</ar:CbteAsoc></ar:CbtesAsoc>"
-        )
+    cuit = "".join(ch for ch in str(cuit) if ch.isdigit())  # ARCA exige solo dígitos
 
     body = f"""<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"

@@ -8,7 +8,7 @@ from typing import Annotated
 from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Form, Request, UploadFile, File
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, text
 
@@ -25,11 +25,36 @@ SECRET_PATH = "mmf-admin-2025"
 PLAN_PRICES = {"basico": 30, "estudio": 60, "pro": 100}
 
 
+ADMIN_TENANT_NOMBRE = "Más Fácil (Admin)"
+
+
+async def es_admin_plataforma(user: CurrentUser, db: AsyncSession) -> bool:
+    """
+    True solo para los usuarios del tenant administrador de la plataforma.
+
+    Antes alcanzaba con rol == "admin", que es el rol con el que nacen todos
+    los usuarios de todos los estudios. El tenant administrador es el del
+    usuario ADMIN_EMAIL (el que crea el seed al arrancar). Si ese usuario no
+    existe todavía, se acepta el tenant con el nombre reservado, que los
+    estudios no pueden usar (ver /perfil).
+    """
+    import os
+    from app.auth.models import User
+    admin_email = os.environ.get("ADMIN_EMAIL", "admin@masfacil.com.ar")
+    if user.email == admin_email:
+        return True
+    res = await db.execute(select(User.tenant_id).where(User.email == admin_email))
+    admin_tenant_id = res.scalar_one_or_none()
+    if admin_tenant_id is not None:
+        return user.tenant_id == admin_tenant_id
+    return user.tenant_nombre == ADMIN_TENANT_NOMBRE
+
+
 async def _require_superadmin(request: Request, db: AsyncSession) -> CurrentUser:
     user = await get_current_user_page(request, db)
     if not isinstance(user, CurrentUser):
         return user  # es un RedirectResponse
-    if user.rol != "admin":
+    if user.rol != "admin" or not await es_admin_plataforma(user, db):
         raise HTTPException(status_code=403, detail="Acceso denegado")
     return user
 
@@ -385,7 +410,9 @@ async def tablas_categorias_page(
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    _check_auth(request)
+    current_user = await _require_superadmin(request, db)
+    if not isinstance(current_user, CurrentUser):
+        return current_user
     from app.monotributo.models import TablaCategorias
     result = await db.execute(
         select(TablaCategorias).order_by(TablaCategorias.vigente_desde.desc())
@@ -403,7 +430,9 @@ async def crear_tabla_categorias(
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    _check_auth(request)
+    current_user = await _require_superadmin(request, db)
+    if not isinstance(current_user, CurrentUser):
+        return current_user
     import json
     from app.monotributo.models import TablaCategorias
     form = await request.form()
@@ -461,7 +490,9 @@ async def toggle_recategorizacion(
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    _check_auth(request)
+    current_user = await _require_superadmin(request, db)
+    if not isinstance(current_user, CurrentUser):
+        return current_user
     from sqlalchemy import text as _txt
     cur = await db.execute(_txt("SELECT valor FROM app_config WHERE clave = 'recategorizacion_habilitada'"))
     actual = cur.scalar_one_or_none()

@@ -70,7 +70,8 @@ async def dashboard(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     # Admin → redirigir al panel de gestión
-    if current_user.rol == "admin" and current_user.tenant_nombre == "Más Fácil (Admin)":
+    from app.superadmin.router import es_admin_plataforma
+    if current_user.rol == "admin" and await es_admin_plataforma(current_user, db):
         return RedirectResponse("/admin/mmf-admin-2025", status_code=302)
     hoy = hoy_ar()
     mes_nombre = [
@@ -1349,7 +1350,13 @@ async def perfil_guardar(
     if not tenant:
         raise HTTPException(status_code=404)
 
-    tenant.nombre   = str(form.get("nombre", tenant.nombre)).strip() or tenant.nombre
+    _nuevo_nombre = str(form.get("nombre", tenant.nombre)).strip() or tenant.nombre
+    # El nombre del tenant administrador de la plataforma está reservado
+    from app.superadmin.router import ADMIN_TENANT_NOMBRE
+    if (_nuevo_nombre.casefold() == ADMIN_TENANT_NOMBRE.casefold()
+            and tenant.nombre != ADMIN_TENANT_NOMBRE):
+        _nuevo_nombre = tenant.nombre
+    tenant.nombre   = _nuevo_nombre
     tenant.telefono = str(form.get("telefono", "")).strip() or None
 
     logo_b64 = str(form.get("logo_base64", "")).strip()

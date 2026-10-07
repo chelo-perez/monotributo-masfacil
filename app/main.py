@@ -106,6 +106,11 @@ async def lifespan(app: FastAPI):
                 print(f"[migración] {e}")
 
     await _seed_superadmin()
+    try:
+        async with AsyncSessionLocal() as _db_seed:
+            await _seed_tablas_categorias(_db_seed)
+    except Exception as _e:
+        print(f"[seed] tablas_categorias: {_e}")
     # Jobs en background (cada tarea abre su propia sesión de DB)
     import asyncio as _asyncio
     from app.jobs import run_daily_tasks, run_weekly_tasks
@@ -154,7 +159,6 @@ async def _seed_superadmin():
         print(f"[seed] ✓ Admin creado: {admin_email}")
 
     # Seed tablas de categorías ARCA
-    await _seed_tablas_categorias(db)
 
 
 async def _seed_tablas_categorias(db):
@@ -175,14 +179,33 @@ async def _seed_tablas_categorias(db):
         },
         {
             "vigente_desde": date(2026, 2, 1),
-            "vigente_hasta": None,
-            "label": "Feb 2026 – (vigente)",
+            "vigente_hasta": date(2026, 7, 31),
+            "label": "Feb 2026 – Jul 2026",
             "fuente": "https://www.afip.gob.ar/monotributo/categorias.asp",
             "topes": {"A":10277988.13,"B":15058447.71,"C":21113696.52,"D":26212853.42,"E":30833964.37,"F":38642048.36,"G":46211109.37,"H":70113407.33,"I":78479211.62,"J":89872640.30,"K":108357084.05},
             "cuotas_servicios": {"A":42386.74,"B":48250.78,"C":56501.85,"D":72414.10,"E":102537.97,"F":129045.32,"G":197108.23,"H":447346.93,"I":824802.26,"J":999007.65,"K":1381687.90},
             "cuotas_bienes": {"A":42386.74,"B":48250.78,"C":55227.06,"D":70661.26,"E":92658.35,"F":111198.27,"G":135918.34,"H":272063.40,"I":406512.05,"J":497059.41,"K":600879.51},
         },
+        {
+            # Escala ARCA vigente desde 01/08/2026 (misma que Facturo Más Fácil)
+            "vigente_desde": date(2026, 8, 1),
+            "vigente_hasta": None,
+            "label": "Ago 2026 – (vigente)",
+            "fuente": "https://www.afip.gob.ar/monotributo/categorias.asp",
+            "topes": {"A":12009410.45,"B":17595182.74,"C":24670494.31,"D":30628651.43,"E":36028231.33,"F":45151659.41,"G":53995798.87,"H":81924660.37,"I":91699761.90,"J":105012519.20,"K":126610838.75},
+            "cuotas_servicios": {"A":49527,"B":56379,"C":66020,"D":84613,"E":119811,"F":150784,"G":230313,"H":522707,"I":963748,"J":1167300,"K":1614446},
+            "cuotas_bienes": {"A":49527,"B":56379,"C":64531,"D":82565,"E":108268,"F":129931,"G":158815,"H":317895,"I":474993,"J":580794,"K":702103},
+        },
     ]
+
+    # La escala de febrero dejó de estar vigente el 31/07/2026
+    from sqlalchemy import update as _upd
+    await db.execute(
+        _upd(TablaCategorias)
+        .where(TablaCategorias.vigente_desde == date(2026, 2, 1),
+               TablaCategorias.vigente_hasta.is_(None))
+        .values(vigente_hasta=date(2026, 7, 31), label="Feb 2026 – Jul 2026")
+    )
 
     for t in TABLAS:
         existing = await db.execute(

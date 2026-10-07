@@ -47,35 +47,34 @@ TOPES_AGO_2025 = {
     "K":  Decimal("90264073"),
 }
 
-# Vigentes desde 01/02/2026 — tabla actual (RG ARCA 5/2026)
+# Vigentes desde 01/02/2026 al 31/07/2026 (misma escala que el seed de la BD)
 TOPES_FEB_2026 = {
-    "A":  Decimal("10277988"),
-    "B":  Decimal("15058448"),
-    "C":  Decimal("20078547"),
-    "D":  Decimal("25098147"),
-    "E":  Decimal("30117746"),
-    "F":  Decimal("36641455"),
-    "G":  Decimal("43974109"),
-    "H":  Decimal("52366038"),
-    "I":  Decimal("61577243"),
-    "J":  Decimal("71898540"),
-    "K":  Decimal("108357084"),
+    "A":  Decimal("10277988.13"),
+    "B":  Decimal("15058447.71"),
+    "C":  Decimal("21113696.52"),
+    "D":  Decimal("26212853.42"),
+    "E":  Decimal("30833964.37"),
+    "F":  Decimal("38642048.36"),
+    "G":  Decimal("46211109.37"),
+    "H":  Decimal("70113407.33"),
+    "I":  Decimal("78479211.62"),
+    "J":  Decimal("89872640.30"),
+    "K":  Decimal("108357084.05"),
 }
 
-# Vigentes desde 01/08/2026 (estimados +16.8% — confirmar cuando ARCA publique)
-# Fuente: La Nacion 14/07/2026, Infobae 14/07/2026
+# Vigentes desde 01/08/2026 — escala ARCA, igual a la cargada en Facturo Más Fácil
 TOPES_AGO_2026 = {
-    "A":  Decimal("12004690"),
-    "B":  Decimal("17588267"),
-    "C":  Decimal("23451783"),
-    "D":  Decimal("29314699"),
-    "E":  Decimal("35177616"),
-    "F":  Decimal("42797400"),
-    "G":  Decimal("51381771"),
-    "H":  Decimal("61203692"),
-    "I":  Decimal("71942530"),
-    "J":  Decimal("83978295"),
-    "K":  Decimal("126561074"),
+    "A":  Decimal("12009410.45"),
+    "B":  Decimal("17595182.74"),
+    "C":  Decimal("24670494.31"),
+    "D":  Decimal("30628651.43"),
+    "E":  Decimal("36028231.33"),
+    "F":  Decimal("45151659.41"),
+    "G":  Decimal("53995798.87"),
+    "H":  Decimal("81924660.37"),
+    "I":  Decimal("91699761.90"),
+    "J":  Decimal("105012519.20"),
+    "K":  Decimal("126610838.75"),
 }
 
 def _get_topes(fecha_ref=None) -> dict:
