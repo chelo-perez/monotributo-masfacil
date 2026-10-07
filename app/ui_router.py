@@ -1412,6 +1412,7 @@ async def page_recategorizacion(
     except Exception as _e:
         import logging; logging.getLogger(__name__).error(f"[recat] app_config: {_e}")
         recat_habilitada = False
+        await db.rollback()  # sin esto Postgres deja la transacción abortada
 
     hoy = hoy_ar()
     desde, hasta, periodo_label, _ = _periodo_recategorizacion(hoy)
@@ -1448,7 +1449,8 @@ async def page_recategorizacion(
         """), {"tid": current_user.tenant_id, "pd": desde, "ph": hasta})
         confirmadas = {r.mono_id for r in _h.fetchall()}
     except Exception:
-        pass
+        # Sin rollback, la consulta siguiente falla con "transaction is aborted" (500)
+        await db.rollback()
 
     result = await db.execute(
         select(Monotributista).where(

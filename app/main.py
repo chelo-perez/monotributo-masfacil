@@ -87,6 +87,17 @@ async def lifespan(app: FastAPI):
                 synced_at TIMESTAMPTZ DEFAULT NOW(),
                 CONSTRAINT uq_afip_history_cbte UNIQUE (mono_id, cbte_tipo, cbte_nro, punto_venta)
             )""",
+            """CREATE TABLE IF NOT EXISTS recategorizacion_historial_mono (
+                id SERIAL PRIMARY KEY,
+                tenant_id INTEGER NOT NULL,
+                mono_id INTEGER NOT NULL,
+                periodo_desde DATE NOT NULL,
+                periodo_hasta DATE NOT NULL,
+                cat_anterior VARCHAR(2),
+                cat_nueva VARCHAR(2),
+                acumulado NUMERIC(14,2),
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            )""",
         ]
         for sql in migraciones:
             try:
