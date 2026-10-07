@@ -58,6 +58,22 @@ def _resolver_fecha_cbte(fecha_pago: date, ultima_fecha_cbte: date | None = None
 # Resultado de emisión
 # ---------------------------------------------------------------------------
 
+# Avance de los lotes en emisión, en memoria (el servicio corre con un solo
+# proceso). Lo lee GET /lotes/{id}/progreso para la barra de avance.
+PROGRESO: dict[int, dict] = {}
+
+
+def _avanzar(lote_id: int, **cambios) -> None:
+    p = PROGRESO.get(lote_id)
+    if p is None:
+        return
+    for k, v in cambios.items():
+        if k in ("procesadas", "aprobadas", "rechazadas"):
+            p[k] += v
+        else:
+            p[k] = v
+
+
 @dataclass
 class ResultadoFactura:
     fila_id: int
@@ -131,6 +147,7 @@ async def _emitir_cuit(
 
     # Emitir secuencialmente
     for fila in filas:
+        _avanzar(fila.lote_id, actual=fila.cliente_raw)
         res_factura = ResultadoFactura(
             fila_id=fila.id,
             cliente_nombre=fila.cliente_raw,
@@ -169,6 +186,7 @@ async def _emitir_cuit(
                 resultado.facturas.append(res_factura)
                 fila.valida = False
                 fila.error = res_factura.error
+                _avanzar(fila.lote_id, procesadas=1, rechazadas=1)
                 continue  # no consume numeración: nunca se llamó a ARCA
 
             # ── Cond. IVA del receptor con CUIT (padrón ARCA, RG 5616) ──
@@ -243,6 +261,7 @@ async def _emitir_cuit(
                 res_factura.cae = cae
                 res_factura.aprobada = True
                 resultado.aprobadas += 1
+                _avanzar(fila.lote_id, procesadas=1, aprobadas=1)
 
             else:
                 # ARCA rechazó — detener este CUIT
@@ -253,6 +272,7 @@ async def _emitir_cuit(
                 # Actualizar FilaExcel
                 fila.valida = False
                 fila.error = res_factura.error
+                _avanzar(fila.lote_id, procesadas=1, rechazadas=1)
                 break  # <-- preserva correlativo, igual que en Facturo Más Fácil
 
         except Exception as e:
@@ -261,6 +281,7 @@ async def _emitir_cuit(
             resultado.facturas.append(res_factura)
             fila.valida = False
             fila.error = res_factura.error[:500]
+            _avanzar(fila.lote_id, procesadas=1, rechazadas=1)
             import logging as _log
             _log.getLogger(__name__).error(
                 f"[emision] Fila {fila.id} ({fila.cliente_raw}): {e}", exc_info=True)
@@ -310,6 +331,12 @@ async def emitir_lote(
     )
     filas = result.scalars().all()
 
+    PROGRESO[lote_id] = {"tenant_id": tenant_id, "total": len(filas), "procesadas": 0,
+                         "aprobadas": 0, "rechazadas": 0, "actual": "", "terminado": False}
+    # Limpieza: conservar solo los últimos lotes
+    for _viejo in list(PROGRESO.keys())[:-20]:
+        PROGRESO.pop(_viejo, None)
+
     # Agrupar por monotributista
     por_mono: dict[int, list[FilaExcel]] = {}
     for fila in filas:
@@ -353,6 +380,7 @@ async def emitir_lote(
     )
     await db.commit()
 
+    _avanzar(lote_id, terminado=True, actual="")
     duracion = (datetime.now() - inicio).total_seconds()
 
     return ResultadoLote(

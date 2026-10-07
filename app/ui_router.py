@@ -321,6 +321,20 @@ async def upload_excel(
 # Confirmar emisión
 # ---------------------------------------------------------------------------
 
+@router.get("/lotes/{lote_id}/progreso")
+async def progreso_emision(
+    lote_id: int,
+    current_user: Annotated[CurrentUser, Depends(get_current_user_page)],
+):
+    """Avance de un lote en emisión (para la barra de progreso)."""
+    from fastapi.responses import JSONResponse
+    from app.facturas.emission import PROGRESO
+    p = PROGRESO.get(lote_id)
+    if not p or p.get("tenant_id") != current_user.tenant_id:
+        return JSONResponse({"disponible": False})
+    return JSONResponse({"disponible": True, **{k: v for k, v in p.items() if k != "tenant_id"}})
+
+
 @router.post("/lotes/{lote_id}/emitir", response_class=HTMLResponse)
 async def confirmar_emision(
     lote_id: int,

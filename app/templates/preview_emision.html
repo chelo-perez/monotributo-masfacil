@@ -144,6 +144,20 @@
 
 </div>
 
+<!-- Avance de la emisión -->
+<div id="avance" style="display:none;position:fixed;left:0;right:0;bottom:64px;background:#fff;border-top:1px solid #E5E7EB;padding:12px 20px;z-index:50;box-shadow:0 -4px 12px rgba(0,0,0,.06)">
+  <div style="max-width:650px;margin:0 auto">
+    <div style="display:flex;justify-content:space-between;gap:12px;font-size:13px;margin-bottom:6px">
+      <span id="avance-texto" style="font-weight:600;color:#2B2F77">Conectando con ARCA…</span>
+      <span id="avance-pct" style="color:#6B7280;white-space:nowrap">0%</span>
+    </div>
+    <div style="height:8px;background:#E5E7EB;border-radius:99px;overflow:hidden">
+      <div id="avance-barra" style="height:100%;width:0%;background:#22C55E;border-radius:99px;transition:width .4s ease"></div>
+    </div>
+    <div id="avance-actual" style="font-size:12px;color:#6B7280;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">No cierres esta pantalla.</div>
+  </div>
+</div>
+
 <!-- Footer fijo -->
 <div class="footer">
   <div class="footer-info">
@@ -179,21 +193,41 @@ async function emitirLote() {
   btn.disabled = true;
   label.textContent = 'Emitiendo...';
   spinner.style.display = 'inline-block';
+  document.getElementById('avance').style.display = 'block';
+  const sondeo = setInterval(async () => {
+    try {
+      const r = await fetch('/lotes/{{ lote_id }}/progreso');
+      const p = await r.json();
+      if (!p.disponible || !p.total) return;
+      const pct = Math.round(p.procesadas * 100 / p.total);
+      document.getElementById('avance-barra').style.width = pct + '%';
+      document.getElementById('avance-pct').textContent = pct + '%';
+      document.getElementById('avance-texto').textContent =
+        p.procesadas + ' de ' + p.total + ' facturas' +
+        (p.rechazadas ? ' · ' + p.rechazadas + ' rechazada' + (p.rechazadas > 1 ? 's' : '') : '');
+      if (p.rechazadas) document.getElementById('avance-barra').style.background = '#F59E0B';
+      if (p.actual) document.getElementById('avance-actual').textContent = 'Emitiendo: ' + p.actual;
+    } catch (e) { /* el sondeo es best-effort */ }
+  }, 1000);
+  const detener = () => { clearInterval(sondeo); document.getElementById('avance').style.display = 'none'; };
   try {
     const res = await fetch('/lotes/{{ lote_id }}/emitir', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     });
+    clearInterval(sondeo);
     if (res.ok) {
       const html = await res.text();
       document.open(); document.write(html); document.close();
     } else {
+      detener();
       alert('Error al emitir. Código: ' + res.status);
       btn.disabled = false;
       label.textContent = 'Emitir {{ filas_validas }} →';
       spinner.style.display = 'none';
     }
   } catch(e) {
+    detener();
     alert('Error de conexión: ' + e.message);
     btn.disabled = false;
     label.textContent = 'Emitir {{ filas_validas }} →';
